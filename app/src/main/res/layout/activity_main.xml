@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.example.launcherai.ui.DragLayer xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rootLauncher"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#00000000">
+
+    <!-- DESKTOP WORKSPACE LAYER -->
+    <LinearLayout
+        android:id="@+id/layoutDesktop"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- HORIZONTALLY PAGED MULTI-SCREEN WORKSPACE -->
+        <com.example.launcherai.ui.Workspace
+            android:id="@+id/workspace"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="#00000000" />
+
+        <!-- PAGE INDICATOR (Shown when workspace pages > 1) -->
+        <com.example.launcherai.ui.PageIndicatorView
+            android:id="@+id/pageIndicator"
+            android:layout_width="wrap_content"
+            android:layout_height="16dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="4dp"
+            android:visibility="gone" />
+
+        <!-- BOTTOM DOCK (HOTSEAT) -->
+        <com.example.launcherai.ui.DockLayout
+            android:id="@+id/dockHotseat"
+            android:layout_width="match_parent"
+            android:layout_height="72dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginBottom="4dp" />
+
+        <!-- PALE PEACH SEARCH BAR BELOW DOCK (Ref 10) -->
+        <LinearLayout
+            android:id="@+id/barHomeSearch"
+            android:layout_width="match_parent"
+            android:layout_height="55dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/bg_nova_search_pill_home"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp">
+
+            <ImageView
+                android:id="@+id/btnHomeSearchGrid"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="App Drawer"
+                android:focusable="true"
+                android:src="@drawable/ic_apps_drawer"
+                app:tint="@color/nova_icon_tint_brown" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1" />
+
+            <ImageView
+                android:id="@+id/btnHomeSearchMic"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="Voice Search"
+                android:focusable="true"
+                android:src="@drawable/ic_mic"
+                app:tint="@color/nova_icon_tint_brown" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- FULL SCREEN SLIDING APP DRAWER OVERLAY (Ref 11) -->
+    <LinearLayout
+        android:id="@+id/layoutAppDrawerOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/nova_drawer_surface"
+        android:clickable="true"
+        android:focusable="true"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <!-- Drawer Search Bar Container (328x44dp Pill) -->
+        <LinearLayout
+            android:id="@+id/barDrawerSearchContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingTop="36dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="12dp">
+
+            <LinearLayout
+                android:id="@+id/barDrawerSearch"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_nova_search_pill_drawer"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_apps_drawer"
+                    app:tint="@color/nova_icon_tint_brown" />
+
+                <EditText
+                    android:id="@+id/etDrawerSearch"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="10dp"
+                    android:background="@null"
+                    android:hint="Search apps"
+                    android:imeOptions="actionSearch"
+                    android:inputType="text"
+                    android:lines="1"
+                    android:singleLine="true"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textColorHint="@color/nova_text_brown_secondary"
+                    android:textSize="14sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Suggestion Chips Row -->
+        <HorizontalScrollView
+            android:id="@+id/scrollSuggestionChips"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/containerSuggestionChips"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:id="@+id/chipLauncherSettings"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:background="@drawable/bg_nova_search_pill_drawer"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="14dp">
+
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_settings"
+                        app:tint="@color/nova_icon_tint_brown" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="LauncherAI Settings"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <!-- Frequent Apps Empty State / Divider -->
+        <LinearLayout
+            android:id="@+id/layoutFrequentAppsHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:paddingTop="16dp"
+            android:paddingBottom="16dp">
+
+            <TextView
+                android:id="@+id/tvFrequentAppsEmpty"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="No Frequent Apps"
+                android:textColor="@color/nova_text_brown_secondary"
+                android:textSize="16sp" />
+
+            <View
+                android:layout_width="180dp"
+                android:layout_height="1dp"
+                android:layout_marginTop="24dp"
+                android:background="#D8C5C0" />
+        </LinearLayout>
+
+        <!-- All Apps Grid & Fast Scroller -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvDrawerApps"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="24dp" />
+
+            <TextView
+                android:id="@+id/tvDrawerEmpty"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="No matching applications found"
+                android:textColor="@color/nova_text_brown_secondary"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tvFastScrollBubble"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_gravity="center_vertical|end"
+                android:layout_marginEnd="32dp"
+                android:background="@drawable/bg_nova_search_pill_drawer"
+                android:elevation="8dp"
+                android:gravity="center"
+                android:textColor="@color/nova_text_brown_primary"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+        </FrameLayout>
+
+    </LinearLayout>
+
+    <!-- TOP DROP TARGET BAR FOR DRAG AND DROP -->
+    <include layout="@layout/layout_drop_target_bar" />
+
+    <!-- FOLDER POPUP OVERLAY WINDOW -->
+    <include layout="@layout/layout_folder_window" />
+
+</com.example.launcherai.ui.DragLayer>

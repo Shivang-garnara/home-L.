@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/dropTargetBar"
+    android:layout_width="match_parent"
+    android:layout_height="56dp"
+    android:layout_marginStart="16dp"
+    android:layout_marginEnd="16dp"
+    android:layout_marginTop="36dp"
+    android:orientation="horizontal"
+    android:gravity="center"
+    android:baselineAligned="false"
+    android:background="@drawable/bg_card_rounded"
+    android:elevation="12dp"
+    android:visibility="gone">
+
+    <!-- Target 1: Remove from Workspace -->
+    <LinearLayout
+        android:id="@+id/targetRemove"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:padding="8dp"
+        android:background="?attr/selectableItemBackground">
+
+        <ImageView
+            android:id="@+id/ivRemoveIcon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_clear"
+            app:tint="@color/status_red"
+            android:contentDescription="@null" />
+
+        <TextView
+            android:id="@+id/tvRemoveText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:text="Remove"
+            android:textColor="@color/status_red"
+            android:textStyle="bold"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- Target 2: App Info Details -->
+    <LinearLayout
+        android:id="@+id/targetAppInfo"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:padding="8dp"
+        android:background="?attr/selectableItemBackground">
+
+        <ImageView
+            android:id="@+id/ivAppInfoIcon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_settings"
+            app:tint="@color/accent_cyan"
+            android:contentDescription="@null" />
+
+        <TextView
+            android:id="@+id/tvAppInfoText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:text="App Info"
+            android:textColor="@color/accent_cyan"
+            android:textStyle="bold"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- Target 3: Uninstall App -->
+    <LinearLayout
+        android:id="@+id/targetUninstall"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:padding="8dp"
+        android:background="?attr/selectableItemBackground">
+
+        <ImageView
+            android:id="@+id/ivUninstallIcon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_clear"
+            app:tint="@color/accent_secondary"
+            android:contentDescription="@null" />
+
+        <TextView
+            android:id="@+id/tvUninstallText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:text="Uninstall"
+            android:textColor="@color/accent_secondary"
+            android:textStyle="bold"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+</LinearLayout>

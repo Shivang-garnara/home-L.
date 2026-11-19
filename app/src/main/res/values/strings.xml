@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LauncherAI</string>
+    <string name="search_hint">Search apps, web &amp; AI…</string>
+    <string name="nova_ai_title">Nova AI</string>
+    <string name="nova_ai_subtitle">Autonomous Assistant • Multimodal</string>
+    <string name="ask_nova_ai_hint">Ask Nova AI anything…</string>
+    <string name="ask_ai">Ask AI</string>
+    <string name="desktop_shortcuts">Favorites</string>
+    <string name="app_drawer_title">All Applications</string>
+    <string name="search_apps_hint">Search installed apps…</string>
+    <string name="endpoints_inspector_title">REA Telemetry &amp; Endpoints</string>
+    <string name="endpoints_inspector_desc">Traced Server-Side Data Sources from Nova Launcher</string>
+    <string name="settings_title">Nova AI Settings</string>
+    <string name="enable_nova_ai">Enable Nova AI Assistant</string>
+    <string name="enable_nova_ai_desc">Power home screen search and app workflows with on-device/cloud intelligence</string>
+    <string name="clear_chat">Clear Chat</string>
+    <string name="suggestion_apps">Search my apps</string>
+    <string name="suggestion_news">Latest tech updates</string>
+    <string name="suggestion_nova">What data sources does Nova use?</string>
+    <string name="suggestion_organize">Organize home screen</string>
+    <string name="suggestion_prime">Verify Prime License</string>
+</resources>

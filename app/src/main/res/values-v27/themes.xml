@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Nova Light Theme for API 27+ with light navigation bar icons -->
+    <style name="Theme.NovaLight" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/nova_light_surface</item>
+        <item name="android:statusBarColor">@color/nova_light_surface</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/nova_light_surface</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="colorPrimary">@color/nova_accent_orange</item>
+        <item name="colorOnPrimary">@color/white</item>
+    </style>
+
+    <!-- Nova Dark Theme for API 27+ with dark navigation bar icons -->
+    <style name="Theme.NovaDark" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/nova_setup_bg_top</item>
+        <item name="android:statusBarColor">@color/nova_setup_bg_top</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">@color/nova_setup_bg_bottom</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="colorPrimary">@color/nova_accent_orange</item>
+        <item name="colorOnPrimary">@color/white</item>
+    </style>
+</resources>

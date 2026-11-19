@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    
+    <!-- Launcher Theme Colors (Nova Inspired) -->
+    <color name="bg_dark">#0F1117</color>
+    <color name="bg_surface">#1A1D27</color>
+    <color name="bg_surface_elevated">#242836</color>
+    <color name="bg_dock">#D9141721</color>
+    <color name="bg_drawer">#F20D1017</color>
+    <color name="bg_dialog">#202534</color>
+    
+    <!-- Accents & Gradients -->
+    <color name="accent_primary">#6366F1</color>
+    <color name="accent_primary_variant">#4F46E5</color>
+    <color name="accent_secondary">#EC4899</color>
+    <color name="accent_gradient_start">#6366F1</color>
+    <color name="accent_gradient_end">#A855F7</color>
+    <color name="accent_cyan">#06B6D4</color>
+    <color name="accent_amber">#F59E0B</color>
+    
+    <!-- Text & UI Elements -->
+    <color name="text_primary">#F3F4F6</color>
+    <color name="text_secondary">#9CA3AF</color>
+    <color name="text_tertiary">#6B7280</color>
+    <color name="divider">#2D3245</color>
+    <color name="chip_bg">#252A3B</color>
+    <color name="chip_stroke">#374151</color>
+    <color name="search_bar_bg">#33FFFFFF</color>
+    <color name="search_bar_solid">#222738</color>
+    <color name="card_bg">#1E2230</color>
+    <color name="card_stroke">#2D3346</color>
+    
+    <!-- Status Colors -->
+    <color name="status_green">#10B981</color>
+    <color name="status_orange">#F59E0B</color>
+    <color name="status_blue">#3B82F6</color>
+    <color name="status_red">#EF4444</color>
+
+    <!-- Nova Launcher 8.9.6 Design Tokens (Phase 9.3R) -->
+    <color name="nova_accent_orange">#D54526</color>
+    <color name="nova_orange_outline">#D34527</color>
+    <color name="nova_light_surface">#FFF8F6</color>
+    <color name="nova_drawer_surface">#FFFBFF</color>
+    <color name="nova_search_pill_settings">#F5E0DA</color>
+    <color name="nova_search_pill_home">#FEDACE</color>
+    <color name="nova_search_pill_drawer">#FEDBCF</color>
+    <color name="nova_text_brown_title">#2D1611</color>
+    <color name="nova_text_brown_primary">#231A18</color>
+    <color name="nova_text_brown_secondary">#53433F</color>
+    <color name="nova_icon_tint_brown">#7D5245</color>
+    <color name="nova_banner_border_red">#BF0100</color>
+    <color name="nova_banner_fill">#FFF8F6</color>
+    <color name="nova_prime_badge_fill">#4883B7</color>
+    <color name="nova_dialog_surface_lavender">#EDE5F4</color>
+    <color name="nova_dialog_surface_peach">#FCEAE4</color>
+    <color name="nova_setup_bg_top">#151316</color>
+    <color name="nova_setup_bg_mid">#160805</color>
+    <color name="nova_setup_bg_bottom">#211D1C</color>
+    <color name="nova_bottom_nav_bg">#FFF8F6</color>
+    <color name="nova_bottom_nav_indicator">#F4EFF3</color>
+</resources>

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="6dp"
+    android:background="?attr/selectableItemBackgroundBorderless"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Folder Icon Preview Container (2x2 Mini Icons) -->
+    <FrameLayout
+        android:id="@+id/flFolderPreview"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:background="@drawable/bg_card_rounded"
+        android:padding="4dp">
+
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:columnCount="2"
+            android:rowCount="2"
+            android:alignmentMode="alignMargins"
+            android:columnOrderPreserved="false">
+
+            <ImageView
+                android:id="@+id/ivPreview1"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_margin="1dp"
+                android:contentDescription="@null"
+                android:scaleType="fitCenter" />
+
+            <ImageView
+                android:id="@+id/ivPreview2"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_margin="1dp"
+                android:contentDescription="@null"
+                android:scaleType="fitCenter" />
+
+            <ImageView
+                android:id="@+id/ivPreview3"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_margin="1dp"
+                android:contentDescription="@null"
+                android:scaleType="fitCenter" />
+
+            <ImageView
+                android:id="@+id/ivPreview4"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_margin="1dp"
+                android:contentDescription="@null"
+                android:scaleType="fitCenter" />
+
+        </GridLayout>
+
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/tvFolderTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center"
+        android:lines="1"
+        android:ellipsize="end"
+        android:text="Folder"
+        android:textColor="@color/text_primary"
+        android:textSize="12sp"
+        android:shadowColor="#80000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="3" />
+
+</LinearLayout>

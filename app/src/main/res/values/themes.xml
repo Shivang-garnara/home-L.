@@ -1,0 +1,30 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.LauncherAI" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+    </style>
+
+    <style name="Theme.LauncherAI" parent="Base.Theme.LauncherAI" />
+
+    <!-- Nova Light Theme (Settings, App Drawer) -->
+    <style name="Theme.NovaLight" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/nova_light_surface</item>
+        <item name="android:statusBarColor">@color/nova_light_surface</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/nova_light_surface</item>
+        <item name="colorPrimary">@color/nova_accent_orange</item>
+        <item name="colorOnPrimary">@color/white</item>
+    </style>
+
+    <!-- Nova Dark Theme (Setup Wizard) -->
+    <style name="Theme.NovaDark" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/nova_setup_bg_top</item>
+        <item name="android:statusBarColor">@color/nova_setup_bg_top</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">@color/nova_setup_bg_bottom</item>
+        <item name="colorPrimary">@color/nova_accent_orange</item>
+        <item name="colorOnPrimary">@color/white</item>
+    </style>
+</resources>
