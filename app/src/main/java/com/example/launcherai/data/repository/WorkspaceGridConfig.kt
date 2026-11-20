@@ -8,12 +8,12 @@ data class WorkspaceGridConfig(
     val rows: Int = DEFAULT_ROWS
 ) {
     companion object {
-        const val DEFAULT_COLS = 4
-        const val DEFAULT_ROWS = 5
+        const val DEFAULT_COLS = 5
+        const val DEFAULT_ROWS = 6
         const val MIN_COLS = 3
-        const val MAX_COLS = 7
+        const val MAX_COLS = 12
         const val MIN_ROWS = 3
-        const val MAX_ROWS = 8
+        const val MAX_ROWS = 12
     }
 }
 

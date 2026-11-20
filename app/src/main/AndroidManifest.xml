@@ -61,6 +61,20 @@
             android:exported="true"
             android:label="Nova Launcher Settings" />
 
+        <!-- Home Screen Settings Activity -->
+        <activity
+            android:name=".ui.HomeScreenSettingsActivity"
+            android:exported="true"
+            android:label="Home screen"
+            android:theme="@style/Theme.NovaLight" />
+
+        <!-- Dock Settings Hub Activity -->
+        <activity
+            android:name=".ui.DockSettingsActivity"
+            android:exported="true"
+            android:label="Dock"
+            android:theme="@style/Theme.NovaLight" />
+
         <!-- Reverse Engineered Endpoints & Telemetry Inspector -->
         <activity
             android:name=".EndpointsActivity"

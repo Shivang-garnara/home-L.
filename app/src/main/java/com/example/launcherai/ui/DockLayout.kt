@@ -74,7 +74,20 @@ class DockLayout @JvmOverloads constructor(
 
         val prefs = context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
         val shape = prefs.getString("key_icon_shape", "Round") ?: "Round"
-        val sizePercent = prefs.getInt("key_icon_size_percent", 125)
+        val matchDesktop = prefs.getBoolean("key_dock_match_desktop_size", true)
+        val sizePercent = if (matchDesktop) {
+            prefs.getInt("key_icon_size_percent", 100)
+        } else {
+            prefs.getInt("key_dock_icon_size_percent", 100)
+        }
+        val showLabels = prefs.getBoolean("key_dock_show_labels", false)
+        val bgStyle = prefs.getString("key_dock_bg_style", "Transparent") ?: "Transparent"
+        when (bgStyle) {
+            "Glass" -> setBackgroundResource(R.drawable.bg_dock_glass)
+            "Platform" -> setBackgroundResource(R.drawable.bg_dock_platform)
+            else -> background = null
+        }
+
         val density = context.resources.displayMetrics.density
         val dockHeightPx = if (height > 0) height else (72 * density).toInt()
         val scaledDockSize = com.example.launcherai.icons.DeviceIconMetrics.getDockIconSizePx(
@@ -197,7 +210,11 @@ class DockLayout @JvmOverloads constructor(
                             }
 
                             tvAppLabel.text = appInfo.label
-                            tvAppLabel.visibility = View.GONE // Dock icons show no label text in Nova design
+                            tvAppLabel.visibility = if (showLabels) View.VISIBLE else View.GONE
+                            if (showLabels) {
+                                val labelColor = prefs.getInt("key_label_color", android.graphics.Color.WHITE)
+                                tvAppLabel.setTextColor(labelColor)
+                            }
 
                             var lastTouchX = 0f
                             var lastTouchY = 0f
@@ -237,7 +254,11 @@ class DockLayout @JvmOverloads constructor(
                             val ivPreview4 = folderView.findViewById<ImageView>(R.id.ivPreview4)
 
                             tvFolderTitle.text = folderResolved.title
-                            tvFolderTitle.visibility = View.GONE // Dock folder shows no text label
+                            tvFolderTitle.visibility = if (showLabels) View.VISIBLE else View.GONE
+                            if (showLabels) {
+                                val labelColor = prefs.getInt("key_label_color", android.graphics.Color.WHITE)
+                                tvFolderTitle.setTextColor(labelColor)
+                            }
 
                             val previewViews = listOf(ivPreview1, ivPreview2, ivPreview3, ivPreview4)
                             val children = folderResolved.children

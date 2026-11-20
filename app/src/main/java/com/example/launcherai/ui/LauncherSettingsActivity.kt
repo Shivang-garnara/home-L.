@@ -59,6 +59,7 @@ class LauncherSettingsActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         checkDefaultLauncherStatus()
+        updateSummaryTexts()
         if (intent.getBooleanExtra("scroll_down", false)) {
             binding.scrollViewSettingsMain.post {
                 binding.scrollViewSettingsMain.scrollTo(0, 750)
@@ -219,7 +220,7 @@ class LauncherSettingsActivity : AppCompatActivity() {
 
         // Row 2: Home screen
         binding.rowHomeScreen.setOnClickListener {
-            showHomeScreenGridDialog()
+            startActivity(Intent(this, HomeScreenSettingsActivity::class.java))
         }
 
         // Row 3: App drawer
@@ -295,9 +296,17 @@ class LauncherSettingsActivity : AppCompatActivity() {
 
     private fun updateSummaryTexts() {
         val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-        val cols = prefs.getInt("key_grid_cols", 4)
-        val rows = prefs.getInt("key_grid_rows", 5)
-        binding.tvHomeScreenSubtitle.text = "Set grid ($cols x $rows), icon layout, dock settings, and more"
+        val repository = (application as LauncherApplication).repository
+        val currentGrid = repository.getGridConfig()
+        val paddingHoriz = prefs.getInt("key_desktop_padding_horizontal", 0)
+        val paddingVert = prefs.getInt("key_desktop_padding_vertical", 0)
+        fun stepToLabel(step: Int): String = when (step) {
+            1 -> "Small"
+            2 -> "Medium"
+            3 -> "Large"
+            else -> "None"
+        }
+        binding.tvHomeScreenSubtitle.text = "${currentGrid.rows} ✕ ${currentGrid.cols} • ${stepToLabel(paddingHoriz)} ✕ ${stepToLabel(paddingVert)}"
 
         val shape = prefs.getString("key_icon_shape", "Round") ?: "Round"
         val sizePercent = prefs.getInt("key_icon_size_percent", 125)

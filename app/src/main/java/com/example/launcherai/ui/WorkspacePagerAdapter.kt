@@ -47,14 +47,38 @@ class WorkspacePagerAdapter(
             )
             countX = gridConfig.cols
             countY = gridConfig.rows
+            applyWorkspacePadding(this)
         }
         return WorkspacePageViewHolder(cellLayout)
+    }
+
+    private fun applyWorkspacePadding(cellLayout: CellLayout) {
+        val prefs = cellLayout.context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        val paddingHorizStep = prefs.getInt("key_desktop_padding_horizontal", 0)
+        val paddingVertStep = prefs.getInt("key_desktop_padding_vertical", 0)
+        val dpHoriz = when (paddingHorizStep) {
+            1 -> 8
+            2 -> 16
+            3 -> 24
+            else -> 0
+        }
+        val dpVert = when (paddingVertStep) {
+            1 -> 8
+            2 -> 16
+            3 -> 24
+            else -> 0
+        }
+        val density = cellLayout.context.resources.displayMetrics.density
+        val pxHoriz = (dpHoriz * density).toInt()
+        val pxVert = (dpVert * density).toInt()
+        cellLayout.setPadding(pxHoriz, pxVert, pxHoriz, pxVert)
     }
 
     override fun onBindViewHolder(holder: WorkspacePageViewHolder, position: Int) {
         val cellLayout = holder.cellLayout
         cellLayout.countX = gridConfig.cols
         cellLayout.countY = gridConfig.rows
+        applyWorkspacePadding(cellLayout)
         cellLayout.removeAllViews()
 
         val page = pages[position]
@@ -110,6 +134,43 @@ class WorkspacePagerAdapter(
                     }
                     tvAppLabel.text = appInfo.label
 
+                    val labelVisible = prefs.getBoolean("key_label_visible", true)
+                    if (!labelVisible) {
+                        tvAppLabel.visibility = View.GONE
+                    } else {
+                        tvAppLabel.visibility = View.VISIBLE
+                        val labelSizePercent = prefs.getInt("key_label_size_percent", 100)
+                        tvAppLabel.textSize = 11f * (labelSizePercent / 100f)
+                        val fontChoice = prefs.getString("key_label_font", "Normal") ?: "Normal"
+                        tvAppLabel.typeface = when (fontChoice) {
+                            "Medium" -> android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+                            "Condensed" -> android.graphics.Typeface.create("sans-serif-condensed", android.graphics.Typeface.NORMAL)
+                            "Light" -> android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
+                            else -> android.graphics.Typeface.DEFAULT
+                        }
+                        val labelColor = prefs.getInt("key_label_color", android.graphics.Color.WHITE)
+                        tvAppLabel.setTextColor(labelColor)
+                        val shadowEnabled = prefs.getBoolean("key_label_shadow", true)
+                        if (shadowEnabled) {
+                            val isDark = androidx.core.graphics.ColorUtils.calculateLuminance(labelColor) < 0.5
+                            if (isDark) {
+                                tvAppLabel.setShadowLayer(3f, 0f, 1f, 0x44FFFFFF.toInt())
+                            } else {
+                                tvAppLabel.setShadowLayer(4f, 0f, 2f, 0x88000000.toInt())
+                            }
+                        } else {
+                            tvAppLabel.setShadowLayer(0f, 0f, 0f, 0)
+                        }
+                        val singleLine = prefs.getBoolean("key_label_single_line", true)
+                        if (singleLine) {
+                            tvAppLabel.maxLines = 1
+                            tvAppLabel.isSingleLine = true
+                        } else {
+                            tvAppLabel.maxLines = 2
+                            tvAppLabel.isSingleLine = false
+                        }
+                    }
+
                     var lastTouchX = 0f
                     var lastTouchY = 0f
 
@@ -153,11 +214,39 @@ class WorkspacePagerAdapter(
                     val ivPreview3 = folderView.findViewById<ImageView>(R.id.ivPreview3)
                     val ivPreview4 = folderView.findViewById<ImageView>(R.id.ivPreview4)
 
+                    val folderPrefs = cellLayout.context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
                     tvFolderTitle.text = folderResolved.title
+                    val folderLabelVisible = folderPrefs.getBoolean("key_label_visible", true)
+                    if (!folderLabelVisible) {
+                        tvFolderTitle.visibility = View.GONE
+                    } else {
+                        tvFolderTitle.visibility = View.VISIBLE
+                        val labelSizePercent = folderPrefs.getInt("key_label_size_percent", 100)
+                        tvFolderTitle.textSize = 11f * (labelSizePercent / 100f)
+                        val fontChoice = folderPrefs.getString("key_label_font", "Normal") ?: "Normal"
+                        tvFolderTitle.typeface = when (fontChoice) {
+                            "Medium" -> android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+                            "Condensed" -> android.graphics.Typeface.create("sans-serif-condensed", android.graphics.Typeface.NORMAL)
+                            "Light" -> android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
+                            else -> android.graphics.Typeface.DEFAULT
+                        }
+                        val labelColor = folderPrefs.getInt("key_label_color", android.graphics.Color.WHITE)
+                        tvFolderTitle.setTextColor(labelColor)
+                        val shadowEnabled = folderPrefs.getBoolean("key_label_shadow", true)
+                        if (shadowEnabled) {
+                            val isDark = androidx.core.graphics.ColorUtils.calculateLuminance(labelColor) < 0.5
+                            if (isDark) {
+                                tvFolderTitle.setShadowLayer(3f, 0f, 1f, 0x44FFFFFF.toInt())
+                            } else {
+                                tvFolderTitle.setShadowLayer(4f, 0f, 2f, 0x88000000.toInt())
+                            }
+                        } else {
+                            tvFolderTitle.setShadowLayer(0f, 0f, 0f, 0)
+                        }
+                    }
 
                     val previewViews = listOf(ivPreview1, ivPreview2, ivPreview3, ivPreview4)
                     val children = folderResolved.children
-                    val folderPrefs = cellLayout.context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
                     val folderShape = folderPrefs.getString("key_icon_shape", "Round") ?: "Round"
 
                     previewViews.forEachIndexed { index, iv ->

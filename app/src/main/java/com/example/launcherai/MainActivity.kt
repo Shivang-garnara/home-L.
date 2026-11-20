@@ -189,6 +189,12 @@ class MainActivity : AppCompatActivity() {
 
         applySearchBarPlacement()
         applyDrawerPlacementAndSettings()
+        if (::dockHotseat.isInitialized) {
+            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+            val dockEnabled = prefs.getBoolean("key_dock_enabled", true)
+            dockHotseat.visibility = if (dockEnabled) View.VISIBLE else View.GONE
+            dockHotseat.refreshDock()
+        }
         workspace.adapter?.notifyDataSetChanged()
         if (::drawerAdapter.isInitialized) {
             drawerAdapter.notifyDataSetChanged()
