@@ -64,9 +64,25 @@ class DockLayout @JvmOverloads constructor(
         rebuildViews()
     }
 
+    fun refreshDock() {
+        rebuildViews()
+    }
+
     private fun rebuildViews() {
         removeAllViews()
         val inflater = LayoutInflater.from(context)
+
+        val prefs = context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        val shape = prefs.getString("key_icon_shape", "Round") ?: "Round"
+        val sizePercent = prefs.getInt("key_icon_size_percent", 125)
+        val density = context.resources.displayMetrics.density
+        val dockHeightPx = if (height > 0) height else (72 * density).toInt()
+        val scaledDockSize = com.example.launcherai.icons.DeviceIconMetrics.getDockIconSizePx(
+            context,
+            capacity,
+            dockHeightPx,
+            sizePercent
+        )
 
         // Map items by cellX slot
         val slotMap = mutableMapOf<Int, WorkspaceItemDisplay>()
@@ -87,12 +103,17 @@ class DockLayout @JvmOverloads constructor(
                     setOnClickListener { onAppDrawerClickListener?.invoke() }
                 }
                 val ivDrawer = ImageView(context).apply {
-                    val iconSize = (48 * resources.displayMetrics.density).toInt()
-                    layoutParams = FrameLayout.LayoutParams(iconSize, iconSize).apply {
+                    layoutParams = FrameLayout.LayoutParams(scaledDockSize, scaledDockSize).apply {
                         gravity = android.view.Gravity.CENTER
                     }
-                    setBackgroundResource(R.drawable.bg_ai_gradient)
-                    val pad = (11 * resources.displayMetrics.density).toInt()
+                    val bgDrawable = com.example.launcherai.icons.IconShapeMasker.createShapeThumbnail(
+                        context,
+                        shape,
+                        scaledDockSize,
+                        androidx.core.content.ContextCompat.getColor(context, R.color.accent_primary)
+                    )
+                    background = bgDrawable
+                    val pad = (scaledDockSize * 0.22f).toInt()
                     setPadding(pad, pad, pad, pad)
                     setImageResource(R.drawable.ic_apps_drawer)
                     setColorFilter(context.getColor(R.color.white))
@@ -123,12 +144,17 @@ class DockLayout @JvmOverloads constructor(
                             }
                         }
                         val ivIcon = ImageView(context).apply {
-                            val iconSize = (44 * resources.displayMetrics.density).toInt()
-                            layoutParams = FrameLayout.LayoutParams(iconSize, iconSize).apply {
+                            layoutParams = FrameLayout.LayoutParams(scaledDockSize, scaledDockSize).apply {
                                 gravity = android.view.Gravity.CENTER
                             }
-                            setBackgroundResource(R.drawable.bg_card_rounded)
-                            val pad = (10 * resources.displayMetrics.density).toInt()
+                            val bgDrawable = com.example.launcherai.icons.IconShapeMasker.createShapeThumbnail(
+                                context,
+                                shape,
+                                scaledDockSize,
+                                android.graphics.Color.parseColor("#333333")
+                            )
+                            background = bgDrawable
+                            val pad = (scaledDockSize * 0.22f).toInt()
                             setPadding(pad, pad, pad, pad)
                             setImageResource(resId)
                             setColorFilter(context.getColor(tintId))
@@ -155,7 +181,21 @@ class DockLayout @JvmOverloads constructor(
                             val ivAppIcon = iconView.findViewById<ImageView>(R.id.ivAppIcon)
                             val tvAppLabel = iconView.findViewById<TextView>(R.id.tvAppLabel)
 
-                            ivAppIcon.setImageDrawable(appInfo.icon)
+                            val maskedIcon = com.example.launcherai.icons.IconShapeMasker.createMaskedIcon(
+                                context,
+                                appInfo.icon ?: androidx.core.content.ContextCompat.getDrawable(context, R.mipmap.ic_launcher),
+                                shape,
+                                sizePercent,
+                                targetSizePx = scaledDockSize
+                            )
+
+                            ivAppIcon.setImageDrawable(maskedIcon ?: appInfo.icon)
+
+                            ivAppIcon.layoutParams = ivAppIcon.layoutParams.apply {
+                                width = scaledDockSize
+                                height = scaledDockSize
+                            }
+
                             tvAppLabel.text = appInfo.label
                             tvAppLabel.visibility = View.GONE // Dock icons show no label text in Nova design
 
@@ -203,7 +243,14 @@ class DockLayout @JvmOverloads constructor(
                             val children = folderResolved.children
                             previewViews.forEachIndexed { index, iv ->
                                 if (index < children.size) {
-                                    iv.setImageDrawable(children[index].appInfo.icon)
+                                    val childIcon = children[index].appInfo.icon
+                                    val masked = com.example.launcherai.icons.IconShapeMasker.createMaskedIcon(
+                                        context,
+                                        childIcon,
+                                        shape,
+                                        100
+                                    )
+                                    iv.setImageDrawable(masked ?: childIcon)
                                     iv.visibility = View.VISIBLE
                                 } else {
                                     iv.setImageDrawable(null)

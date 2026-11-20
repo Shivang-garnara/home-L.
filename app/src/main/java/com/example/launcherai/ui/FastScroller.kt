@@ -17,6 +17,7 @@ class FastScroller(
     private val bubbleView: TextView
 ) {
 
+    var isEnabled: Boolean = true
     private val hideHandler = Handler(Looper.getMainLooper())
     private val hideRunnable = Runnable {
         bubbleView.animate().alpha(0f).setDuration(200).withEndAction {
@@ -29,7 +30,7 @@ class FastScroller(
     init {
         recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
-                if (dy != 0 && currentApps.isNotEmpty()) {
+                if (isEnabled && dy != 0 && currentApps.isNotEmpty()) {
                     showScrollSectionBubble(rv)
                 }
             }

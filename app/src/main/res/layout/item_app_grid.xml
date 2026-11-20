@@ -4,23 +4,28 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:gravity="center"
-    android:padding="8dp"
+    android:paddingStart="2dp"
+    android:paddingEnd="2dp"
+    android:paddingTop="3dp"
+    android:paddingBottom="3dp"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:background="?attr/selectableItemBackgroundBorderless"
     android:clickable="true"
     android:focusable="true">
 
     <ImageView
         android:id="@+id/ivAppIcon"
-        android:layout_width="56dp"
-        android:layout_height="56dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:contentDescription="@null"
         android:scaleType="fitCenter" />
 
     <TextView
         android:id="@+id/tvAppLabel"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="3dp"
         android:gravity="center"
         android:lines="1"
         android:maxLines="1"

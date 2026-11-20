@@ -4,9 +4,12 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Path
+import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.os.Build
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
@@ -18,13 +21,21 @@ import kotlin.math.sin
  */
 object IconShapeMasker {
 
-    fun createMaskedIcon(context: Context, originalDrawable: Drawable?, shapeName: String, scalePercent: Int): Drawable? {
+    fun createMaskedIcon(
+        context: Context,
+        originalDrawable: Drawable?,
+        shapeName: String,
+        scalePercent: Int,
+        targetSizePx: Int? = null
+    ): Drawable? {
         if (originalDrawable == null) return null
 
-        val density = context.resources.displayMetrics.density
-        val baseSize = (56 * density).toInt()
-        val scaleFactor = (scalePercent.coerceIn(50, 200) / 100f)
-        val finalSize = maxOf(1, (baseSize * scaleFactor).toInt())
+        val finalSize = targetSizePx ?: DeviceIconMetrics.getWorkspaceIconSizePx(
+            context,
+            context.resources.displayMetrics.widthPixels / 4,
+            context.resources.displayMetrics.heightPixels / 5,
+            scalePercent
+        )
 
         val bitmap = Bitmap.createBitmap(finalSize, finalSize, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -34,10 +45,35 @@ object IconShapeMasker {
         canvas.save()
         canvas.clipPath(path)
 
-        originalDrawable.setBounds(0, 0, finalSize, finalSize)
-        originalDrawable.draw(canvas)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && originalDrawable is AdaptiveIconDrawable) {
+            val bleed = (finalSize * 0.25f).toInt()
+            val layerBounds = Rect(-bleed, -bleed, finalSize + bleed, finalSize + bleed)
+            originalDrawable.background?.let { bg ->
+                bg.bounds = layerBounds
+                bg.draw(canvas)
+            }
+            originalDrawable.foreground?.let { fg ->
+                fg.bounds = layerBounds
+                fg.draw(canvas)
+            }
+        } else {
+            originalDrawable.setBounds(0, 0, finalSize, finalSize)
+            originalDrawable.draw(canvas)
+        }
         canvas.restore()
 
+        return BitmapDrawable(context.resources, bitmap)
+    }
+
+    fun createShapeThumbnail(context: Context, shapeName: String, sizePx: Int, color: Int): Drawable {
+        val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val path = createShapePath(shapeName, sizePx.toFloat())
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            this.color = color
+            style = android.graphics.Paint.Style.FILL
+        }
+        canvas.drawPath(path, paint)
         return BitmapDrawable(context.resources, bitmap)
     }
 

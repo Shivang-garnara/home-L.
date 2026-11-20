@@ -1,6 +1,7 @@
 package com.example.launcherai.ui
 
 import android.appwidget.AppWidgetHost
+import android.content.Context
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -72,7 +73,41 @@ class WorkspacePagerAdapter(
                     val ivAppIcon = iconView.findViewById<ImageView>(R.id.ivAppIcon)
                     val tvAppLabel = iconView.findViewById<TextView>(R.id.tvAppLabel)
 
-                    ivAppIcon.setImageDrawable(appInfo.icon)
+                    val prefs = cellLayout.context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                    val shape = prefs.getString("key_icon_shape", "Round") ?: "Round"
+                    val sizePercent = prefs.getInt("key_icon_size_percent", 125)
+
+                    val cellWidthPx = if (cellLayout.width > 0) {
+                        (cellLayout.width - cellLayout.paddingLeft - cellLayout.paddingRight) / maxOf(1, gridConfig.cols)
+                    } else {
+                        cellLayout.context.resources.displayMetrics.widthPixels / maxOf(1, gridConfig.cols)
+                    }
+                    val cellHeightPx = if (cellLayout.height > 0) {
+                        (cellLayout.height - cellLayout.paddingTop - cellLayout.paddingBottom) / maxOf(1, gridConfig.rows)
+                    } else {
+                        cellLayout.context.resources.displayMetrics.heightPixels / maxOf(1, gridConfig.rows)
+                    }
+                    val sizePx = com.example.launcherai.icons.DeviceIconMetrics.getWorkspaceIconSizePx(
+                        cellLayout.context,
+                        cellWidthPx,
+                        cellHeightPx,
+                        sizePercent
+                    )
+
+                    val maskedIcon = com.example.launcherai.icons.IconShapeMasker.createMaskedIcon(
+                        cellLayout.context,
+                        appInfo.icon ?: androidx.core.content.ContextCompat.getDrawable(cellLayout.context, R.mipmap.ic_launcher),
+                        shape,
+                        sizePercent,
+                        targetSizePx = sizePx
+                    )
+
+                    ivAppIcon.setImageDrawable(maskedIcon ?: appInfo.icon)
+
+                    ivAppIcon.layoutParams = ivAppIcon.layoutParams.apply {
+                        width = sizePx
+                        height = sizePx
+                    }
                     tvAppLabel.text = appInfo.label
 
                     var lastTouchX = 0f
@@ -122,9 +157,19 @@ class WorkspacePagerAdapter(
 
                     val previewViews = listOf(ivPreview1, ivPreview2, ivPreview3, ivPreview4)
                     val children = folderResolved.children
+                    val folderPrefs = cellLayout.context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                    val folderShape = folderPrefs.getString("key_icon_shape", "Round") ?: "Round"
+
                     previewViews.forEachIndexed { index, iv ->
                         if (index < children.size) {
-                            iv.setImageDrawable(children[index].appInfo.icon)
+                            val childIcon = children[index].appInfo.icon
+                            val maskedMini = com.example.launcherai.icons.IconShapeMasker.createMaskedIcon(
+                                cellLayout.context,
+                                childIcon,
+                                folderShape,
+                                100
+                            )
+                            iv.setImageDrawable(maskedMini ?: childIcon)
                             iv.visibility = View.VISIBLE
                         } else {
                             iv.setImageDrawable(null)

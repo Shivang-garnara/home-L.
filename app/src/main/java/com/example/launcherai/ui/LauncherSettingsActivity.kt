@@ -1,5 +1,6 @@
 package com.example.launcherai.ui
 
+import android.Manifest
 import android.app.role.RoleManager
 import android.content.Context
 import android.content.Intent
@@ -297,6 +298,26 @@ class LauncherSettingsActivity : AppCompatActivity() {
         val cols = prefs.getInt("key_grid_cols", 4)
         val rows = prefs.getInt("key_grid_rows", 5)
         binding.tvHomeScreenSubtitle.text = "Set grid ($cols x $rows), icon layout, dock settings, and more"
+
+        val shape = prefs.getString("key_icon_shape", "Round") ?: "Round"
+        val sizePercent = prefs.getInt("key_icon_size_percent", 125)
+        binding.tvLookFeelSubtitle.text = "Shape: $shape, Size: $sizePercent%, and icon options"
+
+        val drawerStyle = prefs.getString("key_app_drawer_style", "Vertical") ?: "Vertical"
+        val showKb = prefs.getBoolean("key_drawer_show_keyboard", true)
+        val smartFolders = prefs.getBoolean("key_drawer_smart_folders", true)
+        binding.tvAppDrawerSubtitle.text = "Style: $drawerStyle • Keyboard: ${if (showKb) "On" else "Off"} • Smart Folders: ${if (smartFolders) "On" else "Off"}"
+
+        val searchMode = prefs.getString("key_search_mode", "Immersive") ?: "Immersive"
+        val homePlacement = prefs.getString("key_search_bar_placement_home", "DOCK_BELOW") ?: "DOCK_BELOW"
+        val homeLabel = when (homePlacement) {
+            "DOCK_ABOVE" -> "Dock (Above)"
+            "TOP" -> "Top"
+            "HIDDEN" -> "Hidden"
+            else -> "Dock (Below)"
+        }
+        val drawerPlacement = prefs.getString("key_search_bar_placement_drawer", "Top") ?: "Top"
+        binding.tvSearchSubtitle.text = "Mode: $searchMode • Home: $homeLabel • Drawer: $drawerPlacement"
     }
 
     private fun showHomeScreenGridDialog() {
@@ -338,14 +359,58 @@ class LauncherSettingsActivity : AppCompatActivity() {
     }
 
     private fun showAppDrawerSettingsDialog() {
-        val options = arrayOf("Icon Layout & Grid", "Drawer Fast Scroll", "Manage Hidden Applications")
+        val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        val currentStyle = prefs.getString("key_app_drawer_style", "Vertical") ?: "Vertical"
+        val showKb = prefs.getBoolean("key_drawer_show_keyboard", true)
+        val freqApps = prefs.getBoolean("key_drawer_frequent_apps", true)
+        val smartFolders = prefs.getBoolean("key_drawer_smart_folders", true)
+
+        val options = arrayOf(
+            "App Drawer Style: $currentStyle",
+            "Show Keyboard: ${if (showKb) "ON" else "OFF"}",
+            "Frequently Used Apps: ${if (freqApps) "ON" else "OFF"}",
+            "Smart Folders: ${if (smartFolders) "ON" else "OFF"}",
+            "Open Drawer Setup Wizard"
+        )
 
         AlertDialog.Builder(this)
             .setTitle("App Drawer Configuration")
             .setItems(options) { _, which ->
                 when (which) {
-                    0, 1 -> Toast.makeText(this, "Setting updated", Toast.LENGTH_SHORT).show()
-                    2 -> finish()
+                    0 -> {
+                        val styles = arrayOf("Vertical", "List", "Horizontal")
+                        val activeIdx = styles.indexOf(currentStyle).coerceAtLeast(0)
+                        AlertDialog.Builder(this)
+                            .setTitle("App Drawer Style")
+                            .setSingleChoiceItems(styles, activeIdx) { d, idx ->
+                                prefs.edit().putString("key_app_drawer_style", styles[idx]).apply()
+                                d.dismiss()
+                                updateSummaryTexts()
+                                Toast.makeText(this, "Drawer style set to ${styles[idx]}", Toast.LENGTH_SHORT).show()
+                            }
+                            .setNegativeButton("Cancel", null)
+                            .show()
+                    }
+                    1 -> {
+                        prefs.edit().putBoolean("key_drawer_show_keyboard", !showKb).apply()
+                        updateSummaryTexts()
+                        Toast.makeText(this, "Show keyboard: ${if (!showKb) "Enabled" else "Disabled"}", Toast.LENGTH_SHORT).show()
+                    }
+                    2 -> {
+                        prefs.edit().putBoolean("key_drawer_frequent_apps", !freqApps).apply()
+                        updateSummaryTexts()
+                        Toast.makeText(this, "Frequently used apps: ${if (!freqApps) "Enabled" else "Disabled"}", Toast.LENGTH_SHORT).show()
+                    }
+                    3 -> {
+                        prefs.edit().putBoolean("key_drawer_smart_folders", !smartFolders).apply()
+                        updateSummaryTexts()
+                        Toast.makeText(this, "Smart folders: ${if (!smartFolders) "Enabled" else "Disabled"}", Toast.LENGTH_SHORT).show()
+                    }
+                    4 -> {
+                        startActivity(Intent(this, SetupActivity::class.java).apply {
+                            putExtra("setup_step", 3)
+                        })
+                    }
                 }
             }
             .setNegativeButton("Close", null)
@@ -365,12 +430,101 @@ class LauncherSettingsActivity : AppCompatActivity() {
     }
 
     private fun showSearchDialog() {
-        val options = arrayOf("Search Bar Placement (Dock / Top / Hidden)", "Search Provider", "Voice Search Action")
+        val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        val searchMode = prefs.getString("key_search_mode", "Immersive") ?: "Immersive"
+        val shortcutSearch = prefs.getBoolean("key_shortcut_search", true)
+        val hasContactPerm = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
+        val contactSearch = prefs.getBoolean("key_contact_search", false) && hasContactPerm
+
+        val homePlacement = prefs.getString("key_search_bar_placement_home", "DOCK_BELOW") ?: "DOCK_BELOW"
+        val homeLabel = when (homePlacement) {
+            "DOCK_ABOVE" -> "Dock (Above icons)"
+            "TOP" -> "Top"
+            "HIDDEN" -> "Hidden"
+            else -> "Dock (Below icons)"
+        }
+        val drawerPlacement = prefs.getString("key_search_bar_placement_drawer", "Top") ?: "Top"
+
+        val options = arrayOf(
+            "Search Mode: $searchMode",
+            "Shortcut Search: ${if (shortcutSearch) "ON" else "OFF"}",
+            "Contact Search: ${if (contactSearch) "ON" else "OFF"}",
+            "Home Search Bar: $homeLabel",
+            "Drawer Search Bar: $drawerPlacement",
+            "Open Search Setup Wizard"
+        )
 
         AlertDialog.Builder(this)
             .setTitle("Search Configuration")
-            .setItems(options) { _, _ ->
-                Toast.makeText(this, "Search setting saved", Toast.LENGTH_SHORT).show()
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        val modes = arrayOf("Immersive", "Standard")
+                        val activeIdx = modes.indexOf(searchMode).coerceAtLeast(0)
+                        AlertDialog.Builder(this)
+                            .setTitle("Search Mode")
+                            .setSingleChoiceItems(modes, activeIdx) { d, idx ->
+                                prefs.edit().putString("key_search_mode", modes[idx]).apply()
+                                d.dismiss()
+                                updateSummaryTexts()
+                                Toast.makeText(this, "Search mode: ${modes[idx]}", Toast.LENGTH_SHORT).show()
+                            }
+                            .setNegativeButton("Cancel", null)
+                            .show()
+                    }
+                    1 -> {
+                        prefs.edit().putBoolean("key_shortcut_search", !shortcutSearch).apply()
+                        updateSummaryTexts()
+                        Toast.makeText(this, "Shortcut Search: ${if (!shortcutSearch) "Enabled" else "Disabled"}", Toast.LENGTH_SHORT).show()
+                    }
+                    2 -> {
+                        val newState = !contactSearch
+                        if (newState && !hasContactPerm) {
+                            Toast.makeText(this, "Grant Contacts permission to enable Contact Search", Toast.LENGTH_SHORT).show()
+                            startActivity(Intent(this, SetupActivity::class.java).apply {
+                                putExtra("setup_step", 2)
+                            })
+                        } else {
+                            prefs.edit().putBoolean("key_contact_search", newState).apply()
+                            updateSummaryTexts()
+                            Toast.makeText(this, "Contact Search: ${if (newState) "Enabled" else "Disabled"}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    3 -> {
+                        val homeOptions = arrayOf("Dock (Below icons)", "Dock (Above icons)", "Top", "Hidden")
+                        val homeVals = arrayOf("DOCK_BELOW", "DOCK_ABOVE", "TOP", "HIDDEN")
+                        val activeIdx = homeVals.indexOf(homePlacement).coerceAtLeast(0)
+                        AlertDialog.Builder(this)
+                            .setTitle("Home Search Bar Placement")
+                            .setSingleChoiceItems(homeOptions, activeIdx) { d, idx ->
+                                prefs.edit().putString("key_search_bar_placement_home", homeVals[idx]).apply()
+                                d.dismiss()
+                                updateSummaryTexts()
+                                Toast.makeText(this, "Home search bar set to ${homeOptions[idx]}", Toast.LENGTH_SHORT).show()
+                            }
+                            .setNegativeButton("Cancel", null)
+                            .show()
+                    }
+                    4 -> {
+                        val drawerOptions = arrayOf("Top", "Bottom", "Hidden")
+                        val activeIdx = drawerOptions.indexOf(drawerPlacement).coerceAtLeast(0)
+                        AlertDialog.Builder(this)
+                            .setTitle("Drawer Search Bar Placement")
+                            .setSingleChoiceItems(drawerOptions, activeIdx) { d, idx ->
+                                prefs.edit().putString("key_search_bar_placement_drawer", drawerOptions[idx]).apply()
+                                d.dismiss()
+                                updateSummaryTexts()
+                                Toast.makeText(this, "Drawer search bar set to ${drawerOptions[idx]}", Toast.LENGTH_SHORT).show()
+                            }
+                            .setNegativeButton("Cancel", null)
+                            .show()
+                    }
+                    5 -> {
+                        startActivity(Intent(this, SetupActivity::class.java).apply {
+                            putExtra("setup_step", 2)
+                        })
+                    }
+                }
             }
             .setNegativeButton("Close", null)
             .show()
@@ -378,28 +532,50 @@ class LauncherSettingsActivity : AppCompatActivity() {
 
     private fun showLookFeelDialog() {
         val iconPacks = IconPackManager.getInstalledIconPacks(this)
-        val names = arrayOf("System Icons", "Re-run First-Run Setup Wizard") + iconPacks.map { it.label }.toTypedArray()
+        val options = arrayOf(
+            "Icon Style & Shapes (Round, Squircle, Flower, Colors)",
+            "More Icon Shapes Dialog",
+            "System Default Icons"
+        ) + iconPacks.map { "Icon Pack: ${it.label}" }.toTypedArray() + arrayOf("Re-run Setup Wizard")
 
         AlertDialog.Builder(this)
-            .setTitle("Icon Theme & Look & Feel")
-            .setItems(names) { _, which ->
+            .setTitle("Look & feel - Icon Style")
+            .setItems(options) { _, which ->
                 when (which) {
                     0 -> {
+                        startActivity(Intent(this, SetupActivity::class.java).apply {
+                            putExtra("setup_step", 4)
+                        })
+                    }
+                    1 -> {
+                        val dialog = MoreShapesDialogFragment.newInstance()
+                        dialog.onShapeSelectedListener = { selectedShape ->
+                            getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                                .edit().putString("key_icon_shape", selectedShape).apply()
+                            updateSummaryTexts()
+                            Toast.makeText(this, "Icon shape set to $selectedShape", Toast.LENGTH_SHORT).show()
+                        }
+                        dialog.show(supportFragmentManager, MoreShapesDialogFragment.TAG)
+                    }
+                    2 -> {
                         getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
                             .edit().putString("key_selected_icon_pack", "").apply()
                         updateSummaryTexts()
                     }
-                    1 -> {
+                    options.size - 1 -> {
                         SetupFlowUtils.resetSetup(this)
                         startActivity(Intent(this, SetupActivity::class.java).apply {
                             putExtra("setup_step", 1)
                         })
                     }
                     else -> {
-                        val selectedPkg = iconPacks[which - 2].packageName
-                        getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                            .edit().putString("key_selected_icon_pack", selectedPkg).apply()
-                        updateSummaryTexts()
+                        val packIndex = which - 3
+                        if (packIndex in iconPacks.indices) {
+                            val selectedPkg = iconPacks[packIndex].packageName
+                            getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                                .edit().putString("key_selected_icon_pack", selectedPkg).apply()
+                            updateSummaryTexts()
+                        }
                     }
                 }
             }

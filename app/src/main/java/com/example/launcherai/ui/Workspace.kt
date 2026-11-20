@@ -43,7 +43,7 @@ class Workspace @JvmOverloads constructor(
         layoutParams = lp
     }
 
-    private var adapter: WorkspacePagerAdapter? = null
+    var adapter: WorkspacePagerAdapter? = null
     private var onPageSelectedListener: ((Int) -> Unit)? = null
 
     init {
@@ -114,5 +114,9 @@ class Workspace @JvmOverloads constructor(
         if (pageIndex in 0 until (adapter?.itemCount ?: 0)) {
             viewPager.setCurrentItem(pageIndex, smoothScroll)
         }
+    }
+
+    fun notifyDataChanged() {
+        adapter?.notifyDataSetChanged()
     }
 }

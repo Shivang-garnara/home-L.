@@ -8,8 +8,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.GridLayout
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.DialogFragment
 import com.example.launcherai.R
+import com.example.launcherai.icons.IconShapeMasker
 
 /**
  * Pale lavender modal dialog matching Nova Launcher reference 07.
@@ -27,17 +31,43 @@ class MoreShapesDialogFragment : DialogFragment() {
         return inflater.inflate(R.layout.dialog_more_shapes, container, false)
     }
 
+    override fun onStart() {
+        super.onStart()
+        val width = (resources.displayMetrics.widthPixels * 0.92).toInt()
+        dialog?.window?.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT)
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         dialog?.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
+        val prefs = requireContext().getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        val currentShape = prefs.getString("key_icon_shape", "Round") ?: "Round"
+
+        val activeColor = ContextCompat.getColor(requireContext(), R.color.nova_accent_orange)
+        val inactiveColor = Color.parseColor("#555555")
+        val activeTextColor = activeColor
+        val inactiveTextColor = Color.parseColor("#231A24")
+        val density = resources.displayMetrics.density
+        val iconSizePx = (44 * density).toInt()
+
         val grid = view.findViewById<GridLayout>(R.id.gridMoreShapes)
         if (grid != null) {
             for (i in 0 until grid.childCount) {
-                val child = grid.getChildAt(i)
+                val child = grid.getChildAt(i) as? ViewGroup ?: continue
                 val shapeTag = child.tag?.toString() ?: continue
+                val isSelected = currentShape.equals(shapeTag, ignoreCase = true)
+
+                val color = if (isSelected) activeColor else inactiveColor
+                val textColor = if (isSelected) activeTextColor else inactiveTextColor
+
+                val iv = child.getChildAt(0) as? ImageView
+                iv?.setImageDrawable(IconShapeMasker.createShapeThumbnail(requireContext(), shapeTag, iconSizePx, color))
+
+                val tv = child.getChildAt(1) as? TextView
+                tv?.setTextColor(textColor)
+
                 child.setOnClickListener {
-                    val prefs = requireContext().getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
                     prefs.edit().putString("key_icon_shape", shapeTag).apply()
                     onShapeSelectedListener?.invoke(shapeTag)
                     dismiss()

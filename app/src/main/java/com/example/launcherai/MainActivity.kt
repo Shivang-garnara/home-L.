@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -22,11 +23,13 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.PagerSnapHelper
 import androidx.recyclerview.widget.RecyclerView
 import com.example.launcherai.data.db.WorkspaceItemEntity
 import com.example.launcherai.dragndrop.DragController
@@ -85,6 +88,9 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var drawerAdapter: AppsAdapter
     private lateinit var fastScroller: FastScroller
+    private var horizontalSnapHelper: PagerSnapHelper? = null
+    private var selectedCategory: String = "All"
+    private var fullDrawerAppsList: List<AppInfo> = emptyList()
 
     private val bindWidgetLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
@@ -182,6 +188,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         applySearchBarPlacement()
+        applyDrawerPlacementAndSettings()
+        workspace.adapter?.notifyDataSetChanged()
+        if (::drawerAdapter.isInitialized) {
+            drawerAdapter.notifyDataSetChanged()
+        }
         viewModel.refreshInstalledApps()
     }
 
@@ -190,12 +201,23 @@ class MainActivity : AppCompatActivity() {
         val placement = prefs.getString("key_search_bar_placement_home", "DOCK_BELOW") ?: "DOCK_BELOW"
         val searchBar = findViewById<View>(R.id.barHomeSearch) ?: return
         val desktopLayout = findViewById<LinearLayout>(R.id.layoutDesktop) ?: return
+        val dockHotseat = findViewById<View>(R.id.dockHotseat)
 
         when (placement) {
             "TOP" -> {
                 searchBar.visibility = View.VISIBLE
                 desktopLayout.removeView(searchBar)
                 desktopLayout.addView(searchBar, 0)
+            }
+            "DOCK_ABOVE" -> {
+                searchBar.visibility = View.VISIBLE
+                desktopLayout.removeView(searchBar)
+                if (dockHotseat != null) {
+                    val dockIdx = desktopLayout.indexOfChild(dockHotseat)
+                    desktopLayout.addView(searchBar, dockIdx.coerceAtLeast(0))
+                } else {
+                    desktopLayout.addView(searchBar)
+                }
             }
             "HIDDEN" -> {
                 searchBar.visibility = View.GONE
@@ -396,7 +418,18 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<View>(R.id.barHomeSearch)?.apply {
             setOnClickListener {
-                openAppDrawer()
+                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                val searchMode = prefs.getString("key_search_mode", "Immersive") ?: "Immersive"
+                if (searchMode.equals("Standard", ignoreCase = true)) {
+                    try {
+                        val intent = Intent(Intent.ACTION_WEB_SEARCH)
+                        startActivity(intent)
+                    } catch (e: Exception) {
+                        openAppDrawer()
+                    }
+                } else {
+                    openAppDrawer()
+                }
             }
             setOnLongClickListener {
                 startActivity(Intent(this@MainActivity, NovaAiChatActivity::class.java))
@@ -507,10 +540,8 @@ class MainActivity : AppCompatActivity() {
                 // App Drawer filtered collector
                 launch {
                     viewModel.drawerApps.collect { drawerApps ->
-                        drawerAdapter.updateApps(drawerApps)
-                        fastScroller.updateApps(drawerApps)
-                        val query = viewModel.searchQuery.value
-                        tvDrawerEmpty.visibility = if (drawerApps.isEmpty() && query.isNotBlank()) View.VISIBLE else View.GONE
+                        fullDrawerAppsList = drawerApps
+                        applyDrawerAppFilter()
                     }
                 }
             }
@@ -637,9 +668,15 @@ class MainActivity : AppCompatActivity() {
         val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
         val showKeyboard = prefs.getBoolean("key_drawer_show_keyboard", true)
         if (showKeyboard) {
-            etDrawerSearch.requestFocus()
+            etDrawerSearch.post {
+                etDrawerSearch.requestFocus()
+                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+                imm?.showSoftInput(etDrawerSearch, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            }
+        } else {
+            etDrawerSearch.clearFocus()
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
-            imm?.showSoftInput(etDrawerSearch, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            imm?.hideSoftInputFromWindow(etDrawerSearch.windowToken, 0)
         }
     }
 
@@ -647,18 +684,224 @@ class MainActivity : AppCompatActivity() {
         val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
         val drawerPlacement = prefs.getString("key_search_bar_placement_drawer", "Top") ?: "Top"
         val showFrequent = prefs.getBoolean("key_drawer_frequent_apps", true)
+        val drawerStyle = prefs.getString("key_app_drawer_style", "Vertical") ?: "Vertical"
+        val smartFolders = prefs.getBoolean("key_drawer_smart_folders", true)
 
         findViewById<View>(R.id.layoutFrequentAppsHeader)?.visibility = if (showFrequent) View.VISIBLE else View.GONE
 
         val searchContainer = findViewById<View>(R.id.barDrawerSearchContainer) ?: return
         val drawerLayout = findViewById<LinearLayout>(R.id.layoutAppDrawerOverlay) ?: return
 
-        if (drawerPlacement.contains("Bottom", ignoreCase = true)) {
-            drawerLayout.removeView(searchContainer)
-            drawerLayout.addView(searchContainer)
+        when {
+            drawerPlacement.equals("Hidden", ignoreCase = true) -> {
+                searchContainer.visibility = View.GONE
+            }
+            drawerPlacement.equals("Bottom", ignoreCase = true) -> {
+                searchContainer.visibility = View.VISIBLE
+                drawerLayout.removeView(searchContainer)
+                drawerLayout.addView(searchContainer)
+            }
+            else -> { // "Top"
+                searchContainer.visibility = View.VISIBLE
+                drawerLayout.removeView(searchContainer)
+                drawerLayout.addView(searchContainer, 0)
+            }
+        }
+
+        // Apply App Drawer Style (Vertical, List, Horizontal)
+        when (drawerStyle) {
+            "List" -> {
+                horizontalSnapHelper?.attachToRecyclerView(null)
+                horizontalSnapHelper = null
+                rvDrawerApps.layoutManager = LinearLayoutManager(this, RecyclerView.VERTICAL, false)
+                drawerAdapter.setDisplayMode(AppsAdapter.DisplayMode.LIST)
+                fastScroller.isEnabled = true
+            }
+            "Horizontal" -> {
+                rvDrawerApps.layoutManager = GridLayoutManager(this, 5, RecyclerView.HORIZONTAL, false)
+                drawerAdapter.setDisplayMode(AppsAdapter.DisplayMode.HORIZONTAL)
+                fastScroller.isEnabled = false
+                if (horizontalSnapHelper == null) {
+                    val snap = PagerSnapHelper()
+                    snap.attachToRecyclerView(rvDrawerApps)
+                    horizontalSnapHelper = snap
+                }
+            }
+            else -> { // "Vertical"
+                horizontalSnapHelper?.attachToRecyclerView(null)
+                horizontalSnapHelper = null
+                rvDrawerApps.layoutManager = GridLayoutManager(this, 5, RecyclerView.VERTICAL, false)
+                drawerAdapter.setDisplayMode(AppsAdapter.DisplayMode.GRID)
+                fastScroller.isEnabled = true
+            }
+        }
+        drawerAdapter.notifyDataSetChanged()
+
+        // Smart Folders Category Chips
+        val chipsContainer = findViewById<LinearLayout>(R.id.containerSuggestionChips)
+        if (chipsContainer != null) {
+            setupSmartFolderChips(chipsContainer, smartFolders)
+        }
+    }
+
+    private fun setupSmartFolderChips(container: LinearLayout, isEnabled: Boolean) {
+        val childCount = container.childCount
+        if (childCount > 1) {
+            container.removeViews(1, childCount - 1)
+        }
+
+        if (!isEnabled) {
+            selectedCategory = "All"
+            applyDrawerAppFilter()
+            return
+        }
+
+        val categories = listOf("All", "Social", "Tools", "Media", "Games", "Work")
+        val density = resources.displayMetrics.density
+
+        categories.forEach { category ->
+            val isSelected = (category == selectedCategory)
+            val chipView = TextView(this).apply {
+                text = category
+                textSize = 13f
+                setPadding((14 * density).toInt(), (6 * density).toInt(), (14 * density).toInt(), (6 * density).toInt())
+                setBackgroundResource(if (isSelected) R.drawable.bg_nova_chip_active else R.drawable.bg_nova_chip_inactive)
+                setTextColor(if (isSelected) android.graphics.Color.WHITE else ContextCompat.getColor(this@MainActivity, R.color.nova_text_brown_primary))
+                isClickable = true
+                isFocusable = true
+                val lp = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    (32 * density).toInt()
+                ).apply {
+                    marginStart = (8 * density).toInt()
+                }
+                layoutParams = lp
+
+                setOnClickListener {
+                    selectedCategory = category
+                    setupSmartFolderChips(container, true)
+                    applyDrawerAppFilter()
+                }
+            }
+            container.addView(chipView)
+        }
+    }
+
+    private fun filterAppsByCategory(apps: List<AppInfo>, category: String): List<AppInfo> {
+        if (category == "All") return apps
+        return apps.filter { app ->
+            val pkg = app.packageName.lowercase()
+            val label = app.label.lowercase()
+            when (category) {
+                "Social" -> {
+                    pkg.contains("whatsapp") || pkg.contains("telegram") || pkg.contains("facebook") ||
+                    pkg.contains("instagram") || pkg.contains("twitter") || pkg.contains("messenger") ||
+                    pkg.contains("snapchat") || pkg.contains("discord") || pkg.contains("viber") ||
+                    pkg.contains("message") || pkg.contains("dialer") || pkg.contains("contact") ||
+                    label.contains("message") || label.contains("chat") || label.contains("phone")
+                }
+                "Tools" -> {
+                    pkg.contains("calculator") || pkg.contains("calendar") || pkg.contains("clock") ||
+                    pkg.contains("settings") || pkg.contains("file") || pkg.contains("camera") ||
+                    pkg.contains("chrome") || pkg.contains("browser") || pkg.contains("note") ||
+                    pkg.contains("keep") || pkg.contains("deskclock") || label.contains("tool") ||
+                    label.contains("calc") || label.contains("clock") || label.contains("setting")
+                }
+                "Media" -> {
+                    pkg.contains("youtube") || pkg.contains("music") || pkg.contains("video") ||
+                    pkg.contains("gallery") || pkg.contains("photo") || pkg.contains("spotify") ||
+                    pkg.contains("player") || pkg.contains("netflix") || label.contains("music") ||
+                    label.contains("video") || label.contains("media") || label.contains("gallery")
+                }
+                "Games" -> {
+                    pkg.contains("game") || pkg.contains("play.games") || label.contains("game")
+                }
+                "Work" -> {
+                    pkg.contains("mail") || pkg.contains("gmail") || pkg.contains("outlook") ||
+                    pkg.contains("docs") || pkg.contains("sheets") || pkg.contains("slides") ||
+                    pkg.contains("office") || pkg.contains("pdf") || pkg.contains("drive") ||
+                    pkg.contains("meet") || pkg.contains("zoom") || pkg.contains("teams") ||
+                    label.contains("mail") || label.contains("drive") || label.contains("doc")
+                }
+                else -> true
+            }
+        }
+    }
+
+    private fun applyDrawerAppFilter() {
+        val filtered = filterAppsByCategory(fullDrawerAppsList, selectedCategory)
+        drawerAdapter.updateApps(filtered)
+        fastScroller.updateApps(filtered)
+        val query = viewModel.searchQuery.value
+        tvDrawerEmpty.visibility = if (filtered.isEmpty() && query.isNotBlank()) View.VISIBLE else View.GONE
+
+        val chipsContainer = findViewById<LinearLayout>(R.id.containerSuggestionChips) ?: return
+        val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+
+        if (query.isNotBlank()) {
+            val shortcutSearch = prefs.getBoolean("key_shortcut_search", true)
+            val hasContactPerm = ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
+            val contactSearch = prefs.getBoolean("key_contact_search", false) && hasContactPerm
+
+            val childCount = chipsContainer.childCount
+            if (childCount > 1) {
+                chipsContainer.removeViews(1, childCount - 1)
+            }
+
+            val density = resources.displayMetrics.density
+
+            // Add Contact results if contact search is enabled
+            if (contactSearch) {
+                val contacts = com.example.launcherai.search.ContactSearchHelper.searchContacts(this, query, 3)
+                contacts.forEach { contact ->
+                    val chipView = TextView(this).apply {
+                        text = "📞 ${contact.name}"
+                        textSize = 13f
+                        setPadding((14 * density).toInt(), (6 * density).toInt(), (14 * density).toInt(), (6 * density).toInt())
+                        setBackgroundResource(R.drawable.bg_nova_search_pill_drawer)
+                        setTextColor(ContextCompat.getColor(this@MainActivity, R.color.nova_text_brown_primary))
+                        val lp = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            (32 * density).toInt()
+                        ).apply { marginStart = (8 * density).toInt() }
+                        layoutParams = lp
+                        setOnClickListener {
+                            com.example.launcherai.search.ContactSearchHelper.dialContact(this@MainActivity, contact.number)
+                        }
+                    }
+                    chipsContainer.addView(chipView)
+                }
+            }
+
+            // Add Shortcut results if shortcut search is enabled
+            if (shortcutSearch) {
+                val shortcuts = com.example.launcherai.search.ShortcutSearchHelper.searchShortcuts(this, query)
+                shortcuts.take(3).forEach { shortcut ->
+                    val chipView = TextView(this).apply {
+                        text = "🔍 ${shortcut.title}"
+                        textSize = 13f
+                        setPadding((14 * density).toInt(), (6 * density).toInt(), (14 * density).toInt(), (6 * density).toInt())
+                        setBackgroundResource(R.drawable.bg_nova_search_pill_drawer)
+                        setTextColor(ContextCompat.getColor(this@MainActivity, R.color.nova_text_brown_primary))
+                        val lp = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            (32 * density).toInt()
+                        ).apply { marginStart = (8 * density).toInt() }
+                        layoutParams = lp
+                        setOnClickListener {
+                            try {
+                                startActivity(shortcut.intent)
+                            } catch (e: Exception) {
+                                Toast.makeText(this@MainActivity, "Cannot start shortcut action", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                    chipsContainer.addView(chipView)
+                }
+            }
         } else {
-            drawerLayout.removeView(searchContainer)
-            drawerLayout.addView(searchContainer, 0)
+            val smartFolders = prefs.getBoolean("key_drawer_smart_folders", true)
+            setupSmartFolderChips(chipsContainer, smartFolders)
         }
     }
 
