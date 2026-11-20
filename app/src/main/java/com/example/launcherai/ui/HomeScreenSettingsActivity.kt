@@ -54,6 +54,13 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
     // New Apps State
     private var addIconToHome: Boolean = false
 
+    // Advanced State
+    private var desktopLock: Boolean = false
+    private var desktopShadow: Boolean = false
+    private var widgetOverlap: Boolean = false
+    private var overlapWhenPlacing: Boolean = false
+    private var wallpaperZoomEffects: Boolean = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_NovaLight)
         super.onCreate(savedInstanceState)
@@ -98,6 +105,12 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
         pageIndicatorColor = prefs.getInt("key_page_indicator_color", Color.WHITE)
 
         addIconToHome = prefs.getBoolean("key_add_icon_to_home", false)
+
+        desktopLock = prefs.getBoolean("key_desktop_lock", false)
+        desktopShadow = prefs.getBoolean("key_desktop_shadow", false)
+        widgetOverlap = prefs.getBoolean("key_widget_overlap", false)
+        overlapWhenPlacing = prefs.getBoolean("key_overlap_when_placing", false)
+        wallpaperZoomEffects = prefs.getBoolean("key_wallpaper_zoom_effects", false)
     }
 
     private fun setupViews() {
@@ -120,6 +133,7 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
         updateDockSubtitle()
         updateScrollSectionUI()
         binding.swAddIconToHome.isChecked = addIconToHome
+        updateAdvancedSectionUI()
     }
 
     override fun onResume() {
@@ -130,6 +144,18 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
         updateDockSubtitle()
         updateScrollSectionUI()
         binding.swAddIconToHome.isChecked = addIconToHome
+        updateAdvancedSectionUI()
+    }
+
+    private fun updateAdvancedSectionUI() {
+        binding.swLockLayout.isChecked = desktopLock
+        binding.swShowShadow.isChecked = desktopShadow
+        binding.swWidgetOverlap.isChecked = widgetOverlap
+        binding.swOverlapWhenPlacing.isChecked = overlapWhenPlacing
+        binding.swWallpaperZoomEffects.isChecked = wallpaperZoomEffects
+
+        binding.swOverlapWhenPlacing.isEnabled = widgetOverlap
+        binding.rowOverlapWhenPlacing.alpha = if (widgetOverlap) 1.0f else 0.45f
     }
 
     private fun updateScrollSectionUI() {
@@ -327,6 +353,61 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
             addIconToHome = isChecked
             val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
             prefs.edit().putBoolean("key_add_icon_to_home", isChecked).apply()
+        }
+
+        // Advanced Listeners
+        binding.rowLockLayout.setOnClickListener {
+            binding.swLockLayout.toggle()
+        }
+        binding.swLockLayout.setOnCheckedChangeListener { _, isChecked ->
+            desktopLock = isChecked
+            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("key_desktop_lock", isChecked).apply()
+        }
+
+        binding.rowShowShadow.setOnClickListener {
+            binding.swShowShadow.toggle()
+        }
+        binding.swShowShadow.setOnCheckedChangeListener { _, isChecked ->
+            desktopShadow = isChecked
+            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("key_desktop_shadow", isChecked).apply()
+        }
+
+        binding.rowWidgetOverlap.setOnClickListener {
+            binding.swWidgetOverlap.toggle()
+        }
+        binding.swWidgetOverlap.setOnCheckedChangeListener { _, isChecked ->
+            widgetOverlap = isChecked
+            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("key_widget_overlap", isChecked).apply()
+            if (!isChecked && overlapWhenPlacing) {
+                overlapWhenPlacing = false
+                prefs.edit().putBoolean("key_overlap_when_placing", false).apply()
+            }
+            updateAdvancedSectionUI()
+        }
+
+        binding.rowOverlapWhenPlacing.setOnClickListener {
+            if (widgetOverlap) {
+                binding.swOverlapWhenPlacing.toggle()
+            }
+        }
+        binding.swOverlapWhenPlacing.setOnCheckedChangeListener { _, isChecked ->
+            if (widgetOverlap) {
+                overlapWhenPlacing = isChecked
+                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                prefs.edit().putBoolean("key_overlap_when_placing", isChecked).apply()
+            }
+        }
+
+        binding.rowWallpaperZoomEffects.setOnClickListener {
+            binding.swWallpaperZoomEffects.toggle()
+        }
+        binding.swWallpaperZoomEffects.setOnCheckedChangeListener { _, isChecked ->
+            wallpaperZoomEffects = isChecked
+            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("key_wallpaper_zoom_effects", isChecked).apply()
         }
     }
 

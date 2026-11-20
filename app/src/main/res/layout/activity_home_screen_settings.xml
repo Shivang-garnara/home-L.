@@ -957,6 +957,258 @@
 
             </LinearLayout>
 
+            <!-- ADVANCED SECTION HEADER -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="ADVANCED"
+                android:textColor="@color/nova_accent_orange"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08"
+                android:layout_marginTop="28dp"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Lock layout row -->
+            <LinearLayout
+                android:id="@+id/rowLockLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Lock layout"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Prevent changes to home screen layout"
+                        android:textColor="@color/nova_text_brown_secondary"
+                        android:textSize="13sp"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/swLockLayout"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:thumbTint="@color/nova_accent_orange"
+                    android:trackTint="@color/nova_accent_orange"
+                    android:clickable="false"
+                    android:focusable="false" />
+
+            </LinearLayout>
+
+            <!-- Show shadow row -->
+            <LinearLayout
+                android:id="@+id/rowShowShadow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Show shadow"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Places a shadow at the top and bottom of the screen, increases contrast with status bar icons"
+                        android:textColor="@color/nova_text_brown_secondary"
+                        android:textSize="13sp"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/swShowShadow"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:thumbTint="@color/nova_accent_orange"
+                    android:trackTint="@color/nova_accent_orange"
+                    android:clickable="false"
+                    android:focusable="false" />
+
+            </LinearLayout>
+
+            <!-- Widget overlap row -->
+            <LinearLayout
+                android:id="@+id/rowWidgetOverlap"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Widget overlap"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Allow widgets to be placed under or on top of other home screen items when resizing"
+                        android:textColor="@color/nova_text_brown_secondary"
+                        android:textSize="13sp"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/swWidgetOverlap"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:thumbTint="@color/nova_accent_orange"
+                    android:trackTint="@color/nova_accent_orange"
+                    android:clickable="false"
+                    android:focusable="false" />
+
+            </LinearLayout>
+
+            <!-- Overlap when placing row -->
+            <LinearLayout
+                android:id="@+id/rowOverlapWhenPlacing"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Overlap when placing"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Allow home screen items to overlap when being placed"
+                        android:textColor="@color/nova_text_brown_secondary"
+                        android:textSize="13sp"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/swOverlapWhenPlacing"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:thumbTint="@color/nova_accent_orange"
+                    android:trackTint="@color/nova_accent_orange"
+                    android:clickable="false"
+                    android:focusable="false" />
+
+            </LinearLayout>
+
+            <!-- Wallpaper Zoom Effects row -->
+            <LinearLayout
+                android:id="@+id/rowWallpaperZoomEffects"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Wallpaper Zoom Effects"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Zoom in and out of wallpaper when transitioning between states"
+                        android:textColor="@color/nova_text_brown_secondary"
+                        android:textSize="13sp"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/swWallpaperZoomEffects"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:thumbTint="@color/nova_accent_orange"
+                    android:trackTint="@color/nova_accent_orange"
+                    android:clickable="false"
+                    android:focusable="false" />
+
+            </LinearLayout>
+
         </LinearLayout>
 
     </ScrollView>

@@ -193,6 +193,7 @@ class MainActivity : AppCompatActivity() {
         applySearchBarPlacement()
         applyDrawerPlacementAndSettings()
         applyScrollAndTransitionSettings()
+        applyAdvancedSettings()
         if (::dockHotseat.isInitialized) {
             val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
             val dockEnabled = prefs.getBoolean("key_dock_enabled", true)
@@ -325,6 +326,11 @@ class MainActivity : AppCompatActivity() {
         dragLayer.dragController = dragController
 
         workspace.setOnLongClickListener {
+            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+            if (prefs.getBoolean("key_desktop_lock", false)) {
+                Toast.makeText(this, "Home screen layout is locked", Toast.LENGTH_SHORT).show()
+                return@setOnLongClickListener true
+            }
             showWidgetPicker()
             true
         }
