@@ -51,6 +51,9 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
     private var pageIndicatorStyle: String = "DOTS"
     private var pageIndicatorColor: Int = Color.WHITE
 
+    // New Apps State
+    private var addIconToHome: Boolean = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_NovaLight)
         super.onCreate(savedInstanceState)
@@ -93,6 +96,8 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
         infiniteScroll = prefs.getBoolean("key_infinite_scroll", false)
         pageIndicatorStyle = prefs.getString("key_page_indicator_style", "DOTS") ?: "DOTS"
         pageIndicatorColor = prefs.getInt("key_page_indicator_color", Color.WHITE)
+
+        addIconToHome = prefs.getBoolean("key_add_icon_to_home", false)
     }
 
     private fun setupViews() {
@@ -114,6 +119,7 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
         updatePaddingSubtitle()
         updateDockSubtitle()
         updateScrollSectionUI()
+        binding.swAddIconToHome.isChecked = addIconToHome
     }
 
     override fun onResume() {
@@ -123,6 +129,7 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
         updatePaddingSubtitle()
         updateDockSubtitle()
         updateScrollSectionUI()
+        binding.swAddIconToHome.isChecked = addIconToHome
     }
 
     private fun updateScrollSectionUI() {
@@ -310,6 +317,16 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
 
         binding.rowPageIndicator.setOnClickListener {
             showPageIndicatorDialog()
+        }
+
+        // New Apps Listeners
+        binding.rowAddIconToHome.setOnClickListener {
+            binding.swAddIconToHome.toggle()
+        }
+        binding.swAddIconToHome.setOnCheckedChangeListener { _, isChecked ->
+            addIconToHome = isChecked
+            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("key_add_icon_to_home", isChecked).apply()
         }
     }
 

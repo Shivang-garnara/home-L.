@@ -897,6 +897,66 @@
 
             </LinearLayout>
 
+            <!-- Section: New Apps -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="NEW APPS"
+                android:textColor="@color/nova_accent_orange"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.08"
+                android:layout_marginTop="28dp"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Add icons to home screen row -->
+            <LinearLayout
+                android:id="@+id/rowAddIconToHome"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Add icons to home screen"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Automatically add newly installed apps to home screen"
+                        android:textColor="@color/nova_text_brown_secondary"
+                        android:textSize="13sp"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/swAddIconToHome"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:thumbTint="@color/nova_accent_orange"
+                    android:trackTint="@color/nova_accent_orange"
+                    android:clickable="false"
+                    android:focusable="false" />
+
+            </LinearLayout>
+
         </LinearLayout>
 
     </ScrollView>
