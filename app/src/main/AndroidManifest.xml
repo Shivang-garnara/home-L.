@@ -52,6 +52,7 @@
         <activity
             android:name=".ui.SetupActivity"
             android:exported="true"
+            android:autoRemoveFromRecents="true"
             android:theme="@style/Theme.NovaDark" />
 
         <!-- Nova Launcher Settings Activity -->
