@@ -62,6 +62,11 @@ class DragController(
     }
 
     fun startDrag(v: View, item: WorkspaceResolvedItem, touchX: Float, touchY: Float) {
+        val prefs = context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("key_desktop_lock", false) && item.entity.id != 0L) {
+            Toast.makeText(context, "Home screen layout is locked", Toast.LENGTH_SHORT).show()
+            return
+        }
         if (isDragging) return
         isDragging = true
         draggedItem = item
@@ -230,6 +235,12 @@ class DragController(
                         if (isOccupiedBySelf) {
                             // Keep position
                         } else if (item.entity.id == 0L) {
+                            val prefs = context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                            if (prefs.getBoolean("key_desktop_lock", false)) {
+                                Toast.makeText(context, "Home screen layout is locked", Toast.LENGTH_SHORT).show()
+                                cancelDrag()
+                                return
+                            }
                             // App dragged from drawer onto workspace grid
                             val cellToUse = if (cellLayout.isCellEmpty(targetCellX, targetCellY, item.entity.spanX, item.entity.spanY)) {
                                 intArrayOf(targetCellX, targetCellY)

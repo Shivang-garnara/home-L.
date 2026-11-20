@@ -57,6 +57,12 @@ class CellLayout @JvmOverloads constructor(
         if (cellX < 0 || cellY < 0 || cellX + spanX > countX || cellY + spanY > countY) {
             return false
         }
+        val prefs = context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        val overlapPlacing = prefs.getBoolean("key_overlap_when_placing", false)
+        val widgetOverlap = prefs.getBoolean("key_widget_overlap", false)
+        if (overlapPlacing || (widgetOverlap && (spanX > 1 || spanY > 1))) {
+            return true
+        }
         for (x in cellX until cellX + spanX) {
             for (y in cellY until cellY + spanY) {
                 if (mOccupied[x][y]) {

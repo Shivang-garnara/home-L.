@@ -415,8 +415,9 @@ class MainActivity : AppCompatActivity() {
         workspace.setPageIndicatorStyle(indicatorStyle)
         workspace.setPageIndicatorColor(indicatorColor)
 
-        // 4. Wallpaper scroll mode parallax binding
+        // 4. Wallpaper scroll mode parallax binding & Wallpaper Zoom Effects
         val wpScrollMode = prefs.getString("key_wallpaper_scroll", "ON") ?: "ON"
+        val wpZoomEffects = prefs.getBoolean("key_wallpaper_zoom_effects", false)
         workspace.setOnPageScrolledListener { position, positionOffset, _ ->
             val totalPages = workspace.getPageCount()
             if (totalPages > 1) {
@@ -431,10 +432,35 @@ class MainActivity : AppCompatActivity() {
                     val token = window.decorView.windowToken
                     if (token != null) {
                         wm.setWallpaperOffsets(token, offset, 0.5f)
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                            if (wpZoomEffects) {
+                                val delta = kotlin.math.abs(positionOffset - 0.5f)
+                                val zoom = (delta * 0.15f).coerceIn(0f, 0.15f)
+                                applyWallpaperZoom(token, zoom)
+                            } else {
+                                applyWallpaperZoom(token, 0f)
+                            }
+                        }
                     }
                 } catch (_: Exception) {}
             }
         }
+    }
+
+    private fun applyWallpaperZoom(token: android.os.IBinder?, zoom: Float) {
+        if (token == null) return
+        try {
+            val wm = WallpaperManager.getInstance(this)
+            val method = wm.javaClass.getMethod("setWallpaperZoomOut", android.os.IBinder::class.java, Float::class.javaPrimitiveType)
+            method.invoke(wm, token, zoom)
+        } catch (_: Exception) {}
+    }
+
+    private fun applyAdvancedSettings() {
+        val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        val showShadow = prefs.getBoolean("key_desktop_shadow", false)
+        findViewById<View>(R.id.viewTopShadow)?.visibility = if (showShadow) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.viewBottomShadow)?.visibility = if (showShadow) View.VISIBLE else View.GONE
     }
 
     private fun updateWallpaperOffset(pageIndex: Int) {
@@ -453,6 +479,9 @@ class MainActivity : AppCompatActivity() {
                 val token = window.decorView.windowToken
                 if (token != null) {
                     wm.setWallpaperOffsets(token, offset, 0.5f)
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                        applyWallpaperZoom(token, 0f)
+                    }
                 }
             }
         } catch (e: Exception) {
