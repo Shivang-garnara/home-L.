@@ -43,6 +43,14 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
     private var paddingHorizontalStep: Int = 0
     private var paddingVerticalStep: Int = 0
 
+    // Scroll & Page Transitions State
+    private var wallpaperScroll: String = "ON"
+    private var widgetCornerRadius: Int = 16
+    private var transitionEffect: String = "SIMPLE"
+    private var infiniteScroll: Boolean = false
+    private var pageIndicatorStyle: String = "DOTS"
+    private var pageIndicatorColor: Int = Color.WHITE
+
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_NovaLight)
         super.onCreate(savedInstanceState)
@@ -78,6 +86,13 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
 
         paddingHorizontalStep = prefs.getInt("key_desktop_padding_horizontal", 0)
         paddingVerticalStep = prefs.getInt("key_desktop_padding_vertical", 0)
+
+        wallpaperScroll = prefs.getString("key_wallpaper_scroll", "ON") ?: "ON"
+        widgetCornerRadius = prefs.getInt("key_widget_corner_radius", 16)
+        transitionEffect = prefs.getString("key_page_transition_effect", "SIMPLE") ?: "SIMPLE"
+        infiniteScroll = prefs.getBoolean("key_infinite_scroll", false)
+        pageIndicatorStyle = prefs.getString("key_page_indicator_style", "DOTS") ?: "DOTS"
+        pageIndicatorColor = prefs.getInt("key_page_indicator_color", Color.WHITE)
     }
 
     private fun setupViews() {
@@ -98,13 +113,41 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
         updateGridSubtitle()
         updatePaddingSubtitle()
         updateDockSubtitle()
+        updateScrollSectionUI()
     }
 
     override fun onResume() {
         super.onResume()
+        loadPreferences()
         updateGridSubtitle()
         updatePaddingSubtitle()
         updateDockSubtitle()
+        updateScrollSectionUI()
+    }
+
+    private fun updateScrollSectionUI() {
+        binding.tvWallpaperScrollingValue.text = when (wallpaperScroll) {
+            "OFF" -> "Off"
+            "REVERSE" -> "Reverse"
+            else -> "On"
+        }
+        binding.tvWidgetCornerRadiusValue.text = "${widgetCornerRadius}dp"
+        binding.tvTransitionEffectValue.text = when (transitionEffect) {
+            "CUBE" -> "Cube"
+            "CARD_STACK" -> "Card stack"
+            "ACCORDION" -> "Accordion"
+            "FLIP" -> "Flip"
+            else -> "Simple"
+        }
+        binding.swInfiniteScroll.isChecked = infiniteScroll
+
+        binding.tvPageIndicatorValue.text = when (pageIndicatorStyle) {
+            "LINE" -> "Line"
+            "NONE" -> "None"
+            else -> "Dots"
+        }
+        binding.viewPageIndicatorColorSwatch.backgroundTintList = android.content.res.ColorStateList.valueOf(pageIndicatorColor)
+        binding.viewPageIndicatorColorSwatch.visibility = if (pageIndicatorStyle == "NONE") View.GONE else View.VISIBLE
     }
 
     private fun updateDockSubtitle() {
@@ -241,6 +284,32 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
         // Dock row
         binding.rowDock.setOnClickListener {
             startActivity(android.content.Intent(this, DockSettingsActivity::class.java))
+        }
+
+        // Scroll & Transitions Listeners
+        binding.rowWallpaperScrolling.setOnClickListener {
+            showWallpaperScrollingDialog()
+        }
+
+        binding.rowWidgetCornerRadius.setOnClickListener {
+            showWidgetCornerRadiusDialog()
+        }
+
+        binding.rowTransitionEffect.setOnClickListener {
+            showTransitionEffectDialog()
+        }
+
+        binding.rowInfiniteScroll.setOnClickListener {
+            binding.swInfiniteScroll.toggle()
+        }
+        binding.swInfiniteScroll.setOnCheckedChangeListener { _, isChecked ->
+            infiniteScroll = isChecked
+            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("key_infinite_scroll", isChecked).apply()
+        }
+
+        binding.rowPageIndicator.setOnClickListener {
+            showPageIndicatorDialog()
         }
     }
 
@@ -396,5 +465,109 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun showWallpaperScrollingDialog() {
+        val options = arrayOf("On", "Off", "Reverse")
+        val currentIndex = when (wallpaperScroll) {
+            "OFF" -> 1
+            "REVERSE" -> 2
+            else -> 0
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Wallpaper scrolling")
+            .setSingleChoiceItems(options, currentIndex) { dialog, which ->
+                wallpaperScroll = when (which) {
+                    1 -> "OFF"
+                    2 -> "REVERSE"
+                    else -> "ON"
+                }
+                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                prefs.edit().putString("key_wallpaper_scroll", wallpaperScroll).apply()
+                updateScrollSectionUI()
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showWidgetCornerRadiusDialog() {
+        val dialog = WidgetCornerRadiusDialogFragment.newInstance()
+        dialog.setOnRadiusSavedListener { radius ->
+            widgetCornerRadius = radius
+            updateScrollSectionUI()
+        }
+        dialog.show(supportFragmentManager, WidgetCornerRadiusDialogFragment.TAG)
+    }
+
+    private fun showTransitionEffectDialog() {
+        val options = arrayOf("Simple", "Cube", "Card stack", "Accordion", "Flip")
+        val currentIndex = when (transitionEffect) {
+            "CUBE" -> 1
+            "CARD_STACK" -> 2
+            "ACCORDION" -> 3
+            "FLIP" -> 4
+            else -> 0
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Transition effect")
+            .setSingleChoiceItems(options, currentIndex) { dialog, which ->
+                transitionEffect = when (which) {
+                    1 -> "CUBE"
+                    2 -> "CARD_STACK"
+                    3 -> "ACCORDION"
+                    4 -> "FLIP"
+                    else -> "SIMPLE"
+                }
+                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                prefs.edit().putString("key_page_transition_effect", transitionEffect).apply()
+                updateScrollSectionUI()
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showPageIndicatorDialog() {
+        val options = arrayOf("Dots", "Line", "None", "Change Accent Color...")
+        AlertDialog.Builder(this)
+            .setTitle("Page indicator")
+            .setItems(options) { dialog, which ->
+                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                when (which) {
+                    0 -> {
+                        pageIndicatorStyle = "DOTS"
+                        prefs.edit().putString("key_page_indicator_style", "DOTS").apply()
+                        updateScrollSectionUI()
+                    }
+                    1 -> {
+                        pageIndicatorStyle = "LINE"
+                        prefs.edit().putString("key_page_indicator_style", "LINE").apply()
+                        updateScrollSectionUI()
+                    }
+                    2 -> {
+                        pageIndicatorStyle = "NONE"
+                        prefs.edit().putString("key_page_indicator_style", "NONE").apply()
+                        updateScrollSectionUI()
+                    }
+                    3 -> {
+                        showPageIndicatorColorDialog()
+                    }
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showPageIndicatorColorDialog() {
+        val dialog = LabelColorDialogFragment.newInstance()
+        dialog.setOnColorSavedListener { color ->
+            pageIndicatorColor = color
+            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putInt("key_page_indicator_color", color).apply()
+            updateScrollSectionUI()
+        }
+        dialog.show(supportFragmentManager, LabelColorDialogFragment.TAG)
     }
 }

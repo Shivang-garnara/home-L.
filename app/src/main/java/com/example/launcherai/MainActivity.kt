@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -40,8 +41,10 @@ import com.example.launcherai.ui.DockLayout
 import com.example.launcherai.ui.FastScroller
 import com.example.launcherai.ui.HiddenAppsDialog
 import com.example.launcherai.ui.LauncherSettingsActivity
+import com.example.launcherai.ui.PageIndicatorView
 import com.example.launcherai.ui.Workspace
 import com.example.launcherai.ui.WorkspaceFolderResolvedItem
+import com.example.launcherai.ui.WorkspacePageTransformer
 import com.example.launcherai.ui.WorkspaceResolvedItem
 import com.example.launcherai.ui.WorkspaceViewModel
 import com.example.launcherai.widgets.LauncherAppWidgetHost
@@ -189,6 +192,7 @@ class MainActivity : AppCompatActivity() {
 
         applySearchBarPlacement()
         applyDrawerPlacementAndSettings()
+        applyScrollAndTransitionSettings()
         if (::dockHotseat.isInitialized) {
             val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
             val dockEnabled = prefs.getBoolean("key_dock_enabled", true)
@@ -330,6 +334,7 @@ class MainActivity : AppCompatActivity() {
             viewModel.saveCurrentPage(pageIndex)
             updateWallpaperOffset(pageIndex)
         }
+        applyScrollAndTransitionSettings()
 
         // Folder popup overlay controls
         folderOverlay.setOnClickListener { closeFolderOverlay() }
@@ -384,15 +389,64 @@ class MainActivity : AppCompatActivity() {
         fastScroller = FastScroller(rvDrawerApps, tvFastScrollBubble)
     }
 
+    private fun applyScrollAndTransitionSettings() {
+        if (!::workspace.isInitialized) return
+        val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+
+        // 1. Transition effect
+        val effectName = prefs.getString("key_page_transition_effect", "SIMPLE") ?: "SIMPLE"
+        val effect = WorkspacePageTransformer.Effect.fromString(effectName)
+        workspace.setPageTransformer(WorkspacePageTransformer(effect))
+
+        // 2. Infinite scroll
+        val infiniteScroll = prefs.getBoolean("key_infinite_scroll", false)
+        workspace.isInfiniteScrollEnabled = infiniteScroll
+
+        // 3. Page indicator style & color
+        val indicatorStyleName = prefs.getString("key_page_indicator_style", "DOTS") ?: "DOTS"
+        val indicatorStyle = PageIndicatorView.Style.fromString(indicatorStyleName)
+        val indicatorColor = prefs.getInt("key_page_indicator_color", Color.WHITE)
+        workspace.setPageIndicatorStyle(indicatorStyle)
+        workspace.setPageIndicatorColor(indicatorColor)
+
+        // 4. Wallpaper scroll mode parallax binding
+        val wpScrollMode = prefs.getString("key_wallpaper_scroll", "ON") ?: "ON"
+        workspace.setOnPageScrolledListener { position, positionOffset, _ ->
+            val totalPages = workspace.getPageCount()
+            if (totalPages > 1) {
+                val fraction = ((position + positionOffset) / (totalPages - 1)).coerceIn(0f, 1f)
+                val offset = when (wpScrollMode) {
+                    "OFF" -> 0.5f
+                    "REVERSE" -> 1.0f - fraction
+                    else -> fraction
+                }
+                try {
+                    val wm = WallpaperManager.getInstance(this)
+                    val token = window.decorView.windowToken
+                    if (token != null) {
+                        wm.setWallpaperOffsets(token, offset, 0.5f)
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
     private fun updateWallpaperOffset(pageIndex: Int) {
         try {
             val totalPages = workspace.getPageCount()
             if (totalPages > 1) {
-                val offset = pageIndex.toFloat() / (totalPages - 1)
+                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                val wpScrollMode = prefs.getString("key_wallpaper_scroll", "ON") ?: "ON"
+                val fraction = (pageIndex.toFloat() / (totalPages - 1)).coerceIn(0f, 1f)
+                val offset = when (wpScrollMode) {
+                    "OFF" -> 0.5f
+                    "REVERSE" -> 1.0f - fraction
+                    else -> fraction
+                }
                 val wm = WallpaperManager.getInstance(this)
                 val token = window.decorView.windowToken
                 if (token != null) {
-                    wm.setWallpaperOffsets(token, offset, 0f)
+                    wm.setWallpaperOffsets(token, offset, 0.5f)
                 }
             }
         } catch (e: Exception) {
