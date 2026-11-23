@@ -12,6 +12,7 @@ import android.os.Handler
 import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
@@ -25,6 +26,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -39,7 +41,8 @@ import com.example.launcherai.gestures.GestureHandler
 import com.example.launcherai.ui.DragLayer
 import com.example.launcherai.ui.DockLayout
 import com.example.launcherai.ui.FastScroller
-import com.example.launcherai.ui.HiddenAppsDialog
+import com.example.launcherai.ui.FastScrollRailView
+import com.example.launcherai.ui.HiddenAppsDialogFragment
 import com.example.launcherai.ui.LauncherSettingsActivity
 import com.example.launcherai.ui.PageIndicatorView
 import com.example.launcherai.ui.Workspace
@@ -81,6 +84,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var etDrawerSearch: EditText
     private lateinit var tvDrawerEmpty: TextView
     private lateinit var tvFastScrollBubble: TextView
+    private var ivDrawerSwipeIndicator: ImageView? = null
 
     private lateinit var folderOverlay: FrameLayout
     private lateinit var etFolderTitle: EditText
@@ -91,9 +95,14 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var drawerAdapter: AppsAdapter
     private lateinit var fastScroller: FastScroller
+    private lateinit var rvFrequentApps: RecyclerView
+    private lateinit var frequentAppsAdapter: AppsAdapter
+    private lateinit var tvFrequentAppsEmpty: TextView
     private var horizontalSnapHelper: PagerSnapHelper? = null
     private var selectedCategory: String = "All"
     private var fullDrawerAppsList: List<AppInfo> = emptyList()
+    private var savedDrawerPosition: Int = 0
+    private var savedDrawerOffset: Int = 0
 
     private val bindWidgetLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
@@ -180,6 +189,42 @@ class MainActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         appWidgetHost.stopListening()
+
+        val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        val autoClose = prefs.getBoolean("key_drawer_autoclose", true)
+        val rememberPos = prefs.getBoolean("key_drawer_remember_position", false)
+
+        if (::layoutAppDrawerOverlay.isInitialized && layoutAppDrawerOverlay.visibility == View.VISIBLE) {
+            if (rememberPos) {
+                val lm = rvDrawerApps.layoutManager as? LinearLayoutManager
+                if (lm != null) {
+                    val pos = lm.findFirstVisibleItemPosition()
+                    if (pos >= 0) {
+                        savedDrawerPosition = pos
+                        val firstView = lm.findViewByPosition(pos)
+                        savedDrawerOffset = firstView?.top ?: 0
+                        prefs.edit()
+                            .putInt("key_drawer_saved_pos", savedDrawerPosition)
+                            .putInt("key_drawer_saved_offset", savedDrawerOffset)
+                            .apply()
+                    }
+                }
+            }
+
+            if (autoClose) {
+                // Instantly reset drawer state so user returns to desktop workspace
+                layoutAppDrawerOverlay.visibility = View.GONE
+                layoutAppDrawerOverlay.translationY = 0f
+                layoutAppDrawerOverlay.scaleX = 1f
+                layoutAppDrawerOverlay.scaleY = 1f
+                layoutAppDrawerOverlay.alpha = 1f
+                workspace.scaleX = 1f
+                workspace.scaleY = 1f
+                workspace.alpha = 1f
+                dockHotseat.alpha = 1f
+                etDrawerSearch.setText("")
+            }
+        }
     }
 
     private fun refreshGridAndSettings() {
@@ -204,6 +249,7 @@ class MainActivity : AppCompatActivity() {
         if (::drawerAdapter.isInitialized) {
             drawerAdapter.notifyDataSetChanged()
         }
+        viewModel.loadHiddenPackages()
         viewModel.refreshInstalledApps()
     }
 
@@ -265,10 +311,15 @@ class MainActivity : AppCompatActivity() {
         }
 
         val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-        gestureHandler.swipeUpAction = GestureAction.fromName(
-            prefs.getString("key_gesture_swipe_up", "") ?: "",
-            GestureAction.APP_DRAWER
-        )
+        val swipeToOpen = prefs.getBoolean("key_drawer_swipe_to_open", true)
+        gestureHandler.swipeUpAction = if (swipeToOpen) {
+            GestureAction.fromName(
+                prefs.getString("key_gesture_swipe_up", "") ?: "",
+                GestureAction.APP_DRAWER
+            )
+        } else {
+            GestureAction.NONE
+        }
         gestureHandler.swipeDownAction = GestureAction.fromName(
             prefs.getString("key_gesture_swipe_down", "") ?: "",
             GestureAction.EXPAND_NOTIFICATIONS
@@ -295,6 +346,10 @@ class MainActivity : AppCompatActivity() {
         etDrawerSearch = findViewById(R.id.etDrawerSearch)
         tvDrawerEmpty = findViewById(R.id.tvDrawerEmpty)
         tvFastScrollBubble = findViewById(R.id.tvFastScrollBubble)
+        ivDrawerSwipeIndicator = findViewById(R.id.ivDrawerSwipeIndicator)
+        ivDrawerSwipeIndicator?.setOnClickListener {
+            openAppDrawer()
+        }
 
         folderOverlay = findViewById(R.id.folderOverlay)
         etFolderTitle = findViewById(R.id.etFolderTitle)
@@ -382,7 +437,11 @@ class MainActivity : AppCompatActivity() {
             apps = emptyList(),
             onAppClick = { app ->
                 AppManager.launchApp(this, app)
-                closeAppDrawer()
+                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                val autoClose = prefs.getBoolean("key_drawer_autoclose", true)
+                if (autoClose) {
+                    closeAppDrawer()
+                }
             },
             onAppLongClick = { view, app, touchX, touchY ->
                 closeAppDrawer()
@@ -409,8 +468,78 @@ class MainActivity : AppCompatActivity() {
         )
         rvDrawerApps.adapter = drawerAdapter
 
-        // FastScroller
-        fastScroller = FastScroller(rvDrawerApps, tvFastScrollBubble)
+        // Frequently Used Apps Row (Nova drawer_predictive_apps)
+        rvFrequentApps = findViewById(R.id.rvFrequentApps)
+        tvFrequentAppsEmpty = findViewById(R.id.tvFrequentAppsEmpty)
+        val initialDrawerPrefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        val initialDrawerCols = initialDrawerPrefs.getInt("key_drawer_grid_cols", 5).coerceAtLeast(1)
+        rvFrequentApps.layoutManager = GridLayoutManager(this, initialDrawerCols)
+        frequentAppsAdapter = AppsAdapter(
+            apps = emptyList(),
+            onAppClick = { app ->
+                AppManager.launchApp(this, app)
+                val p = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                val autoClose = p.getBoolean("key_drawer_autoclose", true)
+                if (autoClose) {
+                    closeAppDrawer()
+                }
+            },
+            onAppLongClick = { view, app, touchX, touchY ->
+                closeAppDrawer()
+                val curPage = workspace.getCurrentPage()
+                val cellLayout = workspace.getActiveCellLayout()
+                val vacant = cellLayout?.findVacantCell(1, 1) ?: intArrayOf(0, 0)
+                val item = WorkspaceResolvedItem(
+                    entity = WorkspaceItemEntity(
+                        itemType = WorkspaceItemEntity.ITEM_TYPE_APP,
+                        packageName = app.packageName,
+                        className = app.activityName,
+                        container = WorkspaceItemEntity.CONTAINER_DESKTOP,
+                        screenId = curPage,
+                        cellX = vacant[0],
+                        cellY = vacant[1],
+                        title = app.label
+                    ),
+                    appInfo = app
+                )
+                dragController.startDrag(view, item, touchX, touchY)
+                true
+            }
+        )
+        rvFrequentApps.adapter = frequentAppsAdapter
+
+        // FastScroller with A–Z rail accent bar (matching Nova Launcher AllAppsFastScroll)
+        val fastScrollRail = findViewById<FastScrollRailView>(R.id.fastScrollRail)
+        fastScroller = FastScroller(rvDrawerApps, tvFastScrollBubble, fastScrollRail)
+
+        // Pull down to search listener (Nova Launcher drawer_pull_to_search)
+        var pullStartY = 0f
+        rvDrawerApps.addOnItemTouchListener(object : RecyclerView.SimpleOnItemTouchListener() {
+            override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
+                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                if (!prefs.getBoolean("key_drawer_pull_to_search", true)) return false
+                if (etDrawerSearch.hasFocus()) return false
+
+                when (e.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        pullStartY = e.y
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        val dy = e.y - pullStartY
+                        if (!rv.canScrollVertically(-1) && dy > 120f) {
+                            if (prefs.getBoolean("key_drawer_swipe_haptic", true)) {
+                                rv.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                            }
+                            etDrawerSearch.requestFocus()
+                            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+                            imm?.showSoftInput(etDrawerSearch, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                            return true
+                        }
+                    }
+                }
+                return false
+            }
+        })
     }
 
     private fun applyScrollAndTransitionSettings() {
@@ -650,6 +779,23 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
+                // Frequently Used Apps collector (Nova drawer_predictive_apps)
+                launch {
+                    viewModel.suggestedApps.collect { suggested ->
+                        val p = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                        val cols = p.getInt("key_drawer_grid_cols", 5).coerceAtLeast(1)
+                        val topApps = suggested.take(cols)
+                        frequentAppsAdapter.updateApps(topApps)
+                        if (topApps.isEmpty()) {
+                            tvFrequentAppsEmpty.visibility = View.VISIBLE
+                            rvFrequentApps.visibility = View.GONE
+                        } else {
+                            tvFrequentAppsEmpty.visibility = View.GONE
+                            rvFrequentApps.visibility = View.VISIBLE
+                        }
+                    }
+                }
+
                 // App Drawer filtered collector
                 launch {
                     viewModel.drawerApps.collect { drawerApps ->
@@ -674,15 +820,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showHiddenAppsDialog() {
-        val dialog = HiddenAppsDialog(
-            context = this,
-            installedApps = viewModel.installedApps.value,
+        val dialog = HiddenAppsDialogFragment.newInstance(
             hiddenPackages = viewModel.hiddenPackages.value,
-            onToggleHide = { packageName ->
-                viewModel.toggleHidePackage(packageName)
-            }
-        )
-        dialog.show()
+            apps = viewModel.installedApps.value
+        ) { _ ->
+            viewModel.loadHiddenPackages()
+        }
+        dialog.show(supportFragmentManager, HiddenAppsDialogFragment.TAG)
     }
 
     private fun requestAddWidget(providerInfo: AppWidgetProviderInfo, spanX: Int, spanY: Int) {
@@ -772,13 +916,77 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openAppDrawer() {
-        layoutAppDrawerOverlay.visibility = View.VISIBLE
-        layoutAppDrawerOverlay.alpha = 0f
-        layoutAppDrawerOverlay.animate().alpha(1f).setDuration(200).start()
+        val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        val animMode = prefs.getString("key_drawer_animation", "SLIDE") ?: "SLIDE"
+        ivDrawerSwipeIndicator?.visibility = View.GONE
+
+        when (animMode.uppercase()) {
+            "ZOOM" -> {
+                layoutAppDrawerOverlay.visibility = View.VISIBLE
+                layoutAppDrawerOverlay.translationY = 0f
+                layoutAppDrawerOverlay.scaleX = 1.25f
+                layoutAppDrawerOverlay.scaleY = 1.25f
+                layoutAppDrawerOverlay.alpha = 0f
+                layoutAppDrawerOverlay.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(260).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
+                workspace.animate().scaleX(0.7f).scaleY(0.7f).alpha(0f).setDuration(240).start()
+                dockHotseat.animate().alpha(0f).setDuration(200).start()
+            }
+            "FADE" -> {
+                layoutAppDrawerOverlay.visibility = View.VISIBLE
+                layoutAppDrawerOverlay.translationY = 0f
+                layoutAppDrawerOverlay.scaleX = 1f
+                layoutAppDrawerOverlay.scaleY = 1f
+                layoutAppDrawerOverlay.alpha = 0f
+                layoutAppDrawerOverlay.animate().alpha(1f).setDuration(220).start()
+                workspace.animate().alpha(0f).setDuration(200).start()
+                dockHotseat.animate().alpha(0f).setDuration(200).start()
+            }
+            else -> { // "SLIDE"
+                layoutAppDrawerOverlay.visibility = View.VISIBLE
+                layoutAppDrawerOverlay.scaleX = 1f
+                layoutAppDrawerOverlay.scaleY = 1f
+                layoutAppDrawerOverlay.alpha = 1f
+                val height = resources.displayMetrics.heightPixels.toFloat()
+                layoutAppDrawerOverlay.translationY = height
+                layoutAppDrawerOverlay.animate().translationY(0f).setDuration(280).setInterpolator(android.view.animation.DecelerateInterpolator(1.5f)).start()
+                workspace.animate().scaleX(0.85f).scaleY(0.85f).alpha(0f).setDuration(240).start()
+                dockHotseat.animate().alpha(0f).setDuration(200).start()
+            }
+        }
+
+        if (prefs.getBoolean("key_drawer_swipe_haptic", true)) {
+            rvDrawerApps.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+        }
+
+        val rememberPos = prefs.getBoolean("key_drawer_remember_position", false)
+        if (rememberPos) {
+            savedDrawerPosition = prefs.getInt("key_drawer_saved_pos", savedDrawerPosition)
+            savedDrawerOffset = prefs.getInt("key_drawer_saved_offset", savedDrawerOffset)
+            if (savedDrawerPosition > 0 || savedDrawerOffset != 0) {
+                rvDrawerApps.post {
+                    (rvDrawerApps.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(
+                        savedDrawerPosition,
+                        savedDrawerOffset
+                    )
+                }
+            } else {
+                rvDrawerApps.scrollToPosition(0)
+            }
+        } else {
+            savedDrawerPosition = 0
+            savedDrawerOffset = 0
+            rvDrawerApps.scrollToPosition(0)
+        }
+
+        val incognito = prefs.getBoolean("key_drawer_search_incognito", false)
+        if (incognito) {
+            etDrawerSearch.imeOptions = etDrawerSearch.imeOptions or android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
+        } else {
+            etDrawerSearch.imeOptions = etDrawerSearch.imeOptions and android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING.inv()
+        }
 
         applyDrawerPlacementAndSettings()
 
-        val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
         val showKeyboard = prefs.getBoolean("key_drawer_show_keyboard", true)
         if (showKeyboard) {
             etDrawerSearch.post {
@@ -799,14 +1007,36 @@ class MainActivity : AppCompatActivity() {
         val showFrequent = prefs.getBoolean("key_drawer_frequent_apps", true)
         val drawerStyle = prefs.getString("key_app_drawer_style", "Vertical") ?: "Vertical"
         val smartFolders = prefs.getBoolean("key_drawer_smart_folders", true)
+        val cols = prefs.getInt("key_drawer_grid_cols", 5).coerceAtLeast(1)
+        val rows = prefs.getInt("key_drawer_grid_rows", 6).coerceAtLeast(1)
+        val swipeIndicator = prefs.getBoolean("key_drawer_swipe_indicator", true)
+        val swipeToOpen = prefs.getBoolean("key_drawer_swipe_to_open", true)
+
+        ivDrawerSwipeIndicator?.visibility = if (swipeIndicator && swipeToOpen && layoutAppDrawerOverlay.visibility != View.VISIBLE) View.VISIBLE else View.GONE
 
         findViewById<View>(R.id.layoutFrequentAppsHeader)?.visibility = if (showFrequent) View.VISIBLE else View.GONE
+        if (::rvFrequentApps.isInitialized) {
+            rvFrequentApps.layoutManager = GridLayoutManager(this, cols)
+        }
 
         val searchContainer = findViewById<View>(R.id.barDrawerSearchContainer) ?: return
         val drawerLayout = findViewById<LinearLayout>(R.id.layoutAppDrawerOverlay) ?: return
 
+        // Apply drawer background color and transparency (Nova drawer_background_color / drawer_background_alpha)
+        val drawerBgColor = prefs.getInt("key_drawer_background_color", 0xFFF7F2EE.toInt())
+        val drawerBgAlpha = prefs.getInt("key_drawer_background_alpha", 0)
+        val alpha255 = (((100 - drawerBgAlpha) * 255) / 100).coerceIn(0, 255)
+        val compositeDrawerBg = ColorUtils.setAlphaComponent(drawerBgColor, alpha255)
+        drawerLayout.setBackgroundColor(compositeDrawerBg)
+
+        // Apply fast scroll accent color
+        val fastScrollColor = prefs.getInt("key_drawer_fastscroll_color", 0xFFD54526.toInt())
+        fastScroller.setAccentColor(fastScrollColor)
+
+        val isHidden = drawerPlacement.equals("None", ignoreCase = true) || drawerPlacement.equals("Hidden", ignoreCase = true)
+
         when {
-            drawerPlacement.equals("Hidden", ignoreCase = true) -> {
+            isHidden -> {
                 searchContainer.visibility = View.GONE
             }
             drawerPlacement.equals("Bottom", ignoreCase = true) -> {
@@ -821,17 +1051,18 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Apply App Drawer Style (Vertical, List, Horizontal)
+        // Apply App Drawer Style (Vertical, List, Horizontal) matching Nova Launcher (d0)
+        val fastScrollEnabled = prefs.getBoolean("key_drawer_fastscroll", true)
         when (drawerStyle) {
             "List" -> {
                 horizontalSnapHelper?.attachToRecyclerView(null)
                 horizontalSnapHelper = null
                 rvDrawerApps.layoutManager = LinearLayoutManager(this, RecyclerView.VERTICAL, false)
                 drawerAdapter.setDisplayMode(AppsAdapter.DisplayMode.LIST)
-                fastScroller.isEnabled = true
+                fastScroller.isEnabled = fastScrollEnabled
             }
             "Horizontal" -> {
-                rvDrawerApps.layoutManager = GridLayoutManager(this, 5, RecyclerView.HORIZONTAL, false)
+                rvDrawerApps.layoutManager = GridLayoutManager(this, rows, RecyclerView.HORIZONTAL, false)
                 drawerAdapter.setDisplayMode(AppsAdapter.DisplayMode.HORIZONTAL)
                 fastScroller.isEnabled = false
                 if (horizontalSnapHelper == null) {
@@ -843,9 +1074,9 @@ class MainActivity : AppCompatActivity() {
             else -> { // "Vertical"
                 horizontalSnapHelper?.attachToRecyclerView(null)
                 horizontalSnapHelper = null
-                rvDrawerApps.layoutManager = GridLayoutManager(this, 5, RecyclerView.VERTICAL, false)
+                rvDrawerApps.layoutManager = GridLayoutManager(this, cols, RecyclerView.VERTICAL, false)
                 drawerAdapter.setDisplayMode(AppsAdapter.DisplayMode.GRID)
-                fastScroller.isEnabled = true
+                fastScroller.isEnabled = fastScrollEnabled
             }
         }
         drawerAdapter.notifyDataSetChanged()
@@ -942,14 +1173,30 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun applyDrawerAppFilter() {
+        val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
         val filtered = filterAppsByCategory(fullDrawerAppsList, selectedCategory)
-        drawerAdapter.updateApps(filtered)
-        fastScroller.updateApps(filtered)
+        val foldersFirst = prefs.getBoolean("key_drawer_folders_first", false)
+        val sorted = if (foldersFirst) {
+            filtered.sortedWith(compareBy({ !it.isFolder }, { it.label.lowercase(Locale.ROOT) }))
+        } else {
+            filtered.sortedBy { it.label.lowercase(Locale.ROOT) }
+        }
+        drawerAdapter.updateApps(sorted)
+        fastScroller.updateApps(sorted)
         val query = viewModel.searchQuery.value
-        tvDrawerEmpty.visibility = if (filtered.isEmpty() && query.isNotBlank()) View.VISIBLE else View.GONE
+        tvDrawerEmpty.visibility = if (sorted.isEmpty() && query.isNotBlank()) View.VISIBLE else View.GONE
+
+        val rememberPos = prefs.getBoolean("key_drawer_remember_position", false)
+        if (query.isBlank() && selectedCategory == "All" && rememberPos && (savedDrawerPosition > 0 || savedDrawerOffset != 0)) {
+            rvDrawerApps.post {
+                (rvDrawerApps.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(
+                    savedDrawerPosition,
+                    savedDrawerOffset
+                )
+            }
+        }
 
         val chipsContainer = findViewById<LinearLayout>(R.id.containerSuggestionChips) ?: return
-        val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
 
         if (query.isNotBlank()) {
             val shortcutSearch = prefs.getBoolean("key_shortcut_search", true)
@@ -980,6 +1227,10 @@ class MainActivity : AppCompatActivity() {
                         layoutParams = lp
                         setOnClickListener {
                             com.example.launcherai.search.ContactSearchHelper.dialContact(this@MainActivity, contact.number)
+                            val p = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                            if (p.getBoolean("key_drawer_autoclose", true)) {
+                                closeAppDrawer()
+                            }
                         }
                     }
                     chipsContainer.addView(chipView)
@@ -1004,6 +1255,10 @@ class MainActivity : AppCompatActivity() {
                         setOnClickListener {
                             try {
                                 startActivity(shortcut.intent)
+                                val p = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                                if (p.getBoolean("key_drawer_autoclose", true)) {
+                                    closeAppDrawer()
+                                }
                             } catch (e: Exception) {
                                 Toast.makeText(this@MainActivity, "Cannot start shortcut action", Toast.LENGTH_SHORT).show()
                             }
@@ -1019,10 +1274,67 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun closeAppDrawer() {
-        layoutAppDrawerOverlay.animate().alpha(0f).setDuration(150).withEndAction {
-            layoutAppDrawerOverlay.visibility = View.GONE
-            etDrawerSearch.setText("")
-        }.start()
+        val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        val animMode = prefs.getString("key_drawer_animation", "SLIDE") ?: "SLIDE"
+        val rememberPos = prefs.getBoolean("key_drawer_remember_position", false)
+
+        if (rememberPos) {
+            val lm = rvDrawerApps.layoutManager as? LinearLayoutManager
+            if (lm != null) {
+                val pos = lm.findFirstVisibleItemPosition()
+                if (pos >= 0) {
+                    savedDrawerPosition = pos
+                    val firstView = lm.findViewByPosition(pos)
+                    savedDrawerOffset = firstView?.top ?: 0
+                    prefs.edit()
+                        .putInt("key_drawer_saved_pos", savedDrawerPosition)
+                        .putInt("key_drawer_saved_offset", savedDrawerOffset)
+                        .apply()
+                }
+            }
+        } else {
+            savedDrawerPosition = 0
+            savedDrawerOffset = 0
+            prefs.edit()
+                .putInt("key_drawer_saved_pos", 0)
+                .putInt("key_drawer_saved_offset", 0)
+                .apply()
+            rvDrawerApps.scrollToPosition(0)
+        }
+
+        when (animMode.uppercase()) {
+            "ZOOM" -> {
+                layoutAppDrawerOverlay.animate().scaleX(1.25f).scaleY(1.25f).alpha(0f).setDuration(220).withEndAction {
+                    layoutAppDrawerOverlay.visibility = View.GONE
+                    layoutAppDrawerOverlay.scaleX = 1f
+                    layoutAppDrawerOverlay.scaleY = 1f
+                    etDrawerSearch.setText("")
+                    applyDrawerPlacementAndSettings()
+                }.start()
+                workspace.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(240).start()
+                dockHotseat.animate().alpha(1f).setDuration(200).start()
+            }
+            "FADE" -> {
+                layoutAppDrawerOverlay.animate().alpha(0f).setDuration(200).withEndAction {
+                    layoutAppDrawerOverlay.visibility = View.GONE
+                    etDrawerSearch.setText("")
+                    applyDrawerPlacementAndSettings()
+                }.start()
+                workspace.animate().alpha(1f).setDuration(200).start()
+                dockHotseat.animate().alpha(1f).setDuration(200).start()
+            }
+            else -> { // "SLIDE"
+                val height = resources.displayMetrics.heightPixels.toFloat()
+                layoutAppDrawerOverlay.animate().translationY(height).setDuration(240).setInterpolator(android.view.animation.AccelerateInterpolator(1.5f)).withEndAction {
+                    layoutAppDrawerOverlay.visibility = View.GONE
+                    layoutAppDrawerOverlay.translationY = 0f
+                    etDrawerSearch.setText("")
+                    applyDrawerPlacementAndSettings()
+                }.start()
+                workspace.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(240).start()
+                dockHotseat.animate().alpha(1f).setDuration(200).start()
+            }
+        }
     }
 
     override fun onDestroy() {

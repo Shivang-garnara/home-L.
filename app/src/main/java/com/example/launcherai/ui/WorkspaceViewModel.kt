@@ -89,7 +89,7 @@ class WorkspaceViewModel(
         loadHiddenPackages()
     }
 
-    private fun loadHiddenPackages() {
+    fun loadHiddenPackages() {
         val savedSet = prefs.getStringSet("key_hidden_packages", emptySet()) ?: emptySet()
         _hiddenPackages.value = savedSet
     }

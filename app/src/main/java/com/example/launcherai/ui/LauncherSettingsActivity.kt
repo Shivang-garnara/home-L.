@@ -225,7 +225,7 @@ class LauncherSettingsActivity : AppCompatActivity() {
 
         // Row 3: App drawer
         binding.rowAppDrawer.setOnClickListener {
-            showAppDrawerSettingsDialog()
+            startActivity(Intent(this, AppDrawerSettingsActivity::class.java))
         }
 
         // Row 4: Folders
@@ -313,9 +313,9 @@ class LauncherSettingsActivity : AppCompatActivity() {
         binding.tvLookFeelSubtitle.text = "Shape: $shape, Size: $sizePercent%, and icon options"
 
         val drawerStyle = prefs.getString("key_app_drawer_style", "Vertical") ?: "Vertical"
-        val showKb = prefs.getBoolean("key_drawer_show_keyboard", true)
-        val smartFolders = prefs.getBoolean("key_drawer_smart_folders", true)
-        binding.tvAppDrawerSubtitle.text = "Style: $drawerStyle • Keyboard: ${if (showKb) "On" else "Off"} • Smart Folders: ${if (smartFolders) "On" else "Off"}"
+        val drawerRows = prefs.getInt("key_drawer_grid_rows", 6)
+        val drawerCols = prefs.getInt("key_drawer_grid_cols", 5)
+        binding.tvAppDrawerSubtitle.text = "$drawerStyle • $drawerRows ✕ $drawerCols"
 
         val searchMode = prefs.getString("key_search_mode", "Immersive") ?: "Immersive"
         val homePlacement = prefs.getString("key_search_bar_placement_home", "DOCK_BELOW") ?: "DOCK_BELOW"
@@ -325,7 +325,8 @@ class LauncherSettingsActivity : AppCompatActivity() {
             "HIDDEN" -> "Hidden"
             else -> "Dock (Below)"
         }
-        val drawerPlacement = prefs.getString("key_search_bar_placement_drawer", "Top") ?: "Top"
+        val rawDrawerPlacement = prefs.getString("key_search_bar_placement_drawer", "Top") ?: "Top"
+        val drawerPlacement = if (rawDrawerPlacement.equals("Hidden", ignoreCase = true)) "None" else rawDrawerPlacement
         binding.tvSearchSubtitle.text = "Mode: $searchMode • Home: $homeLabel • Drawer: $drawerPlacement"
     }
 

@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/bg_more_shapes_dialog"
+    android:paddingTop="18dp"
+    android:paddingBottom="16dp">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp">
+
+        <TextView
+            android:id="@+id/tvHideAppsDialogTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Hide apps"
+            android:textColor="@color/nova_text_brown_primary"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Select applications to hide from the app drawer"
+            android:textColor="@color/nova_text_brown_secondary"
+            android:textSize="13sp"
+            android:layout_marginTop="3dp" />
+
+    </LinearLayout>
+
+    <!-- Search Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="14dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:background="@drawable/bg_search_bar">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_search"
+            android:tint="@color/nova_text_brown_secondary"
+            android:contentDescription="Search" />
+
+        <EditText
+            android:id="@+id/etHideAppsSearch"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:background="@null"
+            android:hint="Search applications..."
+            android:textColor="@color/nova_text_brown_primary"
+            android:textColorHint="@color/nova_text_brown_secondary"
+            android:textSize="14sp"
+            android:singleLine="true"
+            android:imeOptions="actionDone" />
+
+        <ImageView
+            android:id="@+id/btnClearHideAppsSearch"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_clear"
+            android:tint="@color/nova_text_brown_secondary"
+            android:visibility="gone"
+            android:contentDescription="Clear search" />
+
+    </LinearLayout>
+
+    <!-- Quick Actions Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="6dp">
+
+        <TextView
+            android:id="@+id/btnSelectAllApps"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Select All"
+            android:textColor="@color/nova_accent_orange"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:padding="6dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground" />
+
+        <TextView
+            android:id="@+id/btnDeselectAllApps"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Deselect All"
+            android:textColor="@color/nova_text_brown_secondary"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:layout_marginStart="8dp"
+            android:padding="6dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/tvHideAppsCounter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0 hidden"
+            android:textColor="@color/nova_text_brown_secondary"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#1A000000" />
+
+    <!-- Applications List -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvHideApps"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:overScrollMode="never" />
+
+    <TextView
+        android:id="@+id/tvHideAppsEmpty"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="No applications match your search"
+        android:textColor="@color/nova_text_brown_secondary"
+        android:textSize="14sp"
+        android:visibility="gone"
+        android:layout_marginTop="40dp"
+        android:layout_marginBottom="40dp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#1A000000" />
+
+    <!-- Action Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="12dp">
+
+        <Button
+            android:id="@+id/btnHideAppsCancel"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="Cancel"
+            android:textColor="@color/nova_text_brown_primary"
+            android:background="?attr/selectableItemBackground"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginEnd="12dp" />
+
+        <Button
+            android:id="@+id/btnHideAppsApply"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="Save"
+            android:textColor="@android:color/white"
+            android:backgroundTint="@color/nova_accent_orange"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp" />
+
+    </LinearLayout>
+
+</LinearLayout>

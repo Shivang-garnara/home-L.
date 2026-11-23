@@ -49,7 +49,9 @@ class AppsAdapter(
         val lp = holder.itemView.layoutParams
         if (displayMode == DisplayMode.HORIZONTAL) {
             val dm = holder.itemView.resources.displayMetrics
-            val itemWidth = (dm.widthPixels - (16 * dm.density).toInt()) / 5
+            val prefs = holder.itemView.context.getSharedPreferences("workspace_prefs", android.content.Context.MODE_PRIVATE)
+            val cols = prefs.getInt("key_drawer_grid_cols", 5).coerceAtLeast(1)
+            val itemWidth = (dm.widthPixels - (16 * dm.density).toInt()) / cols
             if (lp != null && lp.width != itemWidth) {
                 lp.width = itemWidth
                 holder.itemView.layoutParams = lp
@@ -74,19 +76,27 @@ class AppsAdapter(
             tvLabel.text = app.label
             val prefs = itemView.context.getSharedPreferences("workspace_prefs", android.content.Context.MODE_PRIVATE)
             val shape = prefs.getString("key_icon_shape", "Round") ?: "Round"
-            val sizePercent = prefs.getInt("key_icon_size_percent", 125)
+            val iconSizePercent = prefs.getInt("key_drawer_icon_size_percent", 100)
+            val cols = prefs.getInt("key_drawer_grid_cols", 5).coerceAtLeast(1)
+
+            val labelVisible = prefs.getBoolean("key_drawer_label_visible", true)
+            val labelSizePercent = prefs.getInt("key_drawer_label_size_percent", 100)
+            val labelFont = prefs.getString("key_drawer_label_font", "Normal") ?: "Normal"
+            val labelColor = prefs.getInt("key_drawer_label_color", 0xFF2C2523.toInt())
+            val labelShadow = prefs.getBoolean("key_drawer_label_shadow", false)
+            val labelSingleLine = prefs.getBoolean("key_drawer_label_single_line", true)
 
             val sizePx = if (displayMode == DisplayMode.LIST) {
-                DeviceIconMetrics.getListIconSizePx(itemView.context, sizePercent)
+                DeviceIconMetrics.getListIconSizePx(itemView.context, iconSizePercent)
             } else {
-                DeviceIconMetrics.getDrawerIconSizePx(itemView.context, 5, sizePercent)
+                DeviceIconMetrics.getDrawerIconSizePx(itemView.context, cols, iconSizePercent)
             }
 
             val maskedIcon = IconShapeMasker.createMaskedIcon(
                 itemView.context,
                 app.icon ?: androidx.core.content.ContextCompat.getDrawable(itemView.context, R.mipmap.ic_launcher),
                 shape,
-                sizePercent,
+                iconSizePercent,
                 targetSizePx = sizePx
             )
 
@@ -101,6 +111,39 @@ class AppsAdapter(
             ivIcon.layoutParams = ivIcon.layoutParams.apply {
                 width = sizePx
                 height = sizePx
+            }
+
+            // Apply independent drawer label typography
+            if (!labelVisible) {
+                tvLabel.visibility = View.GONE
+            } else {
+                tvLabel.visibility = View.VISIBLE
+                val baseTextSizeSp = if (displayMode == DisplayMode.LIST) 14f else 11f
+                tvLabel.textSize = baseTextSizeSp * (labelSizePercent / 100f)
+                tvLabel.typeface = when (labelFont) {
+                    "Medium" -> android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+                    "Condensed" -> android.graphics.Typeface.create("sans-serif-condensed", android.graphics.Typeface.NORMAL)
+                    "Light" -> android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
+                    else -> android.graphics.Typeface.DEFAULT
+                }
+                tvLabel.setTextColor(labelColor)
+                val isDark = androidx.core.graphics.ColorUtils.calculateLuminance(labelColor) < 0.5
+                if (labelShadow) {
+                    if (isDark) {
+                        tvLabel.setShadowLayer(3f, 0f, 1f, 0x44FFFFFF.toInt())
+                    } else {
+                        tvLabel.setShadowLayer(4f, 0f, 2f, 0x88000000.toInt())
+                    }
+                } else {
+                    tvLabel.setShadowLayer(0f, 0f, 0f, 0)
+                }
+                if (labelSingleLine) {
+                    tvLabel.maxLines = 1
+                    tvLabel.isSingleLine = true
+                } else {
+                    tvLabel.maxLines = 2
+                    tvLabel.isSingleLine = false
+                }
             }
 
             var lastTouchX = 0f

@@ -68,6 +68,13 @@
             android:label="Home screen"
             android:theme="@style/Theme.NovaLight" />
 
+        <!-- App Drawer Settings Activity -->
+        <activity
+            android:name=".ui.AppDrawerSettingsActivity"
+            android:exported="true"
+            android:label="App drawer"
+            android:theme="@style/Theme.NovaLight" />
+
         <!-- Dock Settings Hub Activity -->
         <activity
             android:name=".ui.DockSettingsActivity"
