@@ -214,14 +214,29 @@ class MainActivity : AppCompatActivity() {
         val desktopLayout = findViewById<LinearLayout>(R.id.layoutDesktop) ?: return
         val dockHotseat = findViewById<View>(R.id.dockHotseat)
 
+        val density = resources.displayMetrics.density
+        val lp = searchBar.layoutParams as? LinearLayout.LayoutParams ?: LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            (55 * density).toInt()
+        )
+        val marginH = (16 * density).toInt()
+        lp.marginStart = marginH
+        lp.marginEnd = marginH
+
         when (placement) {
             "TOP" -> {
                 searchBar.visibility = View.VISIBLE
+                lp.topMargin = (36 * density).toInt()
+                lp.bottomMargin = (8 * density).toInt()
+                searchBar.layoutParams = lp
                 desktopLayout.removeView(searchBar)
                 desktopLayout.addView(searchBar, 0)
             }
             "DOCK_ABOVE" -> {
                 searchBar.visibility = View.VISIBLE
+                lp.topMargin = (4 * density).toInt()
+                lp.bottomMargin = (6 * density).toInt()
+                searchBar.layoutParams = lp
                 desktopLayout.removeView(searchBar)
                 if (dockHotseat != null) {
                     val dockIdx = desktopLayout.indexOfChild(dockHotseat)
@@ -230,11 +245,14 @@ class MainActivity : AppCompatActivity() {
                     desktopLayout.addView(searchBar)
                 }
             }
-            "HIDDEN" -> {
+            "HIDDEN", "NONE" -> {
                 searchBar.visibility = View.GONE
             }
             else -> { // "DOCK_BELOW"
                 searchBar.visibility = View.VISIBLE
+                lp.topMargin = (4 * density).toInt()
+                lp.bottomMargin = (12 * density).toInt()
+                searchBar.layoutParams = lp
                 desktopLayout.removeView(searchBar)
                 desktopLayout.addView(searchBar)
             }

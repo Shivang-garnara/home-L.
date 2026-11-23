@@ -43,6 +43,9 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
     private var paddingHorizontalStep: Int = 0
     private var paddingVerticalStep: Int = 0
 
+    // Search Placement State
+    private var searchBarPlacement: String = "DOCK_BELOW"
+
     // Scroll & Page Transitions State
     private var wallpaperScroll: String = "ON"
     private var widgetCornerRadius: Int = 16
@@ -97,6 +100,8 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
         paddingHorizontalStep = prefs.getInt("key_desktop_padding_horizontal", 0)
         paddingVerticalStep = prefs.getInt("key_desktop_padding_vertical", 0)
 
+        searchBarPlacement = prefs.getString("key_search_bar_placement_home", "DOCK_BELOW") ?: "DOCK_BELOW"
+
         wallpaperScroll = prefs.getString("key_wallpaper_scroll", "ON") ?: "ON"
         widgetCornerRadius = prefs.getInt("key_widget_corner_radius", 16)
         transitionEffect = prefs.getString("key_page_transition_effect", "SIMPLE") ?: "SIMPLE"
@@ -131,6 +136,7 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
         updateGridSubtitle()
         updatePaddingSubtitle()
         updateDockSubtitle()
+        updateSearchBarPlacementUI()
         updateScrollSectionUI()
         binding.swAddIconToHome.isChecked = addIconToHome
         updateAdvancedSectionUI()
@@ -142,9 +148,19 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
         updateGridSubtitle()
         updatePaddingSubtitle()
         updateDockSubtitle()
+        updateSearchBarPlacementUI()
         updateScrollSectionUI()
         binding.swAddIconToHome.isChecked = addIconToHome
         updateAdvancedSectionUI()
+    }
+
+    private fun updateSearchBarPlacementUI() {
+        binding.tvSearchBarPlacementSubtitle.text = when (searchBarPlacement) {
+            "NONE" -> "None"
+            "TOP" -> "Persistent (Top of screen)"
+            "DOCK_ABOVE" -> "Dock (Above icons)"
+            else -> "Dock (Below icons)"
+        }
     }
 
     private fun updateAdvancedSectionUI() {
@@ -317,6 +333,11 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
         // Dock row
         binding.rowDock.setOnClickListener {
             startActivity(android.content.Intent(this, DockSettingsActivity::class.java))
+        }
+
+        // Search Placement Listener
+        binding.rowSearchBarPlacement.setOnClickListener {
+            showSearchBarPlacementDialog()
         }
 
         // Scroll & Transitions Listeners
@@ -667,5 +688,28 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
             updateScrollSectionUI()
         }
         dialog.show(supportFragmentManager, LabelColorDialogFragment.TAG)
+    }
+
+    private fun showSearchBarPlacementDialog() {
+        val options = arrayOf(
+            "None",
+            "Persistent (Top of screen)",
+            "Dock (Above icons)",
+            "Dock (Below icons)"
+        )
+        val values = arrayOf("NONE", "TOP", "DOCK_ABOVE", "DOCK_BELOW")
+        val currentIndex = values.indexOf(searchBarPlacement).coerceAtLeast(0)
+
+        AlertDialog.Builder(this)
+            .setTitle("Search bar placement")
+            .setSingleChoiceItems(options, currentIndex) { dialog, which ->
+                searchBarPlacement = values[which]
+                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                prefs.edit().putString("key_search_bar_placement_home", searchBarPlacement).apply()
+                updateSearchBarPlacementUI()
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 }
