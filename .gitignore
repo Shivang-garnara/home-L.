@@ -13,3 +13,9 @@
 .externalNativeBuild
 .cxx
 local.properties
+gradle-daemon-jvm.properties
+.gradle
+/.idea/
+/app/release/
+release/
+/.kotlin
