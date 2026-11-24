@@ -14,7 +14,7 @@ import com.example.launcherai.icons.IconShapeMasker
 
 class AppsAdapter(
     private var apps: List<AppInfo>,
-    private val onAppClick: (AppInfo) -> Unit,
+    private val onAppClick: (AppInfo, View) -> Unit,
     private val onAppLongClick: ((View, AppInfo, Float, Float) -> Boolean)? = null,
     private var displayMode: DisplayMode = DisplayMode.GRID,
     private val isFolder: Boolean = false
@@ -194,7 +194,7 @@ class AppsAdapter(
             }
 
             itemView.setOnClickListener {
-                onAppClick(app)
+                onAppClick(app, ivIcon)
             }
 
             itemView.setOnLongClickListener { v ->
