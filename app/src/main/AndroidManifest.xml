@@ -90,6 +90,14 @@
             android:parentActivityName=".ui.LauncherSettingsActivity"
             android:theme="@style/Theme.NovaLight" />
 
+        <!-- Look & Feel Settings Activity -->
+        <activity
+            android:name=".ui.LookFeelSettingsActivity"
+            android:exported="true"
+            android:label="Look &amp; feel"
+            android:parentActivityName=".ui.LauncherSettingsActivity"
+            android:theme="@style/Theme.NovaLight" />
+
         <!-- Reverse Engineered Endpoints & Telemetry Inspector -->
         <activity
             android:name=".EndpointsActivity"

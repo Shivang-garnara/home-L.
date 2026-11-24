@@ -245,7 +245,7 @@ class LauncherSettingsActivity : AppCompatActivity() {
 
         // Row 7: Look & feel
         binding.rowLookFeel.setOnClickListener {
-            showLookFeelDialog()
+            startActivity(Intent(this, LookFeelSettingsActivity::class.java))
         }
 
         // Row 8: Gestures & inputs
@@ -310,7 +310,11 @@ class LauncherSettingsActivity : AppCompatActivity() {
 
         val shape = prefs.getString("key_icon_shape", "Round") ?: "Round"
         val sizePercent = prefs.getInt("key_icon_size_percent", 125)
-        binding.tvLookFeelSubtitle.text = "Shape: $shape, Size: $sizePercent%, and icon options"
+        val packPkg = prefs.getString("key_selected_icon_pack", "") ?: ""
+        val packLabel = if (packPkg.isEmpty()) "System" else {
+            IconPackManager.getInstalledIconPacks(this).firstOrNull { it.packageName == packPkg }?.label ?: "Custom"
+        }
+        binding.tvLookFeelSubtitle.text = "$packLabel • $shape • $sizePercent%"
 
         val drawerStyle = prefs.getString("key_app_drawer_style", "Vertical") ?: "Vertical"
         val drawerRows = prefs.getInt("key_drawer_grid_rows", 6)
@@ -536,59 +540,6 @@ class LauncherSettingsActivity : AppCompatActivity() {
                         startActivity(Intent(this, SetupActivity::class.java).apply {
                             putExtra("setup_step", 2)
                         })
-                    }
-                }
-            }
-            .setNegativeButton("Close", null)
-            .show()
-    }
-
-    private fun showLookFeelDialog() {
-        val iconPacks = IconPackManager.getInstalledIconPacks(this)
-        val options = arrayOf(
-            "Icon Style & Shapes (Round, Squircle, Flower, Colors)",
-            "More Icon Shapes Dialog",
-            "System Default Icons"
-        ) + iconPacks.map { "Icon Pack: ${it.label}" }.toTypedArray() + arrayOf("Re-run Setup Wizard")
-
-        AlertDialog.Builder(this)
-            .setTitle("Look & feel - Icon Style")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> {
-                        startActivity(Intent(this, SetupActivity::class.java).apply {
-                            putExtra("setup_step", 4)
-                        })
-                    }
-                    1 -> {
-                        val dialog = MoreShapesDialogFragment.newInstance()
-                        dialog.onShapeSelectedListener = { selectedShape ->
-                            getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                                .edit().putString("key_icon_shape", selectedShape).apply()
-                            updateSummaryTexts()
-                            Toast.makeText(this, "Icon shape set to $selectedShape", Toast.LENGTH_SHORT).show()
-                        }
-                        dialog.show(supportFragmentManager, MoreShapesDialogFragment.TAG)
-                    }
-                    2 -> {
-                        getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                            .edit().putString("key_selected_icon_pack", "").apply()
-                        updateSummaryTexts()
-                    }
-                    options.size - 1 -> {
-                        SetupFlowUtils.resetSetup(this)
-                        startActivity(Intent(this, SetupActivity::class.java).apply {
-                            putExtra("setup_step", 1)
-                        })
-                    }
-                    else -> {
-                        val packIndex = which - 3
-                        if (packIndex in iconPacks.indices) {
-                            val selectedPkg = iconPacks[packIndex].packageName
-                            getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                                .edit().putString("key_selected_icon_pack", selectedPkg).apply()
-                            updateSummaryTexts()
-                        }
                     }
                 }
             }

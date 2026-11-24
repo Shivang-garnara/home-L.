@@ -248,6 +248,7 @@ class MainActivity : AppCompatActivity() {
         applyDrawerPlacementAndSettings()
         applyScrollAndTransitionSettings()
         applyAdvancedSettings()
+        applyLookFeelSettings()
         if (::dockHotseat.isInitialized) {
             val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
             val dockEnabled = prefs.getBoolean("key_dock_enabled", true)
@@ -619,6 +620,58 @@ class MainActivity : AppCompatActivity() {
         val showShadow = prefs.getBoolean("key_desktop_shadow", false)
         findViewById<View>(R.id.viewTopShadow)?.visibility = if (showShadow) View.VISIBLE else View.GONE
         findViewById<View>(R.id.viewBottomShadow)?.visibility = if (showShadow) View.VISIBLE else View.GONE
+    }
+
+    private fun applyLookFeelSettings() {
+        val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+
+        // 1. Screen Orientation
+        val rotationEnabled = prefs.getBoolean("key_screen_rotation_enabled", false)
+        val targetOrientation = if (rotationEnabled) {
+            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        } else {
+            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
+        if (requestedOrientation != targetOrientation) {
+            requestedOrientation = targetOrientation
+        }
+
+        // 2. Notification bar & System bars
+        val showNotifBar = prefs.getBoolean("key_show_notification_bar", true)
+        val transNotifBar = prefs.getBoolean("key_transparent_notification_bar", true)
+        val transNavBar = prefs.getBoolean("key_transparent_navigation_bar", true)
+        val darkStatusMode = prefs.getString("key_dark_status_icons", "AUTO") ?: "AUTO"
+
+        val isLightTheme = when (darkStatusMode.uppercase()) {
+            "DARK" -> true
+            "LIGHT" -> false
+            else -> {
+                val nightMode = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+                !nightMode
+            }
+        }
+
+        val window = window ?: return
+        val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+
+        controller.isAppearanceLightStatusBars = isLightTheme
+        controller.isAppearanceLightNavigationBars = isLightTheme
+
+        if (!showNotifBar) {
+            controller.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+            controller.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        } else {
+            controller.show(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+        }
+
+        if (transNotifBar) {
+            @Suppress("DEPRECATION")
+            window.statusBarColor = Color.TRANSPARENT
+        }
+        if (transNavBar) {
+            @Suppress("DEPRECATION")
+            window.navigationBarColor = Color.TRANSPARENT
+        }
     }
 
     private fun updateWallpaperOffset(pageIndex: Int) {
