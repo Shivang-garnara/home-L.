@@ -267,11 +267,17 @@ class LookFeelSettingsActivity : AppCompatActivity() {
         binding.swScreenRotation.isChecked = isRotationEnabled
         binding.swScreenRotation.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean(KEY_SCREEN_ROTATION_ENABLED, isChecked).apply()
+            if (isChecked) {
+                val currentMode = prefs.getString(KEY_SCREEN_ORIENTATION_MODE, "Auto rotate (Sensor)")
+                if (currentMode.equals("Force portrait", ignoreCase = true)) {
+                    prefs.edit().putString(KEY_SCREEN_ORIENTATION_MODE, "Auto rotate (Sensor)").apply()
+                }
+            }
             updateSubtitles()
         }
 
         binding.rowScreenRotation.setOnClickListener {
-            val modes = arrayOf("Auto rotate (Sensor)", "Force portrait", "Force landscape")
+            val modes = arrayOf("Auto rotate (Sensor)", "Force portrait", "Force landscape", "No sensor")
             val currentMode = prefs.getString(KEY_SCREEN_ORIENTATION_MODE, "Auto rotate (Sensor)") ?: "Auto rotate (Sensor)"
             val checkedIdx = modes.indexOfFirst { it.equals(currentMode, ignoreCase = true) }.coerceAtLeast(0)
 
@@ -315,6 +321,7 @@ class LookFeelSettingsActivity : AppCompatActivity() {
         binding.swDisableAnimations.isChecked = prefs.getBoolean(KEY_DISABLE_ANIMATIONS, false)
         binding.swDisableAnimations.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean(KEY_DISABLE_ANIMATIONS, isChecked).apply()
+            updateSubtitles()
         }
     }
 
@@ -423,7 +430,10 @@ class LookFeelSettingsActivity : AppCompatActivity() {
 
         // App Animation Subtitle
         val anim = prefs.getString(KEY_APP_ANIMATION, "System default") ?: "System default"
-        binding.tvAppAnimationSubtitle.text = anim
+        val isAnimDisabled = prefs.getBoolean(KEY_DISABLE_ANIMATIONS, false)
+        binding.rowAppAnimation.alpha = if (isAnimDisabled) 0.5f else 1.0f
+        binding.rowAppAnimation.isEnabled = !isAnimDisabled
+        binding.tvAppAnimationSubtitle.text = if (isAnimDisabled) "$anim (Animations disabled)" else anim
 
         // Popup Menu Subtitle
         val popupItems = prefs.getStringSet(KEY_POPUP_ITEMS, DEFAULT_POPUP_ITEMS) ?: DEFAULT_POPUP_ITEMS

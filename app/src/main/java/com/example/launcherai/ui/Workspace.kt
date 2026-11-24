@@ -122,7 +122,7 @@ class Workspace @JvmOverloads constructor(
         pageDisplayItemsMap: Map<Int, List<WorkspaceItemDisplay>>,
         gridConfig: WorkspaceGridConfig = WorkspaceGridConfig(),
         appWidgetHost: AppWidgetHost? = null,
-        onAppClick: (AppInfo) -> Unit,
+        onAppClick: (AppInfo, View?) -> Unit,
         onFolderClick: ((WorkspaceFolderResolvedItem) -> Unit)? = null,
         onAppLongClick: ((View, WorkspaceResolvedItem, Float, Float) -> Boolean)? = null,
         onFolderLongClick: ((View, WorkspaceFolderResolvedItem, Float, Float) -> Boolean)? = null,

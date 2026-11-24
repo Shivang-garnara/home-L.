@@ -22,7 +22,7 @@ class WorkspacePagerAdapter(
     private var pageDisplayItemsMap: Map<Int, List<WorkspaceItemDisplay>> = emptyMap(),
     private var gridConfig: WorkspaceGridConfig = WorkspaceGridConfig(),
     var appWidgetHost: AppWidgetHost? = null,
-    private val onAppClick: (AppInfo) -> Unit,
+    private val onAppClick: (AppInfo, View?) -> Unit,
     private val onFolderClick: ((WorkspaceFolderResolvedItem) -> Unit)? = null,
     private val onAppLongClick: ((View, WorkspaceResolvedItem, Float, Float) -> Boolean)? = null,
     private val onFolderLongClick: ((View, WorkspaceFolderResolvedItem, Float, Float) -> Boolean)? = null,
@@ -191,7 +191,7 @@ class WorkspacePagerAdapter(
                     }
 
                     iconView.setOnClickListener {
-                        onAppClick(appInfo)
+                        onAppClick(appInfo, iconView)
                     }
 
                     iconView.setOnLongClickListener { v ->
@@ -352,7 +352,7 @@ class WorkspacePagerAdapter(
                                         // Swipe up launches first app in folder
                                         val firstApp = folderResolved.children.firstOrNull()?.appInfo
                                         if (firstApp != null) {
-                                            onAppClick(firstApp)
+                                            onAppClick(firstApp, folderView)
                                         } else {
                                             onFolderClick?.invoke(folderResolved)
                                         }
@@ -381,7 +381,7 @@ class WorkspacePagerAdapter(
                             // Signature Nova Mode: Tap launches first app!
                             val firstApp = folderResolved.children.firstOrNull()?.appInfo
                             if (firstApp != null) {
-                                onAppClick(firstApp)
+                                onAppClick(firstApp, folderView)
                             } else {
                                 onFolderClick?.invoke(folderResolved)
                             }

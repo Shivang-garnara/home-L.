@@ -374,8 +374,8 @@ class MainActivity : AppCompatActivity() {
 
         dockHotseat = findViewById(R.id.dockHotseat)
         dockHotseat.setListeners(
-            onAppClick = { appInfo ->
-                AppManager.launchApp(this@MainActivity, appInfo)
+            onAppClick = { appInfo, view ->
+                AppManager.launchApp(this@MainActivity, appInfo, view)
             },
             onFolderClick = { folderResolved ->
                 openFolderOverlay(folderResolved)
@@ -451,8 +451,8 @@ class MainActivity : AppCompatActivity() {
         rvDrawerApps.layoutManager = GridLayoutManager(this, 5)
         drawerAdapter = AppsAdapter(
             apps = emptyList(),
-            onAppClick = { app ->
-                AppManager.launchApp(this, app)
+            onAppClick = { app, view ->
+                AppManager.launchApp(this, app, view)
                 val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
                 val autoClose = prefs.getBoolean("key_drawer_autoclose", true)
                 if (autoClose) {
@@ -492,8 +492,8 @@ class MainActivity : AppCompatActivity() {
         rvFrequentApps.layoutManager = GridLayoutManager(this, initialDrawerCols)
         frequentAppsAdapter = AppsAdapter(
             apps = emptyList(),
-            onAppClick = { app ->
-                AppManager.launchApp(this, app)
+            onAppClick = { app, view ->
+                AppManager.launchApp(this, app, view)
                 val p = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
                 val autoClose = p.getBoolean("key_drawer_autoclose", true)
                 if (autoClose) {
@@ -631,10 +631,15 @@ class MainActivity : AppCompatActivity() {
 
         // 1. Screen Orientation
         val rotationEnabled = prefs.getBoolean("key_screen_rotation_enabled", false)
-        val targetOrientation = if (rotationEnabled) {
-            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        } else {
+        val orientationMode = prefs.getString("key_screen_orientation_mode", "Auto rotate (Sensor)") ?: "Auto rotate (Sensor)"
+        val targetOrientation = if (!rotationEnabled || orientationMode.equals("Force portrait", true)) {
             android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        } else if (orientationMode.equals("Force landscape", true)) {
+            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        } else if (orientationMode.equals("No sensor", true)) {
+            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_NOSENSOR
+        } else {
+            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
         if (requestedOrientation != targetOrientation) {
             requestedOrientation = targetOrientation
@@ -793,8 +798,8 @@ class MainActivity : AppCompatActivity() {
                             pageDisplayItemsMap = displayItemsMap,
                             gridConfig = gridConfig,
                             appWidgetHost = appWidgetHost,
-                            onAppClick = { appInfo ->
-                                AppManager.launchApp(this@MainActivity, appInfo)
+                            onAppClick = { appInfo, view ->
+                                AppManager.launchApp(this@MainActivity, appInfo, view)
                             },
                             onFolderClick = { folderResolved ->
                                 openFolderOverlay(folderResolved)
@@ -1027,8 +1032,8 @@ class MainActivity : AppCompatActivity() {
         val apps = folderResolved.children.map { it.appInfo }
         folderAppsAdapter = AppsAdapter(
             apps = apps,
-            onAppClick = { appInfo ->
-                AppManager.launchApp(this, appInfo)
+            onAppClick = { appInfo, view ->
+                AppManager.launchApp(this, appInfo, view)
                 val autoClose = prefs.getBoolean(FolderSettingsActivity.KEY_FOLDER_AUTO_CLOSE, true)
                 if (autoClose) {
                     closeFolderOverlay()

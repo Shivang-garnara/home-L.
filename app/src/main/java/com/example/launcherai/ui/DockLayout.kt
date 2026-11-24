@@ -37,7 +37,7 @@ class DockLayout @JvmOverloads constructor(
 
     private var dockDisplayItems: List<WorkspaceItemDisplay> = emptyList()
 
-    private var onAppClickListener: ((AppInfo) -> Unit)? = null
+    private var onAppClickListener: ((AppInfo, View?) -> Unit)? = null
     private var onFolderClickListener: ((WorkspaceFolderResolvedItem) -> Unit)? = null
     private var onAppDrawerClickListener: (() -> Unit)? = null
     private var onAppLongClickListener: ((View, WorkspaceResolvedItem, Float, Float) -> Boolean)? = null
@@ -48,7 +48,7 @@ class DockLayout @JvmOverloads constructor(
     }
 
     fun setListeners(
-        onAppClick: (AppInfo) -> Unit,
+        onAppClick: (AppInfo, View?) -> Unit,
         onFolderClick: (WorkspaceFolderResolvedItem) -> Unit,
         onAppDrawerClick: () -> Unit,
         onAppLongClick: (View, WorkspaceResolvedItem, Float, Float) -> Boolean,
@@ -236,7 +236,7 @@ class DockLayout @JvmOverloads constructor(
                             }
 
                             iconView.setOnClickListener {
-                                onAppClickListener?.invoke(appInfo)
+                                onAppClickListener?.invoke(appInfo, iconView)
                             }
 
                             iconView.setOnLongClickListener { v ->
@@ -365,7 +365,7 @@ class DockLayout @JvmOverloads constructor(
                                                 // Swipe up launches first app in folder
                                                 val firstApp = folderResolved.children.firstOrNull()?.appInfo
                                                 if (firstApp != null) {
-                                                    onAppClickListener?.invoke(firstApp)
+                                                    onAppClickListener?.invoke(firstApp, folderView)
                                                 } else {
                                                     onFolderClickListener?.invoke(folderResolved)
                                                 }
@@ -394,7 +394,7 @@ class DockLayout @JvmOverloads constructor(
                                     // Signature Nova Mode: Tap launches first app!
                                     val firstApp = folderResolved.children.firstOrNull()?.appInfo
                                     if (firstApp != null) {
-                                        onAppClickListener?.invoke(firstApp)
+                                        onAppClickListener?.invoke(firstApp, folderView)
                                     } else {
                                         onFolderClickListener?.invoke(folderResolved)
                                     }
