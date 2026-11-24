@@ -137,6 +137,9 @@ class AppsAdapter(
                 ivIcon.setImageResource(R.mipmap.ic_launcher)
             }
 
+            val iconShadow = prefs.getBoolean("key_icon_shadow", true)
+            ivIcon.elevation = if (iconShadow) 4f * itemView.context.resources.displayMetrics.density else 0f
+
             ivIcon.layoutParams = ivIcon.layoutParams.apply {
                 width = sizePx
                 height = sizePx

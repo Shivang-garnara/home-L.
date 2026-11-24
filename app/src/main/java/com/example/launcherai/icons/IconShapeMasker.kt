@@ -26,7 +26,8 @@ object IconShapeMasker {
         originalDrawable: Drawable?,
         shapeName: String,
         scalePercent: Int,
-        targetSizePx: Int? = null
+        targetSizePx: Int? = null,
+        reshapeLegacy: Boolean? = null
     ): Drawable? {
         if (originalDrawable == null) return null
 
@@ -36,6 +37,9 @@ object IconShapeMasker {
             context.resources.displayMetrics.heightPixels / 5,
             scalePercent
         )
+
+        val prefs = context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        val shouldReshape = reshapeLegacy ?: prefs.getBoolean("key_reshape_legacy_icons", true)
 
         val bitmap = Bitmap.createBitmap(finalSize, finalSize, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -57,8 +61,16 @@ object IconShapeMasker {
                 fg.draw(canvas)
             }
         } else {
-            originalDrawable.setBounds(0, 0, finalSize, finalSize)
-            originalDrawable.draw(canvas)
+            if (shouldReshape) {
+                // Nova Launcher legacy reshaping: draw clean white background fill, then center scaled legacy icon at 70%
+                canvas.drawColor(android.graphics.Color.WHITE)
+                val inset = (finalSize * 0.15f).toInt()
+                originalDrawable.setBounds(inset, inset, finalSize - inset, finalSize - inset)
+                originalDrawable.draw(canvas)
+            } else {
+                originalDrawable.setBounds(0, 0, finalSize, finalSize)
+                originalDrawable.draw(canvas)
+            }
         }
         canvas.restore()
 

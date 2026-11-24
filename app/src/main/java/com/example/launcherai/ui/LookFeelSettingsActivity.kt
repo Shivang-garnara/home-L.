@@ -101,6 +101,9 @@ class LookFeelSettingsActivity : AppCompatActivity() {
             showIconShapeDialog()
         }
 
+        // Horizontal Shape Strip
+        setupShapeSelectorStrip()
+
         // Reshape Legacy Icons Toggle
         binding.swReshapeLegacy.isChecked = prefs.getBoolean(KEY_RESHAPE_LEGACY_ICONS, true)
         binding.swReshapeLegacy.setOnCheckedChangeListener { _, isChecked ->
@@ -179,6 +182,57 @@ class LookFeelSettingsActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun setupShapeSelectorStrip() {
+        val density = resources.displayMetrics.density
+        val thumbSizePx = (38 * density).toInt()
+        val thumbColor = ContextCompat.getColor(this, R.color.nova_orange)
+
+        // Generate thumbnails for shape items
+        binding.ivShapeThumbRound.setImageDrawable(IconShapeMasker.createShapeThumbnail(this, "Round", thumbSizePx, thumbColor))
+        binding.ivShapeThumbSquircle.setImageDrawable(IconShapeMasker.createShapeThumbnail(this, "Squircle", thumbSizePx, thumbColor))
+        binding.ivShapeThumbRoundedSquare.setImageDrawable(IconShapeMasker.createShapeThumbnail(this, "Rounded square", thumbSizePx, thumbColor))
+        binding.ivShapeThumbFlower.setImageDrawable(IconShapeMasker.createShapeThumbnail(this, "Flower", thumbSizePx, thumbColor))
+        binding.ivShapeThumbTeardrop.setImageDrawable(IconShapeMasker.createShapeThumbnail(this, "Teardrop", thumbSizePx, thumbColor))
+
+        fun selectShape(shapeName: String) {
+            prefs.edit().putString(KEY_ICON_SHAPE, shapeName).apply()
+            updateSubtitles()
+            updateShapeStripSelection(shapeName)
+            updateLivePreview()
+        }
+
+        binding.btnShapeRound.setOnClickListener { selectShape("Round") }
+        binding.btnShapeSquircle.setOnClickListener { selectShape("Squircle") }
+        binding.btnShapeRoundedSquare.setOnClickListener { selectShape("Rounded square") }
+        binding.btnShapeFlower.setOnClickListener { selectShape("Flower") }
+        binding.btnShapeTeardrop.setOnClickListener { selectShape("Teardrop") }
+        binding.btnShapeMore.setOnClickListener { showMoreShapesDialog() }
+
+        val activeShape = prefs.getString(KEY_ICON_SHAPE, DEFAULT_SHAPE) ?: DEFAULT_SHAPE
+        updateShapeStripSelection(activeShape)
+    }
+
+    private fun updateShapeStripSelection(selectedShape: String) {
+        val s = selectedShape.lowercase()
+        binding.btnShapeRound.isSelected = s == "round"
+        binding.btnShapeSquircle.isSelected = s == "squircle"
+        binding.btnShapeRoundedSquare.isSelected = s == "rounded square"
+        binding.btnShapeFlower.isSelected = s == "flower"
+        binding.btnShapeTeardrop.isSelected = s == "teardrop"
+        binding.btnShapeMore.isSelected = s !in listOf("round", "squircle", "rounded square", "flower", "teardrop")
+    }
+
+    private fun showMoreShapesDialog() {
+        val moreDialog = MoreShapesDialogFragment.newInstance()
+        moreDialog.onShapeSelectedListener = { chosen ->
+            prefs.edit().putString(KEY_ICON_SHAPE, chosen).apply()
+            updateSubtitles()
+            updateShapeStripSelection(chosen)
+            updateLivePreview()
+        }
+        moreDialog.show(supportFragmentManager, MoreShapesDialogFragment.TAG)
+    }
+
     private fun showIconShapeDialog() {
         val shapes = arrayOf("Round", "Squircle", "Rounded square", "Flower", "Teardrop", "More shapes...")
         val currentShape = prefs.getString(KEY_ICON_SHAPE, DEFAULT_SHAPE) ?: DEFAULT_SHAPE
@@ -190,17 +244,12 @@ class LookFeelSettingsActivity : AppCompatActivity() {
             .setSingleChoiceItems(shapes, checkedIdx) { dialog, which ->
                 if (which == shapes.size - 1) {
                     dialog.dismiss()
-                    val moreDialog = MoreShapesDialogFragment.newInstance()
-                    moreDialog.onShapeSelectedListener = { chosen ->
-                        prefs.edit().putString(KEY_ICON_SHAPE, chosen).apply()
-                        updateSubtitles()
-                        updateLivePreview()
-                    }
-                    moreDialog.show(supportFragmentManager, MoreShapesDialogFragment.TAG)
+                    showMoreShapesDialog()
                 } else {
                     val chosen = shapes[which]
                     prefs.edit().putString(KEY_ICON_SHAPE, chosen).apply()
                     updateSubtitles()
+                    updateShapeStripSelection(chosen)
                     updateLivePreview()
                     dialog.dismiss()
                 }
@@ -390,6 +439,9 @@ class LookFeelSettingsActivity : AppCompatActivity() {
         val currentSize = prefs.getInt(KEY_ICON_SIZE_PERCENT, DEFAULT_ICON_SIZE_PERCENT)
         val selectedPack = prefs.getString(KEY_SELECTED_ICON_PACK, "") ?: ""
         val hasShadow = prefs.getBoolean(KEY_ICON_SHADOW, true)
+        val reshapeLegacy = prefs.getBoolean(KEY_RESHAPE_LEGACY_ICONS, true)
+
+        updateShapeStripSelection(currentShape)
 
         val density = resources.displayMetrics.density
         val targetSizePx = (48 * density * (currentSize / 100f)).toInt().coerceIn((36 * density).toInt(), (64 * density).toInt())
@@ -428,13 +480,14 @@ class LookFeelSettingsActivity : AppCompatActivity() {
                 }
             }
 
-            // Apply shape mask & scale
+            // Apply shape mask, scale & legacy reshape
             val masked = IconShapeMasker.createMaskedIcon(
                 context = this,
                 originalDrawable = rawDrawable,
                 shapeName = currentShape,
                 scalePercent = currentSize,
-                targetSizePx = targetSizePx
+                targetSizePx = targetSizePx,
+                reshapeLegacy = reshapeLegacy
             )
 
             iv.layoutParams.width = targetSizePx

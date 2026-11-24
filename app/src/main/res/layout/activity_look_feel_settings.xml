@@ -248,6 +248,194 @@
                     android:textSize="13sp" />
             </LinearLayout>
 
+            <!-- Visual Shape Selector Strip matching Nova Launcher -->
+            <HorizontalScrollView
+                android:id="@+id/scrollShapes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="8dp">
+
+                <LinearLayout
+                    android:id="@+id/layoutShapeGrid"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <!-- Shape 1: Round -->
+                    <LinearLayout
+                        android:id="@+id/btnShapeRound"
+                        android:layout_width="74dp"
+                        android:layout_height="84dp"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:background="@drawable/bg_shape_selection"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <ImageView
+                            android:id="@+id/ivShapeThumbRound"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:contentDescription="Round" />
+
+                        <TextView
+                            android:id="@+id/tvShapeLabelRound"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Round"
+                            android:textColor="@color/nova_text_brown_primary"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+
+                    <!-- Shape 2: Squircle -->
+                    <LinearLayout
+                        android:id="@+id/btnShapeSquircle"
+                        android:layout_width="74dp"
+                        android:layout_height="84dp"
+                        android:layout_marginStart="8dp"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:background="@drawable/bg_shape_selection"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <ImageView
+                            android:id="@+id/ivShapeThumbSquircle"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:contentDescription="Squircle" />
+
+                        <TextView
+                            android:id="@+id/tvShapeLabelSquircle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Squircle"
+                            android:textColor="@color/nova_text_brown_primary"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+
+                    <!-- Shape 3: Rounded square -->
+                    <LinearLayout
+                        android:id="@+id/btnShapeRoundedSquare"
+                        android:layout_width="74dp"
+                        android:layout_height="84dp"
+                        android:layout_marginStart="8dp"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:background="@drawable/bg_shape_selection"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <ImageView
+                            android:id="@+id/ivShapeThumbRoundedSquare"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:contentDescription="Rounded square" />
+
+                        <TextView
+                            android:id="@+id/tvShapeLabelRoundedSquare"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Rounded sq"
+                            android:textColor="@color/nova_text_brown_primary"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+
+                    <!-- Shape 4: Flower -->
+                    <LinearLayout
+                        android:id="@+id/btnShapeFlower"
+                        android:layout_width="74dp"
+                        android:layout_height="84dp"
+                        android:layout_marginStart="8dp"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:background="@drawable/bg_shape_selection"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <ImageView
+                            android:id="@+id/ivShapeThumbFlower"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:contentDescription="Flower" />
+
+                        <TextView
+                            android:id="@+id/tvShapeLabelFlower"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Flower"
+                            android:textColor="@color/nova_text_brown_primary"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+
+                    <!-- Shape 5: Teardrop -->
+                    <LinearLayout
+                        android:id="@+id/btnShapeTeardrop"
+                        android:layout_width="74dp"
+                        android:layout_height="84dp"
+                        android:layout_marginStart="8dp"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:background="@drawable/bg_shape_selection"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <ImageView
+                            android:id="@+id/ivShapeThumbTeardrop"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:contentDescription="Teardrop" />
+
+                        <TextView
+                            android:id="@+id/tvShapeLabelTeardrop"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Teardrop"
+                            android:textColor="@color/nova_text_brown_primary"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+
+                    <!-- Shape 6: More... -->
+                    <LinearLayout
+                        android:id="@+id/btnShapeMore"
+                        android:layout_width="74dp"
+                        android:layout_height="84dp"
+                        android:layout_marginStart="8dp"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:background="@drawable/bg_shape_selection"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <ImageView
+                            android:id="@+id/ivShapeThumbMore"
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:src="@drawable/ic_settings"
+                            android:contentDescription="More shapes"
+                            app:tint="@color/nova_orange" />
+
+                        <TextView
+                            android:id="@+id/tvShapeLabelMore"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="More..."
+                            android:textColor="@color/nova_orange"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                </LinearLayout>
+            </HorizontalScrollView>
+
             <View
                 android:layout_width="match_parent"
                 android:layout_height="0.5dp"

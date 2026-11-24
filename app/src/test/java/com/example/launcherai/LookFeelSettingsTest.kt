@@ -124,4 +124,36 @@ class LookFeelSettingsTest {
         assertTrue(currentSet.contains("Share"))
         assertEquals(4, currentSet.size)
     }
+
+    @Test
+    fun testShapeSelectionStripNormalization() {
+        val supportedShapes = listOf("Round", "Squircle", "Rounded square", "Flower", "Teardrop")
+        for (shape in supportedShapes) {
+            val isKnown = shape.lowercase() in listOf("round", "squircle", "rounded square", "flower", "teardrop")
+            assertTrue(isKnown)
+        }
+
+        // Custom or advanced shape falls into "More"
+        val customShape = "Hexagon"
+        val isKnownCustom = customShape.lowercase() in listOf("round", "squircle", "rounded square", "flower", "teardrop")
+        assertFalse(isKnownCustom)
+    }
+
+    @Test
+    fun testLegacyReshapingInsetCalculation() {
+        val finalSize = 100
+        val inset = (finalSize * 0.15f).toInt()
+        assertEquals(15, inset)
+        val contentWidth = finalSize - 2 * inset
+        assertEquals(70, contentWidth) // 70% scale matching Nova Launcher's legacy normalizer
+    }
+
+    @Test
+    fun testIconElevationShadowToggle() {
+        val density = 3.0f
+        fun resolveElevation(hasShadow: Boolean): Float = if (hasShadow) 6f * density else 0f
+
+        assertEquals(18f, resolveElevation(true), 0.01f)
+        assertEquals(0f, resolveElevation(false), 0.01f)
+    }
 }

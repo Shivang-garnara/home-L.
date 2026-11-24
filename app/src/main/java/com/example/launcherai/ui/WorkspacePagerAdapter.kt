@@ -131,6 +131,9 @@ class WorkspacePagerAdapter(
 
                     ivAppIcon.setImageDrawable(maskedIcon ?: appInfo.icon)
 
+                    val iconShadow = prefs.getBoolean("key_icon_shadow", true)
+                    ivAppIcon.elevation = if (iconShadow) 4f * cellLayout.context.resources.displayMetrics.density else 0f
+
                     ivAppIcon.layoutParams = ivAppIcon.layoutParams.apply {
                         width = sizePx
                         height = sizePx

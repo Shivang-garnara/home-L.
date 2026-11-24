@@ -206,6 +206,9 @@ class DockLayout @JvmOverloads constructor(
 
                             ivAppIcon.setImageDrawable(maskedIcon ?: appInfo.icon)
 
+                            val iconShadow = prefs.getBoolean("key_icon_shadow", true)
+                            ivAppIcon.elevation = if (iconShadow) 4f * context.resources.displayMetrics.density else 0f
+
                             ivAppIcon.layoutParams = ivAppIcon.layoutParams.apply {
                                 width = scaledDockSize
                                 height = scaledDockSize
