@@ -5,6 +5,7 @@ import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -12,6 +13,7 @@ import android.widget.TextView
 import com.example.launcherai.AppInfo
 import com.example.launcherai.R
 import com.example.launcherai.data.db.WorkspaceItemEntity
+import kotlin.math.abs
 
 /**
  * Data-driven, responsive Dock (Hotseat) layout view supporting dynamic capacities (3, 5, 7 slots),
@@ -307,19 +309,95 @@ class DockLayout @JvmOverloads constructor(
 
                             var lastTouchX = 0f
                             var lastTouchY = 0f
+                            var startTouchX = 0f
+                            var startTouchY = 0f
+                            var isSwipingUp = false
+                            val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
-                            folderView.setOnTouchListener { _, event ->
-                                if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-                                    val loc = IntArray(2)
-                                    folderView.getLocationOnScreen(loc)
-                                    lastTouchX = loc[0] + event.x
-                                    lastTouchY = loc[1] + event.y
+                            folderView.setOnTouchListener { v, event ->
+                                when (event.actionMasked) {
+                                    MotionEvent.ACTION_DOWN -> {
+                                        val loc = IntArray(2)
+                                        v.getLocationOnScreen(loc)
+                                        lastTouchX = loc[0] + event.x
+                                        lastTouchY = loc[1] + event.y
+                                        startTouchX = event.x
+                                        startTouchY = event.y
+                                        isSwipingUp = false
+                                        false
+                                    }
+                                    MotionEvent.ACTION_MOVE -> {
+                                        val diffY = startTouchY - event.y
+                                        val diffX = abs(startTouchX - event.x)
+                                        if (diffY > touchSlop * 1.8f && diffY > diffX * 1.3f) {
+                                            isSwipingUp = true
+                                            v.parent?.requestDisallowInterceptTouchEvent(true)
+                                        }
+                                        false
+                                    }
+                                    MotionEvent.ACTION_UP -> {
+                                        if (isSwipingUp) {
+                                            isSwipingUp = false
+                                            v.cancelLongPress()
+                                            // Tactile bounce animation matching Nova Launcher p1
+                                            v.animate()
+                                                .translationY(-24f)
+                                                .setDuration(120)
+                                                .withEndAction {
+                                                    v.animate().translationY(0f).setDuration(100).start()
+                                                }
+                                                .start()
+
+                                            val prefs = v.context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                                            val tapAction = prefs.getString(
+                                                FolderSettingsActivity.KEY_FOLDER_TAP_ACTION,
+                                                FolderSettingsActivity.TAP_ACTION_OPEN_FOLDER
+                                            )
+
+                                            if (tapAction == FolderSettingsActivity.TAP_ACTION_FIRST_APP) {
+                                                // Swipe up opens folder overlay
+                                                onFolderClickListener?.invoke(folderResolved)
+                                            } else {
+                                                // Swipe up launches first app in folder
+                                                val firstApp = folderResolved.children.firstOrNull()?.appInfo
+                                                if (firstApp != null) {
+                                                    onAppClickListener?.invoke(firstApp)
+                                                } else {
+                                                    onFolderClickListener?.invoke(folderResolved)
+                                                }
+                                            }
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    }
+                                    MotionEvent.ACTION_CANCEL -> {
+                                        isSwipingUp = false
+                                        false
+                                    }
+                                    else -> false
                                 }
-                                false
                             }
 
-                            folderView.setOnClickListener {
-                                onFolderClickListener?.invoke(folderResolved)
+                            folderView.setOnClickListener { v ->
+                                val prefs = v.context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                                val tapAction = prefs.getString(
+                                    FolderSettingsActivity.KEY_FOLDER_TAP_ACTION,
+                                    FolderSettingsActivity.TAP_ACTION_OPEN_FOLDER
+                                )
+
+                                if (tapAction == FolderSettingsActivity.TAP_ACTION_FIRST_APP) {
+                                    // Signature Nova Mode: Tap launches first app!
+                                    val firstApp = folderResolved.children.firstOrNull()?.appInfo
+                                    if (firstApp != null) {
+                                        onAppClickListener?.invoke(firstApp)
+                                    } else {
+                                        onFolderClickListener?.invoke(folderResolved)
+                                    }
+                                } else {
+                                    // Default Mode: Tap opens folder overlay
+                                    onFolderClickListener?.invoke(folderResolved)
+                                }
                             }
 
                             folderView.setOnLongClickListener { v ->

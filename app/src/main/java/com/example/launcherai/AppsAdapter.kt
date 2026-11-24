@@ -14,7 +14,8 @@ class AppsAdapter(
     private var apps: List<AppInfo>,
     private val onAppClick: (AppInfo) -> Unit,
     private val onAppLongClick: ((View, AppInfo, Float, Float) -> Boolean)? = null,
-    private var displayMode: DisplayMode = DisplayMode.GRID
+    private var displayMode: DisplayMode = DisplayMode.GRID,
+    private val isFolder: Boolean = false
 ) : RecyclerView.Adapter<AppsAdapter.AppViewHolder>() {
 
     enum class DisplayMode {
@@ -76,15 +77,43 @@ class AppsAdapter(
             tvLabel.text = app.label
             val prefs = itemView.context.getSharedPreferences("workspace_prefs", android.content.Context.MODE_PRIVATE)
             val shape = prefs.getString("key_icon_shape", "Round") ?: "Round"
-            val iconSizePercent = prefs.getInt("key_drawer_icon_size_percent", 100)
-            val cols = prefs.getInt("key_drawer_grid_cols", 5).coerceAtLeast(1)
 
-            val labelVisible = prefs.getBoolean("key_drawer_label_visible", true)
-            val labelSizePercent = prefs.getInt("key_drawer_label_size_percent", 100)
-            val labelFont = prefs.getString("key_drawer_label_font", "Normal") ?: "Normal"
-            val labelColor = prefs.getInt("key_drawer_label_color", 0xFF2C2523.toInt())
-            val labelShadow = prefs.getBoolean("key_drawer_label_shadow", false)
-            val labelSingleLine = prefs.getBoolean("key_drawer_label_single_line", true)
+            val iconSizePercent: Int
+            val labelVisible: Boolean
+            val labelSizePercent: Int
+            val labelFont: String
+            val labelColor: Int
+            val labelShadow: Boolean
+            val labelSingleLine: Boolean
+
+            if (isFolder) {
+                val matchDesktop = prefs.getBoolean("key_folder_match_desktop_size", true)
+                iconSizePercent = if (matchDesktop) {
+                    prefs.getInt("key_desktop_icon_size_percent", 100)
+                } else {
+                    prefs.getInt("key_folder_icon_size_percent", 100)
+                }
+                labelVisible = prefs.getBoolean("key_folder_label_visible", true)
+                labelSizePercent = prefs.getInt("key_folder_label_size_percent", 100)
+                labelFont = prefs.getString("key_folder_label_font", "Normal") ?: "Normal"
+                labelColor = prefs.getInt("key_folder_label_color", 0xFFFFFFFF.toInt())
+                labelShadow = prefs.getBoolean("key_folder_label_shadow", true)
+                labelSingleLine = prefs.getBoolean("key_folder_label_single_line", true)
+            } else {
+                iconSizePercent = prefs.getInt("key_drawer_icon_size_percent", 100)
+                labelVisible = prefs.getBoolean("key_drawer_label_visible", true)
+                labelSizePercent = prefs.getInt("key_drawer_label_size_percent", 100)
+                labelFont = prefs.getString("key_drawer_label_font", "Normal") ?: "Normal"
+                labelColor = prefs.getInt("key_drawer_label_color", 0xFF2C2523.toInt())
+                labelShadow = prefs.getBoolean("key_drawer_label_shadow", false)
+                labelSingleLine = prefs.getBoolean("key_drawer_label_single_line", true)
+            }
+
+            val cols = if (isFolder) {
+                prefs.getInt("key_folder_grid_cols", 4).coerceAtLeast(1)
+            } else {
+                prefs.getInt("key_drawer_grid_cols", 5).coerceAtLeast(1)
+            }
 
             val sizePx = if (displayMode == DisplayMode.LIST) {
                 DeviceIconMetrics.getListIconSizePx(itemView.context, iconSizePercent)

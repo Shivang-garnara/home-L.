@@ -27,6 +27,7 @@ object FolderIconRenderer {
     const val PREVIEW_STACK = "STACK"
     const val PREVIEW_FAN = "FAN"
     const val PREVIEW_LINE = "LINE"
+    const val PREVIEW_FIRST_APP = "FIRST_APP"
 
     const val SHAPE_SYSTEM = "SYSTEM"
     const val SHAPE_ROUND = "Round"
@@ -129,6 +130,7 @@ object FolderIconRenderer {
             PREVIEW_STACK -> drawStackPreview(canvas, children, size)
             PREVIEW_FAN -> drawFanPreview(canvas, children, size)
             PREVIEW_LINE -> drawLinePreview(canvas, children, size)
+            PREVIEW_FIRST_APP -> drawFirstAppPreview(canvas, children, size)
             else -> drawGrid4Preview(canvas, children, size) // Default GRID 2x2
         }
 
@@ -290,5 +292,18 @@ object FolderIconRenderer {
             drawable.bounds = Rect(left, top, left + itemSize, top + itemSize)
             drawable.draw(canvas)
         }
+    }
+
+    /**
+     * FIRST_APP (1 Icon): Single first app icon preview (Nova Launcher signature style).
+     */
+    private fun drawFirstAppPreview(canvas: Canvas, children: List<Drawable>, size: Int) {
+        if (children.isEmpty()) return
+        val itemSize = (size * 0.80f).toInt()
+        val left = (size - itemSize) / 2
+        val top = (size - itemSize) / 2
+        val first = children[0]
+        first.bounds = Rect(left, top, left + itemSize, top + itemSize)
+        first.draw(canvas)
     }
 }

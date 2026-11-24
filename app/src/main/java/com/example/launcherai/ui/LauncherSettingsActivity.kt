@@ -339,7 +339,9 @@ class LauncherSettingsActivity : AppCompatActivity() {
         }
         val folderShape = prefs.getString("key_folder_icon_shape", "SYSTEM") ?: "SYSTEM"
         val folderShapeName = if (folderShape.equals("SYSTEM", ignoreCase = true)) "System default" else folderShape
-        binding.tvFoldersSubtitle.text = "$folderPreviewName • $folderShapeName"
+        val folderWindowStyle = prefs.getString("key_folder_window_style", "WINDOW") ?: "WINDOW"
+        val folderStyleName = if (folderWindowStyle.equals("IMMERSIVE", ignoreCase = true)) "Immersive" else "Window"
+        binding.tvFoldersSubtitle.text = "$folderPreviewName • $folderShapeName • $folderStyleName"
     }
 
     private fun showHomeScreenGridDialog() {

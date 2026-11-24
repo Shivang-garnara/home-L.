@@ -7,13 +7,16 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -27,6 +30,8 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -38,10 +43,11 @@ import com.example.launcherai.data.db.WorkspaceItemEntity
 import com.example.launcherai.dragndrop.DragController
 import com.example.launcherai.gestures.GestureAction
 import com.example.launcherai.gestures.GestureHandler
-import com.example.launcherai.ui.DragLayer
 import com.example.launcherai.ui.DockLayout
-import com.example.launcherai.ui.FastScroller
+import com.example.launcherai.ui.DragLayer
 import com.example.launcherai.ui.FastScrollRailView
+import com.example.launcherai.ui.FastScroller
+import com.example.launcherai.ui.FolderSettingsActivity
 import com.example.launcherai.ui.HiddenAppsDialogFragment
 import com.example.launcherai.ui.LauncherSettingsActivity
 import com.example.launcherai.ui.PageIndicatorView
@@ -87,10 +93,13 @@ class MainActivity : AppCompatActivity() {
     private var ivDrawerSwipeIndicator: ImageView? = null
 
     private lateinit var folderOverlay: FrameLayout
+    private lateinit var folderCard: LinearLayout
     private lateinit var etFolderTitle: EditText
     private lateinit var btnCloseFolder: ImageView
     private lateinit var rvFolderApps: RecyclerView
+    private lateinit var folderPageIndicator: PageIndicatorView
     private lateinit var folderAppsAdapter: AppsAdapter
+    private var folderSnapHelper: PagerSnapHelper? = null
     private var activeFolderId: Long? = null
 
     private lateinit var drawerAdapter: AppsAdapter
@@ -352,9 +361,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         folderOverlay = findViewById(R.id.folderOverlay)
+        folderCard = findViewById(R.id.folderCard)
         etFolderTitle = findViewById(R.id.etFolderTitle)
         btnCloseFolder = findViewById(R.id.btnCloseFolder)
         rvFolderApps = findViewById(R.id.rvFolderApps)
+        folderPageIndicator = findViewById(R.id.folderPageIndicator)
 
         dockHotseat = findViewById(R.id.dockHotseat)
         dockHotseat.setListeners(
@@ -886,15 +897,133 @@ class MainActivity : AppCompatActivity() {
         activeFolderId = folderResolved.entity.id
         etFolderTitle.setText(folderResolved.title)
 
-        rvFolderApps.layoutManager = GridLayoutManager(this, 3)
+        val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        val style = prefs.getString(FolderSettingsActivity.KEY_FOLDER_WINDOW_STYLE, FolderSettingsActivity.WINDOW_STYLE_WINDOW) ?: FolderSettingsActivity.WINDOW_STYLE_WINDOW
+        val bgColor = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_WINDOW_BG_COLOR, 0xFF202534.toInt())
+        val bgAlpha = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_WINDOW_BG_ALPHA, 80)
+        val cornerRadiusDp = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_WINDOW_CORNER_RADIUS, 16)
+        val shadow = prefs.getBoolean(FolderSettingsActivity.KEY_FOLDER_WINDOW_SHADOW, true)
+        val rows = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_GRID_ROWS, 3).coerceIn(2, 6)
+        val cols = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_GRID_COLS, 4).coerceIn(3, 6)
+        val scrollDir = prefs.getString(FolderSettingsActivity.KEY_FOLDER_SCROLL_DIRECTION, FolderSettingsActivity.SCROLL_DIR_VERTICAL) ?: FolderSettingsActivity.SCROLL_DIR_VERTICAL
+
+        val density = resources.displayMetrics.density
+        val alphaInt = ((bgAlpha / 100f) * 255).toInt().coerceIn(0, 255)
+        val cardBgTint = ColorUtils.setAlphaComponent(bgColor, alphaInt)
+
+        if (style == FolderSettingsActivity.WINDOW_STYLE_IMMERSIVE) {
+            // Full-screen blurred/tinted sheet presentation (Nova Immersive mode)
+            val scrimColor = ColorUtils.setAlphaComponent(bgColor, alphaInt)
+            folderOverlay.setBackgroundColor(scrimColor)
+
+            val params = folderCard.layoutParams as FrameLayout.LayoutParams
+            params.width = ViewGroup.LayoutParams.MATCH_PARENT
+            params.height = ViewGroup.LayoutParams.MATCH_PARENT
+            params.gravity = Gravity.NO_GRAVITY
+            params.setMargins(0, 0, 0, 0)
+            folderCard.layoutParams = params
+
+            // In Immersive mode, elevation is 0 and corner radius is 0
+            folderCard.elevation = 0f
+            val cardBg = GradientDrawable().apply {
+                setColor(Color.TRANSPARENT)
+                cornerRadius = 0f
+            }
+            folderCard.background = cardBg
+
+            // Apply system insets for status bar and navigation bar
+            val insets = ViewCompat.getRootWindowInsets(folderOverlay)
+            val statusBarTop = insets?.getInsets(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout())?.top ?: (24 * density).toInt()
+            val navBarBottom = insets?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: (24 * density).toInt()
+            folderCard.setPadding(
+                (24 * density).toInt(),
+                statusBarTop + (16 * density).toInt(),
+                (24 * density).toInt(),
+                navBarBottom + (16 * density).toInt()
+            )
+        } else {
+            // Window mode: Centered floating card with elevation and rounded corners
+            val scrimAlpha = (0.6f * 255).toInt()
+            folderOverlay.setBackgroundColor(Color.argb(scrimAlpha, 0, 0, 0))
+
+            val displayWidth = resources.displayMetrics.widthPixels
+            val maxCardWidth = (displayWidth - (48 * density).toInt()).coerceAtLeast((280 * density).toInt())
+            val targetCardWidth = ((cols * 76 + 40) * density).toInt().coerceIn((280 * density).toInt(), maxCardWidth)
+
+            val params = folderCard.layoutParams as FrameLayout.LayoutParams
+            params.width = targetCardWidth
+            params.height = ViewGroup.LayoutParams.WRAP_CONTENT
+            params.gravity = Gravity.CENTER
+            params.setMargins((24 * density).toInt(), (48 * density).toInt(), (24 * density).toInt(), (48 * density).toInt())
+            folderCard.layoutParams = params
+
+            folderCard.elevation = if (shadow) (5f * density) else 0f
+            val cardBg = GradientDrawable().apply {
+                setColor(cardBgTint)
+                cornerRadius = cornerRadiusDp * density
+            }
+            folderCard.background = cardBg
+            folderCard.setPadding((20 * density).toInt(), (20 * density).toInt(), (20 * density).toInt(), (20 * density).toInt())
+        }
+
+        // Configure Grid Dimensions & Scroll Direction
+        val apps = folderResolved.children.map { it.appInfo }
         folderAppsAdapter = AppsAdapter(
-            apps = folderResolved.children.map { it.appInfo },
+            apps = apps,
             onAppClick = { appInfo ->
                 AppManager.launchApp(this, appInfo)
-                closeFolderOverlay()
-            }
+                val autoClose = prefs.getBoolean(FolderSettingsActivity.KEY_FOLDER_AUTO_CLOSE, true)
+                if (autoClose) {
+                    closeFolderOverlay()
+                }
+            },
+            isFolder = true
         )
-        rvFolderApps.adapter = folderAppsAdapter
+
+        folderSnapHelper?.attachToRecyclerView(null)
+        folderSnapHelper = null
+
+        if (scrollDir == FolderSettingsActivity.SCROLL_DIR_HORIZONTAL) {
+            val layoutManager = GridLayoutManager(this, rows, RecyclerView.HORIZONTAL, false)
+            rvFolderApps.layoutManager = layoutManager
+            rvFolderApps.adapter = folderAppsAdapter
+
+            val itemsPerPage = rows * cols
+            val pageCount = if (itemsPerPage > 0) Math.ceil(apps.size.toDouble() / itemsPerPage).toInt().coerceAtLeast(1) else 1
+
+            if (pageCount > 1) {
+                folderPageIndicator.visibility = View.VISIBLE
+                folderPageIndicator.setPageCount(pageCount)
+                folderPageIndicator.onPageSelected(0)
+
+                val snapHelper = PagerSnapHelper()
+                snapHelper.attachToRecyclerView(rvFolderApps)
+                folderSnapHelper = snapHelper
+
+                rvFolderApps.clearOnScrollListeners()
+                rvFolderApps.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                    override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                        super.onScrollStateChanged(recyclerView, newState)
+                        if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                            val snapView = snapHelper.findSnapView(layoutManager)
+                            if (snapView != null) {
+                                val pos = layoutManager.getPosition(snapView)
+                                val pageIndex = if (itemsPerPage > 0) (pos / itemsPerPage).coerceIn(0, pageCount - 1) else 0
+                                folderPageIndicator.onPageSelected(pageIndex)
+                            }
+                        }
+                    }
+                })
+            } else {
+                folderPageIndicator.visibility = View.GONE
+                rvFolderApps.clearOnScrollListeners()
+            }
+        } else {
+            rvFolderApps.layoutManager = GridLayoutManager(this, cols, RecyclerView.VERTICAL, false)
+            rvFolderApps.adapter = folderAppsAdapter
+            folderPageIndicator.visibility = View.GONE
+            rvFolderApps.clearOnScrollListeners()
+        }
 
         folderOverlay.visibility = View.VISIBLE
         folderOverlay.alpha = 0f
@@ -912,6 +1041,8 @@ class MainActivity : AppCompatActivity() {
         folderOverlay.animate().alpha(0f).setDuration(150).withEndAction {
             folderOverlay.visibility = View.GONE
             activeFolderId = null
+            folderSnapHelper?.attachToRecyclerView(null)
+            folderSnapHelper = null
         }.start()
     }
 
