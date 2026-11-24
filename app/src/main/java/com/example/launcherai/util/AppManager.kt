@@ -1,14 +1,19 @@
 package com.example.launcherai.util
 
+import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.os.Build
+import android.os.Bundle
+import android.view.View
 import android.widget.Toast
+import com.example.launcherai.R
 import com.example.launcherai.data.model.AppInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 object AppManager {
 
