@@ -1,6 +1,7 @@
 package com.example.launcherai.ui
 
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ActivityInfo
 import android.graphics.Color
@@ -329,9 +330,10 @@ class LookFeelSettingsActivity : AppCompatActivity() {
     // SECTION 3: POPUP MENU & DESKTOP BEHAVIOR
     // =========================================================================
     private fun setupPopupMenuAndDesktop() {
-        // Popup Menu Items
+        // Dedicated Popup Menu Settings Sub-Screen
         binding.rowPopupMenu.setOnClickListener {
-            showPopupMenuConfigDialog()
+            val intent = Intent(this, PopupMenuSettingsActivity::class.java)
+            startActivity(intent)
         }
 
         // Drop Targets Toggle
@@ -345,28 +347,6 @@ class LookFeelSettingsActivity : AppCompatActivity() {
         binding.swUndoBar.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean(KEY_SHOW_UNDO_BAR, isChecked).apply()
         }
-    }
-
-    private fun showPopupMenuConfigDialog() {
-        val allItems = arrayOf("App info", "Edit", "Remove", "Uninstall", "Share app")
-        val currentItems = prefs.getStringSet(KEY_POPUP_ITEMS, DEFAULT_POPUP_ITEMS) ?: DEFAULT_POPUP_ITEMS
-        val checkedState = BooleanArray(allItems.size) { allItems[it] in currentItems }
-
-        AlertDialog.Builder(this)
-            .setTitle("Popup menu items")
-            .setMultiChoiceItems(allItems, checkedState) { _, which, isChecked ->
-                checkedState[which] = isChecked
-            }
-            .setPositiveButton("OK") { _, _ ->
-                val newSet = mutableSetOf<String>()
-                for (i in allItems.indices) {
-                    if (checkedState[i]) newSet.add(allItems[i])
-                }
-                prefs.edit().putStringSet(KEY_POPUP_ITEMS, newSet).apply()
-                updateSubtitles()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
     }
 
     // =========================================================================
@@ -436,8 +416,9 @@ class LookFeelSettingsActivity : AppCompatActivity() {
         binding.tvAppAnimationSubtitle.text = if (isAnimDisabled) "$anim (Animations disabled)" else anim
 
         // Popup Menu Subtitle
-        val popupItems = prefs.getStringSet(KEY_POPUP_ITEMS, DEFAULT_POPUP_ITEMS) ?: DEFAULT_POPUP_ITEMS
-        binding.tvPopupMenuSubtitle.text = if (popupItems.isEmpty()) "None" else popupItems.joinToString(", ")
+        val cornerRadius = prefs.getInt(PopupMenuSettingsActivity.KEY_POPUP_CORNER_RADIUS, PopupMenuSettingsActivity.DEFAULT_CORNER_RADIUS_DP)
+        val hasCardBg = prefs.getBoolean(PopupMenuSettingsActivity.KEY_POPUP_CARD_BG, true)
+        binding.tvPopupMenuSubtitle.text = "${cornerRadius}dp corner radius" + (if (hasCardBg) ", Card background" else "")
 
         // Dark Icons Subtitle
         val darkIcons = prefs.getString(KEY_DARK_STATUS_ICONS, "Auto") ?: "Auto"

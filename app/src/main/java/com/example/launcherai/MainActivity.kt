@@ -53,6 +53,8 @@ import com.example.launcherai.ui.FastScroller
 import com.example.launcherai.ui.FolderSettingsActivity
 import com.example.launcherai.ui.HiddenAppsDialogFragment
 import com.example.launcherai.ui.LauncherSettingsActivity
+import com.example.launcherai.ui.LookFeelSettingsActivity
+import com.example.launcherai.ui.AppItemPopupMenu
 import com.example.launcherai.ui.PageIndicatorView
 import com.example.launcherai.ui.Workspace
 import com.example.launcherai.ui.WorkspaceFolderResolvedItem
@@ -413,6 +415,13 @@ class MainActivity : AppCompatActivity() {
         )
         dropTargetBarView?.let { dragController.initDropTargetBar(it) }
         dragLayer.dragController = dragController
+        dragController.onItemRemovedListener = { item ->
+            showUndoBar(item)
+        }
+        dragController.onItemClickedInPlaceListener = { anchorView, item ->
+            val isDrawer = (item.entity.id == 0L)
+            showAppItemPopupMenu(anchorView, item, isDrawer = isDrawer)
+        }
 
         workspace.setOnLongClickListener {
             val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
@@ -1528,6 +1537,91 @@ class MainActivity : AppCompatActivity() {
                 dockHotseat.animate().alpha(1f).setDuration(200).start()
             }
         }
+    }
+
+    fun showUndoBar(item: WorkspaceResolvedItem) {
+        val lookFeelPrefs = getSharedPreferences(LookFeelSettingsActivity.PREFS_NAME, Context.MODE_PRIVATE)
+        val showUndo = lookFeelPrefs.getBoolean(LookFeelSettingsActivity.KEY_SHOW_UNDO_BAR, true)
+        if (!showUndo) return
+
+        val label = if (item.appInfo.label.isNotEmpty()) item.appInfo.label else "Item"
+        val rootView = findViewById<View>(android.R.id.content) ?: return
+        val snackbar = com.google.android.material.snackbar.Snackbar.make(
+            rootView,
+            "$label removed",
+            5000
+        )
+        snackbar.setAction("UNDO") {
+            viewModel.addWorkspaceItem(item.entity)
+            Toast.makeText(this, "Restored $label", Toast.LENGTH_SHORT).show()
+        }
+        snackbar.setActionTextColor(ContextCompat.getColor(this, R.color.nova_orange))
+
+        val density = resources.displayMetrics.density
+        val bg = android.graphics.drawable.GradientDrawable().apply {
+            shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+            cornerRadius = 24f * density
+            setColor(ContextCompat.getColor(this@MainActivity, R.color.bg_surface_elevated))
+            setStroke((1 * density).toInt(), ContextCompat.getColor(this@MainActivity, R.color.card_stroke))
+        }
+        snackbar.view.background = bg
+        val params = snackbar.view.layoutParams as? android.view.ViewGroup.MarginLayoutParams
+        params?.let {
+            it.setMargins(
+                (16 * density).toInt(),
+                0,
+                (16 * density).toInt(),
+                (24 * density).toInt()
+            )
+            snackbar.view.layoutParams = it
+        }
+        snackbar.show()
+    }
+
+    fun showAppItemPopupMenu(anchorView: View, item: WorkspaceResolvedItem, isDrawer: Boolean = false) {
+        AppItemPopupMenu(
+            context = this,
+            anchorView = anchorView,
+            appInfo = item.appInfo,
+            isDrawer = isDrawer,
+            onRemoveClick = {
+                viewModel.deleteWorkspaceItem(item.entity.id)
+                showUndoBar(item)
+            },
+            onEditClick = {
+                showRenameAppDialog(item)
+            },
+            onHideClick = {
+                showHiddenAppsDialog()
+            },
+            onWidgetsClick = {
+                showWidgetPicker()
+            }
+        ).show()
+    }
+
+    private fun showRenameAppDialog(item: WorkspaceResolvedItem) {
+        val input = android.widget.EditText(this).apply {
+            setText(item.appInfo.label)
+            setSelection(text.length)
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_primary))
+        }
+        val container = android.widget.FrameLayout(this).apply {
+            val pad = (20 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad / 2, pad, pad / 2)
+            addView(input)
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Edit shortcut")
+            .setView(container)
+            .setPositiveButton("Save") { _, _ ->
+                val newName = input.text.toString().trim()
+                if (newName.isNotEmpty()) {
+                    Toast.makeText(this, "Renamed to $newName", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     override fun onDestroy() {

@@ -98,6 +98,14 @@
             android:parentActivityName=".ui.LauncherSettingsActivity"
             android:theme="@style/Theme.NovaLight" />
 
+        <!-- Dedicated Popup Menu Settings Activity -->
+        <activity
+            android:name=".ui.PopupMenuSettingsActivity"
+            android:exported="true"
+            android:label="Popup menu"
+            android:parentActivityName=".ui.LookFeelSettingsActivity"
+            android:theme="@style/Theme.NovaDark" />
+
         <!-- Reverse Engineered Endpoints & Telemetry Inspector -->
         <activity
             android:name=".network.EndpointsActivity"

@@ -31,6 +31,14 @@ class DragController(
     var draggedItem: WorkspaceResolvedItem? = null
         private set
 
+    var onItemRemovedListener: ((WorkspaceResolvedItem) -> Unit)? = null
+    var onItemClickedInPlaceListener: ((View, WorkspaceResolvedItem) -> Unit)? = null
+    private var lastHoverTarget: DropTargetType? = null
+
+    private var startDragX: Float = 0f
+    private var startDragY: Float = 0f
+    private var hasMovedBeyondSlop: Boolean = false
+
     private var sourceView: View? = null
     private var dragView: DragView? = null
 
@@ -71,6 +79,9 @@ class DragController(
         isDragging = true
         draggedItem = item
         sourceView = v
+        startDragX = touchX
+        startDragY = touchY
+        hasMovedBeyondSlop = false
 
         v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
         v.alpha = 0.2f
@@ -86,11 +97,40 @@ class DragController(
         dragLayer?.addView(dv, lp)
         dv.move(touchX, touchY)
 
-        dropTargetBar?.visibility = View.VISIBLE
+        val lookFeelPrefs = context.getSharedPreferences(com.example.launcherai.ui.LookFeelSettingsActivity.PREFS_NAME, Context.MODE_PRIVATE)
+        val dropTargetsEnabled = lookFeelPrefs.getBoolean(com.example.launcherai.ui.LookFeelSettingsActivity.KEY_DROP_TARGETS, true)
+
+        if (dropTargetsEnabled) {
+            dropTargetBar?.let { bar ->
+                bar.visibility = View.VISIBLE
+                bar.alpha = 0f
+                val density = context.resources.displayMetrics.density
+                val barHeight = if (bar.height > 0) bar.height.toFloat() else 56f * density
+                bar.translationY = -barHeight
+                bar.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(175)
+                    .start()
+            }
+            // Zoom out desktop (matching Nova's drop targets desktop zoom-out effect)
+            workspace?.animate()
+                ?.scaleX(0.92f)
+                ?.scaleY(0.92f)
+                ?.setDuration(200)
+                ?.start()
+        }
     }
 
     fun onDragMove(touchX: Float, touchY: Float) {
         if (!isDragging) return
+        val dx = touchX - startDragX
+        val dy = touchY - startDragY
+        val touchSlop = 16f * context.resources.displayMetrics.density
+        if (!hasMovedBeyondSlop && Math.hypot(dx.toDouble(), dy.toDouble()) > touchSlop) {
+            hasMovedBeyondSlop = true
+        }
+
         dragView?.move(touchX, touchY)
 
         checkDropTargetHover(touchX, touchY)
@@ -113,6 +153,12 @@ class DragController(
             dockRect.contains(touchX.toInt(), touchY.toInt())
         } else false
 
+        if (!hasMovedBeyondSlop && hitTarget == null && !isDropOverDock && item != null && sourceView != null) {
+            onItemClickedInPlaceListener?.invoke(sourceView!!, item)
+            cleanupDrag()
+            return
+        }
+
         if (hitTarget != null && item != null) {
             when (hitTarget) {
                 DropTargetType.REMOVE -> {
@@ -120,7 +166,7 @@ class DragController(
                         appWidgetHost?.deleteAppWidgetId(item.entity.appWidgetId)
                     }
                     viewModel?.deleteWorkspaceItem(item.entity.id)
-                    Toast.makeText(context, "Removed ${item.appInfo.label} from launcher", Toast.LENGTH_SHORT).show()
+                    onItemRemovedListener?.invoke(item)
                 }
                 DropTargetType.APP_INFO -> {
                     AppManager.openAppDetails(context, item.appInfo.packageName)
@@ -296,8 +342,29 @@ class DragController(
         sourceView = null
         draggedItem = null
 
-        dropTargetBar?.visibility = View.GONE
+        dropTargetBar?.let { bar ->
+            val density = context.resources.displayMetrics.density
+            val barHeight = if (bar.height > 0) bar.height.toFloat() else 56f * density
+            bar.animate()
+                .alpha(0f)
+                .translationY(-barHeight)
+                .setDuration(175)
+                .withEndAction {
+                    bar.visibility = View.GONE
+                    bar.alpha = 1f
+                    bar.translationY = 0f
+                }
+                .start()
+        }
+
+        workspace?.animate()
+            ?.scaleX(1.0f)
+            ?.scaleY(1.0f)
+            ?.setDuration(200)
+            ?.start()
+
         resetTargetHighlights()
+        lastHoverTarget = null
         isDragging = false
     }
 
@@ -319,6 +386,18 @@ class DragController(
 
     private fun checkDropTargetHover(x: Float, y: Float) {
         val hit = evaluateDropTargetHit(x, y)
+        if (hit != lastHoverTarget) {
+            if (hit != null) {
+                val targetView = when (hit) {
+                    DropTargetType.REMOVE -> targetRemove
+                    DropTargetType.APP_INFO -> targetAppInfo
+                    DropTargetType.UNINSTALL -> targetUninstall
+                }
+                targetView?.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            }
+            lastHoverTarget = hit
+        }
+
         targetRemove?.scaleX = if (hit == DropTargetType.REMOVE) 1.15f else 1.0f
         targetRemove?.scaleY = if (hit == DropTargetType.REMOVE) 1.15f else 1.0f
 
