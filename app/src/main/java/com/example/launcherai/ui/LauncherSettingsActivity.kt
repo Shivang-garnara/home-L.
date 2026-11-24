@@ -230,7 +230,7 @@ class LauncherSettingsActivity : AppCompatActivity() {
 
         // Row 4: Folders
         binding.rowFolders.setOnClickListener {
-            showFoldersDialog()
+            startActivity(Intent(this, FolderSettingsActivity::class.java))
         }
 
         // Row 5: Search
@@ -328,6 +328,18 @@ class LauncherSettingsActivity : AppCompatActivity() {
         val rawDrawerPlacement = prefs.getString("key_search_bar_placement_drawer", "Top") ?: "Top"
         val drawerPlacement = if (rawDrawerPlacement.equals("Hidden", ignoreCase = true)) "None" else rawDrawerPlacement
         binding.tvSearchSubtitle.text = "Mode: $searchMode • Home: $homeLabel • Drawer: $drawerPlacement"
+
+        val folderPreview = prefs.getString("key_folder_icon_preview", "GRID") ?: "GRID"
+        val folderPreviewName = when (folderPreview.uppercase()) {
+            "GRID_9" -> "Grid (3x3)"
+            "STACK" -> "Stack"
+            "FAN" -> "Fan"
+            "LINE" -> "Line"
+            else -> "Grid (2x2)"
+        }
+        val folderShape = prefs.getString("key_folder_icon_shape", "SYSTEM") ?: "SYSTEM"
+        val folderShapeName = if (folderShape.equals("SYSTEM", ignoreCase = true)) "System default" else folderShape
+        binding.tvFoldersSubtitle.text = "$folderPreviewName • $folderShapeName"
     }
 
     private fun showHomeScreenGridDialog() {

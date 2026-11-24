@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
@@ -245,24 +246,50 @@ class WorkspacePagerAdapter(
                         }
                     }
 
-                    val previewViews = listOf(ivPreview1, ivPreview2, ivPreview3, ivPreview4)
-                    val children = folderResolved.children
-                    val folderShape = folderPrefs.getString("key_icon_shape", "Round") ?: "Round"
+                    val ivFolderIcon = folderView.findViewById<ImageView>(R.id.ivFolderIcon)
+                    val gridFolderFallback = folderView.findViewById<View>(R.id.gridFolderFallback)
+                    val flFolderPreview = folderView.findViewById<FrameLayout>(R.id.flFolderPreview)
 
-                    previewViews.forEachIndexed { index, iv ->
-                        if (index < children.size) {
-                            val childIcon = children[index].appInfo.icon
-                            val maskedMini = com.example.launcherai.icons.IconShapeMasker.createMaskedIcon(
-                                cellLayout.context,
-                                childIcon,
-                                folderShape,
-                                100
-                            )
-                            iv.setImageDrawable(maskedMini ?: childIcon)
-                            iv.visibility = View.VISIBLE
-                        } else {
-                            iv.setImageDrawable(null)
-                            iv.visibility = View.INVISIBLE
+                    val iconSizePercent = folderPrefs.getInt("key_desktop_icon_size_percent", 100)
+                    val density = cellLayout.context.resources.displayMetrics.density
+                    val folderTargetPx = (48f * density * (iconSizePercent / 100f)).toInt()
+                    flFolderPreview?.layoutParams?.let { lp ->
+                        lp.width = folderTargetPx
+                        lp.height = folderTargetPx
+                    }
+
+                    val children = folderResolved.children
+                    val childrenDrawables = children.mapNotNull { it.appInfo.icon }.take(9)
+
+                    if (ivFolderIcon != null) {
+                        val rendered = com.example.launcherai.icons.FolderIconRenderer.renderFolderIconFromPrefs(
+                            context = cellLayout.context,
+                            childrenDrawables = childrenDrawables,
+                            targetSizePx = folderTargetPx
+                        )
+                        ivFolderIcon.setImageDrawable(rendered)
+                        ivFolderIcon.visibility = View.VISIBLE
+                        gridFolderFallback?.visibility = View.GONE
+                        flFolderPreview?.background = null
+                    } else {
+                        val previewViews = listOf(ivPreview1, ivPreview2, ivPreview3, ivPreview4)
+                        val folderShape = folderPrefs.getString("key_icon_shape", "Round") ?: "Round"
+
+                        previewViews.forEachIndexed { index, iv ->
+                            if (index < children.size) {
+                                val childIcon = children[index].appInfo.icon
+                                val maskedMini = com.example.launcherai.icons.IconShapeMasker.createMaskedIcon(
+                                    cellLayout.context,
+                                    childIcon,
+                                    folderShape,
+                                    100
+                                )
+                                iv?.setImageDrawable(maskedMini ?: childIcon)
+                                iv?.visibility = View.VISIBLE
+                            } else {
+                                iv?.setImageDrawable(null)
+                                iv?.visibility = View.INVISIBLE
+                            }
                         }
                     }
 

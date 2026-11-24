@@ -260,22 +260,48 @@ class DockLayout @JvmOverloads constructor(
                                 tvFolderTitle.setTextColor(labelColor)
                             }
 
-                            val previewViews = listOf(ivPreview1, ivPreview2, ivPreview3, ivPreview4)
+                            val ivFolderIcon = folderView.findViewById<ImageView>(R.id.ivFolderIcon)
+                            val gridFolderFallback = folderView.findViewById<View>(R.id.gridFolderFallback)
+                            val flFolderPreview = folderView.findViewById<FrameLayout>(R.id.flFolderPreview)
+
+                            val iconSizePercent = prefs.getInt("key_desktop_icon_size_percent", 100)
+                            val density = context.resources.displayMetrics.density
+                            val folderTargetPx = (48f * density * (iconSizePercent / 100f)).toInt()
+                            flFolderPreview?.layoutParams?.let { lp ->
+                                lp.width = folderTargetPx
+                                lp.height = folderTargetPx
+                            }
+
                             val children = folderResolved.children
-                            previewViews.forEachIndexed { index, iv ->
-                                if (index < children.size) {
-                                    val childIcon = children[index].appInfo.icon
-                                    val masked = com.example.launcherai.icons.IconShapeMasker.createMaskedIcon(
-                                        context,
-                                        childIcon,
-                                        shape,
-                                        100
-                                    )
-                                    iv.setImageDrawable(masked ?: childIcon)
-                                    iv.visibility = View.VISIBLE
-                                } else {
-                                    iv.setImageDrawable(null)
-                                    iv.visibility = View.INVISIBLE
+                            val childrenDrawables = children.mapNotNull { it.appInfo.icon }.take(9)
+
+                            if (ivFolderIcon != null) {
+                                val rendered = com.example.launcherai.icons.FolderIconRenderer.renderFolderIconFromPrefs(
+                                    context = context,
+                                    childrenDrawables = childrenDrawables,
+                                    targetSizePx = folderTargetPx
+                                )
+                                ivFolderIcon.setImageDrawable(rendered)
+                                ivFolderIcon.visibility = View.VISIBLE
+                                gridFolderFallback?.visibility = View.GONE
+                                flFolderPreview?.background = null
+                            } else {
+                                val previewViews = listOf(ivPreview1, ivPreview2, ivPreview3, ivPreview4)
+                                previewViews.forEachIndexed { index, iv ->
+                                    if (index < children.size) {
+                                        val childIcon = children[index].appInfo.icon
+                                        val masked = com.example.launcherai.icons.IconShapeMasker.createMaskedIcon(
+                                            context,
+                                            childIcon,
+                                            shape,
+                                            100
+                                        )
+                                        iv?.setImageDrawable(masked ?: childIcon)
+                                        iv?.visibility = View.VISIBLE
+                                    } else {
+                                        iv?.setImageDrawable(null)
+                                        iv?.visibility = View.INVISIBLE
+                                    }
                                 }
                             }
 

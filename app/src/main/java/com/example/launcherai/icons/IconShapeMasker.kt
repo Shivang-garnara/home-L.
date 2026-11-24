@@ -77,7 +77,7 @@ object IconShapeMasker {
         return BitmapDrawable(context.resources, bitmap)
     }
 
-    private fun createShapePath(shapeName: String, size: Float): Path {
+    fun createShapePath(shapeName: String, size: Float): Path {
         val path = Path()
         val rect = RectF(0f, 0f, size, size)
         val cx = size / 2f
