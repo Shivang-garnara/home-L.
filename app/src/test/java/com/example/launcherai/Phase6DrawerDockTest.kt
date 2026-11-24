@@ -4,6 +4,7 @@ import com.example.launcherai.data.db.FolderEntity
 import com.example.launcherai.data.db.WorkspaceDao
 import com.example.launcherai.data.db.WorkspaceItemEntity
 import com.example.launcherai.data.db.WorkspacePageEntity
+import com.example.launcherai.data.model.AppInfo
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking

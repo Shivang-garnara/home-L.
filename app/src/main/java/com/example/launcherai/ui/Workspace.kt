@@ -9,8 +9,8 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
-import com.example.launcherai.AppInfo
 import com.example.launcherai.data.db.WorkspacePageEntity
+import com.example.launcherai.data.model.AppInfo
 import com.example.launcherai.data.repository.WorkspaceGridConfig
 
 /**

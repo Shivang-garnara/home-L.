@@ -18,8 +18,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.launcherai.LauncherApplication
-import com.example.launcherai.NovaAiSettingsActivity
 import com.example.launcherai.R
+import com.example.launcherai.ai.ui.NovaAiSettingsActivity
 import com.example.launcherai.data.repository.GridChangeResult
 import com.example.launcherai.databinding.ActivityLauncherSettingsBinding
 import com.example.launcherai.gestures.GestureAction

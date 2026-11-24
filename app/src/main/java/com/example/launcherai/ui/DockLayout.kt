@@ -10,9 +10,10 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
-import com.example.launcherai.AppInfo
 import com.example.launcherai.R
 import com.example.launcherai.data.db.WorkspaceItemEntity
+import com.example.launcherai.data.model.AppInfo
+import com.example.launcherai.util.AppManager
 import kotlin.math.abs
 
 /**
@@ -155,7 +156,7 @@ class DockLayout @JvmOverloads constructor(
                             isClickable = true
                             isFocusable = true
                             setOnClickListener {
-                                com.example.launcherai.AppManager.launchSystemAction(context, action)
+                                AppManager.launchSystemAction(context, action)
                             }
                         }
                         val ivIcon = ImageView(context).apply {

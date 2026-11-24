@@ -8,13 +8,13 @@ import android.view.HapticFeedbackConstants
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.Toast
-import com.example.launcherai.AppManager
 import com.example.launcherai.R
 import com.example.launcherai.data.db.WorkspaceItemEntity
 import com.example.launcherai.ui.DragLayer
 import com.example.launcherai.ui.Workspace
 import com.example.launcherai.ui.WorkspaceResolvedItem
 import com.example.launcherai.ui.WorkspaceViewModel
+import com.example.launcherai.util.AppManager
 
 class DragController(
     private val context: Context,

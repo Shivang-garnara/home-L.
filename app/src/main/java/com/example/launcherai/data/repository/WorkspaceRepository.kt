@@ -1,12 +1,12 @@
 package com.example.launcherai.data.repository
 
 import android.content.Context
-import com.example.launcherai.AppInfo
-import com.example.launcherai.AppManager
 import com.example.launcherai.data.db.LauncherDatabase
 import com.example.launcherai.data.db.WorkspaceDao
 import com.example.launcherai.data.db.WorkspaceItemEntity
 import com.example.launcherai.data.db.WorkspacePageEntity
+import com.example.launcherai.data.model.AppInfo
+import com.example.launcherai.util.AppManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow

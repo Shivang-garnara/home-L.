@@ -13,10 +13,10 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.example.launcherai.AppManager
 import com.example.launcherai.R
 import com.example.launcherai.databinding.ActivityFolderSettingsBinding
 import com.example.launcherai.icons.FolderIconRenderer
+import com.example.launcherai.util.AppManager
 import kotlinx.coroutines.launch
 
 /**

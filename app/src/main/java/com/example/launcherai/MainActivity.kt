@@ -39,10 +39,13 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.PagerSnapHelper
 import androidx.recyclerview.widget.RecyclerView
+import com.example.launcherai.ai.ui.NovaAiChatActivity
 import com.example.launcherai.data.db.WorkspaceItemEntity
+import com.example.launcherai.data.model.AppInfo
 import com.example.launcherai.dragndrop.DragController
 import com.example.launcherai.gestures.GestureAction
 import com.example.launcherai.gestures.GestureHandler
+import com.example.launcherai.ui.AppsAdapter
 import com.example.launcherai.ui.DockLayout
 import com.example.launcherai.ui.DragLayer
 import com.example.launcherai.ui.FastScrollRailView
@@ -56,6 +59,7 @@ import com.example.launcherai.ui.WorkspaceFolderResolvedItem
 import com.example.launcherai.ui.WorkspacePageTransformer
 import com.example.launcherai.ui.WorkspaceResolvedItem
 import com.example.launcherai.ui.WorkspaceViewModel
+import com.example.launcherai.util.AppManager
 import com.example.launcherai.widgets.LauncherAppWidgetHost
 import com.example.launcherai.widgets.WidgetPickerDialog
 import com.google.android.material.chip.Chip

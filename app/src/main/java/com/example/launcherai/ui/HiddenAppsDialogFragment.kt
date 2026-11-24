@@ -20,11 +20,11 @@ import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.launcherai.AppInfo
-import com.example.launcherai.AppManager
 import com.example.launcherai.R
+import com.example.launcherai.data.model.AppInfo
 import com.example.launcherai.icons.DeviceIconMetrics
 import com.example.launcherai.icons.IconShapeMasker
+import com.example.launcherai.util.AppManager
 import kotlinx.coroutines.launch
 import java.util.Locale
 

@@ -8,7 +8,7 @@ import android.view.View
 import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.launcherai.AppInfo
+import com.example.launcherai.data.model.AppInfo
 
 /**
  * FastScroller coordinator providing alphabetical section indexing, A–Z rail navigation,

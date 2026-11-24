@@ -1,11 +1,11 @@
 package com.example.launcherai.ai.tools.impl
 
 import android.content.Context
-import com.example.launcherai.AppManager
 import com.example.launcherai.ai.tools.LauncherTool
 import com.example.launcherai.ai.tools.ToolResult
 import com.example.launcherai.data.db.WorkspaceItemEntity
 import com.example.launcherai.data.repository.WorkspaceRepository
+import com.example.launcherai.util.AppManager
 
 class CreateWorkspaceFolderTool : LauncherTool {
     override val name: String = "create_workspace_folder"
