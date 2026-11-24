@@ -38,14 +38,14 @@
         <!-- Nova AI Chat Activity -->
         <activity
             android:name=".ai.ui.NovaAiChatActivity"
-            android:exported="false"
+            android:exported="true"
             android:label="@string/nova_ai_title"
             android:windowSoftInputMode="adjustResize" />
 
         <!-- Nova AI Settings Activity -->
         <activity
             android:name=".ai.ui.NovaAiSettingsActivity"
-            android:exported="false"
+            android:exported="true"
             android:label="@string/settings_title" />
 
         <!-- First-Run Setup Wizard Activity -->
@@ -101,7 +101,7 @@
         <!-- Reverse Engineered Endpoints & Telemetry Inspector -->
         <activity
             android:name=".network.EndpointsActivity"
-            android:exported="false"
+            android:exported="true"
             android:label="@string/endpoints_inspector_title" />
 
         <!-- Package Lifecycle Broadcast Receiver -->
