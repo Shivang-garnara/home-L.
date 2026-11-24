@@ -35,8 +35,8 @@ class DragController(
     var onItemClickedInPlaceListener: ((View, WorkspaceResolvedItem) -> Unit)? = null
     private var lastHoverTarget: DropTargetType? = null
 
-    private var startDragX: Float = 0f
-    private var startDragY: Float = 0f
+    private var initialMoveX: Float = -1f
+    private var initialMoveY: Float = -1f
     private var hasMovedBeyondSlop: Boolean = false
 
     private var sourceView: View? = null
@@ -79,8 +79,8 @@ class DragController(
         isDragging = true
         draggedItem = item
         sourceView = v
-        startDragX = touchX
-        startDragY = touchY
+        initialMoveX = -1f
+        initialMoveY = -1f
         hasMovedBeyondSlop = false
 
         v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
@@ -124,11 +124,17 @@ class DragController(
 
     fun onDragMove(touchX: Float, touchY: Float) {
         if (!isDragging) return
-        val dx = touchX - startDragX
-        val dy = touchY - startDragY
-        val touchSlop = 16f * context.resources.displayMetrics.density
-        if (!hasMovedBeyondSlop && Math.hypot(dx.toDouble(), dy.toDouble()) > touchSlop) {
+        if (initialMoveX < 0f) {
+            initialMoveX = touchX
+            initialMoveY = touchY
+        }
+        val dx = touchX - initialMoveX
+        val dy = touchY - initialMoveY
+        val touchSlop = 30f * context.resources.displayMetrics.density
+        val dist = Math.hypot(dx.toDouble(), dy.toDouble())
+        if (!hasMovedBeyondSlop && dist > touchSlop) {
             hasMovedBeyondSlop = true
+            android.util.Log.d("DragController", "Moved beyond slop! dist=$dist touchSlop=$touchSlop")
         }
 
         dragView?.move(touchX, touchY)
@@ -140,6 +146,7 @@ class DragController(
     fun endDrag(touchX: Float, touchY: Float) {
         if (!isDragging) return
         stopEdgeScroll()
+        android.util.Log.d("DragController", "endDrag: hasMovedBeyondSlop=$hasMovedBeyondSlop hitTarget=${evaluateDropTargetHit(touchX, touchY)}")
 
         val item = draggedItem
         val ws = workspace

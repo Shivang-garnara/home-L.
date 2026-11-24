@@ -197,20 +197,26 @@ class AppItemPopupMenu(
             val displayMetrics = context.resources.displayMetrics
             val screenWidth = displayMetrics.widthPixels
             val screenHeight = displayMetrics.heightPixels
+            val density = displayMetrics.density
 
+            val defaultWidthPx = (240 * density).toInt()
             binding.root.measure(
-                View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.AT_MOST),
+                View.MeasureSpec.makeMeasureSpec(defaultWidthPx, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(screenHeight, View.MeasureSpec.AT_MOST)
             )
-            val popupWidth = binding.root.measuredWidth
+            val popupWidth = binding.root.measuredWidth.coerceAtLeast(defaultWidthPx)
             val popupHeight = binding.root.measuredHeight
 
-            var posX = anchorX + (anchorView.width - popupWidth) / 2
-            posX = posX.coerceIn(16, screenWidth - popupWidth - 16)
+            val marginPx = (16 * density).toInt()
+            val maxPosX = (screenWidth - popupWidth - marginPx).coerceAtLeast(marginPx)
+            val minPosX = marginPx.coerceAtMost(maxPosX)
 
-            var posY = anchorY - popupHeight - 12
-            if (posY < 80) {
-                posY = anchorY + anchorView.height + 12
+            var posX = anchorX + (anchorView.width - popupWidth) / 2
+            posX = posX.coerceIn(minPosX, maxPosX)
+
+            var posY = anchorY - popupHeight - (12 * density).toInt()
+            if (posY < (60 * density).toInt()) {
+                posY = anchorY + anchorView.height + (12 * density).toInt()
             }
 
             try {
