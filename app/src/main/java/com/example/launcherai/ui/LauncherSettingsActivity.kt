@@ -335,6 +335,7 @@ class LauncherSettingsActivity : AppCompatActivity() {
             "STACK" -> "Stack"
             "FAN" -> "Fan"
             "LINE" -> "Line"
+            "FIRST_APP" -> "First app (1 icon)"
             else -> "Grid (2x2)"
         }
         val folderShape = prefs.getString("key_folder_icon_shape", "SYSTEM") ?: "SYSTEM"
@@ -436,18 +437,6 @@ class LauncherSettingsActivity : AppCompatActivity() {
                         })
                     }
                 }
-            }
-            .setNegativeButton("Close", null)
-            .show()
-    }
-
-    private fun showFoldersDialog() {
-        val options = arrayOf("Folder Window Style (Centered)", "Grid Preview Layout (2x2)", "Background Transparency")
-
-        AlertDialog.Builder(this)
-            .setTitle("Folder Customization")
-            .setItems(options) { _, _ ->
-                Toast.makeText(this, "Folder setting saved", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Close", null)
             .show()

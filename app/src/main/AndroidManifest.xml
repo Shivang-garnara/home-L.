@@ -87,6 +87,7 @@
             android:name=".ui.FolderSettingsActivity"
             android:exported="true"
             android:label="Folders"
+            android:parentActivityName=".ui.LauncherSettingsActivity"
             android:theme="@style/Theme.NovaLight" />
 
         <!-- Reverse Engineered Endpoints & Telemetry Inspector -->

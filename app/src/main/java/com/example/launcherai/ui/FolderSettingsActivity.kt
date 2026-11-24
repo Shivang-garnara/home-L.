@@ -360,6 +360,7 @@ class FolderSettingsActivity : AppCompatActivity() {
             val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
             prefs.edit().putBoolean(KEY_FOLDER_LABEL_VISIBLE, isChecked).apply()
             binding.layoutFolderLabelSettings.visibility = if (isChecked) View.VISIBLE else View.GONE
+            updatePreview()
         }
         binding.rowFolderLabelVisible.setOnClickListener { binding.swFolderLabelVisible.toggle() }
 
@@ -369,6 +370,7 @@ class FolderSettingsActivity : AppCompatActivity() {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 folderLabelSizePercent = progress + 70
                 binding.tvFolderLabelSizeValue.text = "$folderLabelSizePercent%"
+                updatePreview()
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
@@ -383,6 +385,7 @@ class FolderSettingsActivity : AppCompatActivity() {
             folderLabelShadow = isChecked
             val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
             prefs.edit().putBoolean(KEY_FOLDER_LABEL_SHADOW, isChecked).apply()
+            updatePreview()
         }
         binding.rowFolderLabelShadow.setOnClickListener { binding.swFolderLabelShadow.toggle() }
 
@@ -435,6 +438,7 @@ class FolderSettingsActivity : AppCompatActivity() {
                 binding.tvFolderLabelFontSubtitle.text = folderLabelFont
                 val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
                 prefs.edit().putString(KEY_FOLDER_LABEL_FONT, folderLabelFont).apply()
+                updatePreview()
                 dialog.dismiss()
             }
             .setNegativeButton("Cancel", null)
@@ -451,6 +455,7 @@ class FolderSettingsActivity : AppCompatActivity() {
             val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
             prefs.edit().putInt(KEY_FOLDER_LABEL_COLOR, color).apply()
             updateFolderLabelColorSwatchUI()
+            updatePreview()
         }
         dialog.show(supportFragmentManager, "folder_label_color_dialog")
     }
@@ -710,6 +715,28 @@ class FolderSettingsActivity : AppCompatActivity() {
         )
 
         binding.ivFolderPreview.setImageDrawable(renderedDrawable)
+
+        // Live preview of label styling matching Nova Launcher
+        if (folderLabelVisible) {
+            binding.tvFolderPreviewLabel.visibility = View.VISIBLE
+            binding.tvFolderPreviewLabel.setTextColor(folderLabelColor)
+            val baseSizeSp = 12f
+            binding.tvFolderPreviewLabel.textSize = baseSizeSp * (folderLabelSizePercent / 100f)
+            val tf = when (folderLabelFont.lowercase()) {
+                "medium" -> android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+                "light" -> android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
+                "condensed" -> android.graphics.Typeface.create("sans-serif-condensed", android.graphics.Typeface.NORMAL)
+                else -> android.graphics.Typeface.DEFAULT
+            }
+            binding.tvFolderPreviewLabel.typeface = tf
+            if (folderLabelShadow) {
+                binding.tvFolderPreviewLabel.setShadowLayer(4f, 2f, 2f, 0x88000000.toInt())
+            } else {
+                binding.tvFolderPreviewLabel.setShadowLayer(0f, 0f, 0f, 0)
+            }
+        } else {
+            binding.tvFolderPreviewLabel.visibility = View.GONE
+        }
     }
 
     private fun getPreviewLayoutDisplayName(layout: String): String = when (layout.uppercase()) {
