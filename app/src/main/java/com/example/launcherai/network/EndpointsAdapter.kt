@@ -1,4 +1,4 @@
-package com.example.launcherai
+package com.example.launcherai.network
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
+import com.example.launcherai.R
 
 class EndpointsAdapter(
     private val endpoints: List<EndpointInfo>

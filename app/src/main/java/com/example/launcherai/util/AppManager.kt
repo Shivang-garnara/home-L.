@@ -1,4 +1,4 @@
-package com.example.launcherai
+package com.example.launcherai.util
 
 import android.content.Context
 import android.content.Intent
@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.os.Build
 import android.widget.Toast
+import com.example.launcherai.data.model.AppInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

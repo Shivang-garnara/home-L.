@@ -37,14 +37,14 @@
 
         <!-- Nova AI Chat Activity -->
         <activity
-            android:name=".NovaAiChatActivity"
+            android:name=".ai.ui.NovaAiChatActivity"
             android:exported="false"
             android:label="@string/nova_ai_title"
             android:windowSoftInputMode="adjustResize" />
 
         <!-- Nova AI Settings Activity -->
         <activity
-            android:name=".NovaAiSettingsActivity"
+            android:name=".ai.ui.NovaAiSettingsActivity"
             android:exported="false"
             android:label="@string/settings_title" />
 
@@ -100,7 +100,7 @@
 
         <!-- Reverse Engineered Endpoints & Telemetry Inspector -->
         <activity
-            android:name=".EndpointsActivity"
+            android:name=".network.EndpointsActivity"
             android:exported="false"
             android:label="@string/endpoints_inspector_title" />
 

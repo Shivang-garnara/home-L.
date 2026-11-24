@@ -1,4 +1,4 @@
-package com.example.launcherai
+package com.example.launcherai.data.model
 
 import android.graphics.drawable.Drawable
 

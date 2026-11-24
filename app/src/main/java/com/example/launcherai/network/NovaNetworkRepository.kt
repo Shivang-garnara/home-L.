@@ -1,4 +1,4 @@
-package com.example.launcherai
+package com.example.launcherai.network
 
 object NovaNetworkRepository {
 

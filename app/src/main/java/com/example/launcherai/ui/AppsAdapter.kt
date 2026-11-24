@@ -1,4 +1,4 @@
-package com.example.launcherai
+package com.example.launcherai.ui
 
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -7,6 +7,8 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.example.launcherai.R
+import com.example.launcherai.data.model.AppInfo
 import com.example.launcherai.icons.DeviceIconMetrics
 import com.example.launcherai.icons.IconShapeMasker
 
