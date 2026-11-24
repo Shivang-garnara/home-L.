@@ -187,31 +187,38 @@ class AppItemPopupMenu(
     }
 
     fun show() {
-        val location = IntArray(2)
-        anchorView.getLocationOnScreen(location)
-        val anchorX = location[0]
-        val anchorY = location[1]
+        anchorView.post {
+            if (!anchorView.isAttachedToWindow) return@post
+            val location = IntArray(2)
+            anchorView.getLocationOnScreen(location)
+            val anchorX = location[0]
+            val anchorY = location[1]
 
-        val displayMetrics = context.resources.displayMetrics
-        val screenWidth = displayMetrics.widthPixels
-        val screenHeight = displayMetrics.heightPixels
+            val displayMetrics = context.resources.displayMetrics
+            val screenWidth = displayMetrics.widthPixels
+            val screenHeight = displayMetrics.heightPixels
 
-        binding.root.measure(
-            View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.AT_MOST),
-            View.MeasureSpec.makeMeasureSpec(screenHeight, View.MeasureSpec.AT_MOST)
-        )
-        val popupWidth = binding.root.measuredWidth
-        val popupHeight = binding.root.measuredHeight
+            binding.root.measure(
+                View.MeasureSpec.makeMeasureSpec(screenWidth, View.MeasureSpec.AT_MOST),
+                View.MeasureSpec.makeMeasureSpec(screenHeight, View.MeasureSpec.AT_MOST)
+            )
+            val popupWidth = binding.root.measuredWidth
+            val popupHeight = binding.root.measuredHeight
 
-        var posX = anchorX + (anchorView.width - popupWidth) / 2
-        posX = posX.coerceIn(16, screenWidth - popupWidth - 16)
+            var posX = anchorX + (anchorView.width - popupWidth) / 2
+            posX = posX.coerceIn(16, screenWidth - popupWidth - 16)
 
-        var posY = anchorY - popupHeight - 12
-        if (posY < 80) {
-            posY = anchorY + anchorView.height + 12
+            var posY = anchorY - popupHeight - 12
+            if (posY < 80) {
+                posY = anchorY + anchorView.height + 12
+            }
+
+            try {
+                popupWindow.showAtLocation(anchorView, Gravity.NO_GRAVITY, posX, posY)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
-
-        popupWindow.showAtLocation(anchorView, Gravity.NO_GRAVITY, posX, posY)
     }
 
     fun dismiss() {

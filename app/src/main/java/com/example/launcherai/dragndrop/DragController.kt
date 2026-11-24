@@ -153,7 +153,7 @@ class DragController(
             dockRect.contains(touchX.toInt(), touchY.toInt())
         } else false
 
-        if (!hasMovedBeyondSlop && hitTarget == null && !isDropOverDock && item != null && sourceView != null) {
+        if (!hasMovedBeyondSlop && hitTarget == null && item != null && sourceView != null) {
             onItemClickedInPlaceListener?.invoke(sourceView!!, item)
             cleanupDrag()
             return
