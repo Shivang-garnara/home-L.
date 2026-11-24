@@ -1,11 +1,17 @@
 package com.example.launcherai
 
 import android.app.Application
+import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.LauncherApps
+import android.os.UserHandle
 import com.example.launcherai.data.db.LauncherDatabase
 import com.example.launcherai.data.repository.WorkspaceRepository
 import com.example.launcherai.receiver.PackageMonitorReceiver
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class LauncherApplication : Application() {
 
@@ -16,6 +22,7 @@ class LauncherApplication : Application() {
         private set
 
     private var packageReceiver: PackageMonitorReceiver? = null
+    private var launcherAppsCallback: LauncherApps.Callback? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -25,6 +32,7 @@ class LauncherApplication : Application() {
         repository = WorkspaceRepository(this, database.workspaceDao())
 
         registerPackageMonitorReceiver()
+        registerLauncherAppsCallback()
     }
 
     private fun registerPackageMonitorReceiver() {
@@ -39,10 +47,49 @@ class LauncherApplication : Application() {
         registerReceiver(packageReceiver, filter)
     }
 
+    private fun registerLauncherAppsCallback() {
+        val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as? LauncherApps ?: return
+        val callback = object : LauncherApps.Callback() {
+            override fun onPackageAdded(packageName: String, user: UserHandle) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    repository.onPackageAdded(packageName)
+                }
+            }
+
+            override fun onPackageRemoved(packageName: String, user: UserHandle) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    repository.onPackageRemoved(packageName, false)
+                }
+            }
+
+            override fun onPackageChanged(packageName: String, user: UserHandle) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    repository.onPackageChanged(packageName)
+                }
+            }
+
+            override fun onPackagesAvailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    if (!replacing) {
+                        packageNames.forEach { repository.onPackageAdded(it) }
+                    }
+                }
+            }
+
+            override fun onPackagesUnavailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) {}
+        }
+        launcherAppsCallback = callback
+        launcherApps.registerCallback(callback)
+    }
+
     override fun onTerminate() {
         super.onTerminate()
         packageReceiver?.let {
             unregisterReceiver(it)
+        }
+        launcherAppsCallback?.let {
+            val launcherApps = getSystemService(Context.LAUNCHER_APPS_SERVICE) as? LauncherApps
+            launcherApps?.unregisterCallback(it)
         }
     }
 

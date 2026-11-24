@@ -1,13 +1,19 @@
-package com.example.launcherai
+package com.example.launcherai.util
 
+import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.os.Build
+import android.os.Bundle
+import android.view.View
 import android.widget.Toast
+import com.example.launcherai.R
+import com.example.launcherai.data.model.AppInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 object AppManager {
 
@@ -77,21 +83,47 @@ object AppManager {
         }
     }
 
-    fun launchApp(context: Context, app: AppInfo) {
+    fun launchApp(context: Context, app: AppInfo, sourceView: View? = null) {
         try {
-            val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)
-            if (intent != null) {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(intent)
+            val intent = context.packageManager.getLaunchIntentForPackage(app.packageName)?.apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            } ?: Intent().apply {
+                setClassName(app.packageName, app.activityName)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            val optsBundle = buildLaunchOptions(context, sourceView)
+            if (optsBundle != null) {
+                context.startActivity(intent, optsBundle)
             } else {
-                val explicitIntent = Intent().apply {
-                    setClassName(app.packageName, app.activityName)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(explicitIntent)
+                context.startActivity(intent)
             }
         } catch (e: Exception) {
             Toast.makeText(context, "Cannot launch ${app.label}: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun buildLaunchOptions(context: Context, sourceView: View?): Bundle? {
+        val prefs = context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("key_disable_animations", false)) {
+            return ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle()
+        }
+        val anim = prefs.getString("key_app_animation", "System default") ?: "System default"
+        return when (anim.lowercase(Locale.ROOT)) {
+            "zoom" -> {
+                if (sourceView != null && sourceView.width > 0 && sourceView.height > 0) {
+                    ActivityOptions.makeScaleUpAnimation(sourceView, 0, 0, sourceView.width, sourceView.height).toBundle()
+                } else {
+                    ActivityOptions.makeCustomAnimation(context, R.anim.blink_enter, R.anim.blink_exit).toBundle()
+                }
+            }
+            "slide up" -> ActivityOptions.makeCustomAnimation(context, R.anim.slide_up_in, R.anim.slide_up_out).toBundle()
+            "blink" -> ActivityOptions.makeCustomAnimation(context, R.anim.blink_enter, R.anim.blink_exit).toBundle()
+            "system default" -> {
+                if (sourceView != null && sourceView.width > 0 && sourceView.height > 0) {
+                    ActivityOptions.makeClipRevealAnimation(sourceView, 0, 0, sourceView.width, sourceView.height).toBundle()
+                } else null
+            }
+            else -> null
         }
     }
 

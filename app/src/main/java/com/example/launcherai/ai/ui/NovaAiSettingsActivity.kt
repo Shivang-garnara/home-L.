@@ -1,4 +1,4 @@
-package com.example.launcherai
+package com.example.launcherai.ai.ui
 
 import android.content.Context
 import android.content.Intent
@@ -12,6 +12,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import androidx.lifecycle.lifecycleScope
+import com.example.launcherai.R
 import com.example.launcherai.ai.execution.NovaAiEngine
 import com.example.launcherai.ai.provider.ClaudeAiProvider
 import com.example.launcherai.ai.provider.ClaudeModels
@@ -22,6 +23,7 @@ import com.example.launcherai.ai.provider.OnDeviceLlmProvider
 import com.example.launcherai.ai.provider.OpenAiProvider
 import com.example.launcherai.ai.provider.OpenAiModels
 import com.example.launcherai.ai.security.SecureKeyStorage
+import com.example.launcherai.network.EndpointsActivity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -208,7 +210,7 @@ class NovaAiSettingsActivity : AppCompatActivity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
-    }
+        }
 
     private fun testActiveProviderConnection() {
         val (providerId, providerName, apiKey) = getActiveProviderDetails(activeModelIndex)

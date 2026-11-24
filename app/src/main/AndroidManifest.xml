@@ -45,15 +45,15 @@
 
         <!-- Nova AI Chat Activity -->
         <activity
-            android:name=".NovaAiChatActivity"
-            android:exported="false"
+            android:name=".ai.ui.NovaAiChatActivity"
+            android:exported="true"
             android:label="@string/nova_ai_title"
             android:windowSoftInputMode="adjustResize" />
 
         <!-- Nova AI Settings Activity -->
         <activity
-            android:name=".NovaAiSettingsActivity"
-            android:exported="false"
+            android:name=".ai.ui.NovaAiSettingsActivity"
+            android:exported="true"
             android:label="@string/settings_title" />
 
         <!-- First-Run Setup Wizard Activity -->
@@ -69,10 +69,55 @@
             android:exported="true"
             android:label="Nova Launcher Settings" />
 
+        <!-- Home Screen Settings Activity -->
+        <activity
+            android:name=".ui.HomeScreenSettingsActivity"
+            android:exported="true"
+            android:label="Home screen"
+            android:theme="@style/Theme.NovaLight" />
+
+        <!-- App Drawer Settings Activity -->
+        <activity
+            android:name=".ui.AppDrawerSettingsActivity"
+            android:exported="true"
+            android:label="App drawer"
+            android:theme="@style/Theme.NovaLight" />
+
+        <!-- Dock Settings Hub Activity -->
+        <activity
+            android:name=".ui.DockSettingsActivity"
+            android:exported="true"
+            android:label="Dock"
+            android:theme="@style/Theme.NovaLight" />
+
+        <!-- Folders Settings Activity -->
+        <activity
+            android:name=".ui.FolderSettingsActivity"
+            android:exported="true"
+            android:label="Folders"
+            android:parentActivityName=".ui.LauncherSettingsActivity"
+            android:theme="@style/Theme.NovaLight" />
+
+        <!-- Look & Feel Settings Activity -->
+        <activity
+            android:name=".ui.LookFeelSettingsActivity"
+            android:exported="true"
+            android:label="Look &amp; feel"
+            android:parentActivityName=".ui.LauncherSettingsActivity"
+            android:theme="@style/Theme.NovaLight" />
+
+        <!-- Dedicated Popup Menu Settings Activity -->
+        <activity
+            android:name=".ui.PopupMenuSettingsActivity"
+            android:exported="true"
+            android:label="Popup menu"
+            android:parentActivityName=".ui.LookFeelSettingsActivity"
+            android:theme="@style/Theme.NovaDark" />
+
         <!-- Reverse Engineered Endpoints & Telemetry Inspector -->
         <activity
-            android:name=".EndpointsActivity"
-            android:exported="false"
+            android:name=".network.EndpointsActivity"
+            android:exported="true"
             android:label="@string/endpoints_inspector_title" />
 
         <!-- Package Lifecycle Broadcast Receiver -->

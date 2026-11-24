@@ -39,6 +39,8 @@
     <color name="status_red">#EF4444</color>
 
     <!-- Nova Launcher 8.9.6 Design Tokens (Phase 9.3R) -->
+    <color name="nova_orange">#D54526</color>
+    <color name="nova_divider">#EAE1DD</color>
     <color name="nova_accent_orange">#D54526</color>
     <color name="nova_orange_outline">#D34527</color>
     <color name="nova_light_surface">#FFF8F6</color>

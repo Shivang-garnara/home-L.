@@ -1,4 +1,4 @@
-package com.example.launcherai
+package com.example.launcherai.data.model
 
 import android.graphics.drawable.Drawable
 
@@ -8,7 +8,9 @@ data class AppInfo(
     val activityName: String,
     val icon: Drawable? = null,
     val isSystem: Boolean = false,
-    val category: String = CATEGORY_OTHER
+    val category: String = CATEGORY_OTHER,
+    val isFolder: Boolean = false,
+    val folderId: Long? = null
 ) {
     companion object {
         const val CATEGORY_ALL = "All"

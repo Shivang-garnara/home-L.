@@ -32,8 +32,8 @@ class Phase9GridCustomizationTest {
     @Test
     fun testWorkspaceGridConfigDefaults() {
         val config = WorkspaceGridConfig()
-        assertEquals(4, config.cols)
-        assertEquals(5, config.rows)
+        assertEquals(WorkspaceGridConfig.DEFAULT_COLS, config.cols)
+        assertEquals(WorkspaceGridConfig.DEFAULT_ROWS, config.rows)
     }
 
     @Test

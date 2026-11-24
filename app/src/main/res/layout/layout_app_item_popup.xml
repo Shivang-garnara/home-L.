@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/popupContainer"
+    android:layout_width="240dp"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_card_rounded"
+    android:elevation="16dp"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <!-- Header Actions (Horizontal row of quick action icons) -->
+    <LinearLayout
+        android:id="@+id/layoutHeaderActions"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/btnActionInfo"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="App info"
+            android:padding="8dp"
+            android:src="@drawable/ic_info"
+            app:tint="@color/text_primary" />
+
+        <ImageButton
+            android:id="@+id/btnActionEdit"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:layout_marginStart="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Edit"
+            android:padding="8dp"
+            android:src="@drawable/ic_edit"
+            app:tint="@color/text_primary" />
+
+        <ImageButton
+            android:id="@+id/btnActionWidgets"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:layout_marginStart="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Widgets"
+            android:padding="8dp"
+            android:src="@drawable/ic_widgets"
+            app:tint="@color/text_primary" />
+
+        <ImageButton
+            android:id="@+id/btnActionShare"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:layout_marginStart="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Share"
+            android:padding="8dp"
+            android:src="@drawable/ic_share"
+            app:tint="@color/text_primary" />
+    </LinearLayout>
+
+    <View
+        android:id="@+id/dividerHeader"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginVertical="4dp"
+        android:background="@color/divider" />
+
+    <!-- Vertical Actions List -->
+    <LinearLayout
+        android:id="@+id/layoutVerticalActions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Remove from desktop -->
+        <LinearLayout
+            android:id="@+id/rowActionRemove"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="10dp">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:src="@drawable/ic_clear"
+                app:tint="@color/status_red"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="Remove"
+                android:textColor="@color/status_red"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- Uninstall -->
+        <LinearLayout
+            android:id="@+id/rowActionUninstall"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="10dp">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:src="@drawable/ic_clear"
+                app:tint="@color/status_red"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="Uninstall"
+                android:textColor="@color/status_red"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- Play Store -->
+        <LinearLayout
+            android:id="@+id/rowActionPlayStore"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="10dp">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:src="@drawable/ic_play_store"
+                app:tint="@color/accent_cyan"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="Play Store"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- Force Stop -->
+        <LinearLayout
+            android:id="@+id/rowActionForceStop"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="10dp">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:src="@drawable/ic_warning_triangle"
+                app:tint="@color/status_orange"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="Force stop"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- Hide App (Drawer only) -->
+        <LinearLayout
+            android:id="@+id/rowActionHide"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="10dp">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:src="@drawable/ic_hide"
+                app:tint="@color/text_secondary"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="Hide app"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <View
+        android:id="@+id/dividerShortcuts"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginVertical="4dp"
+        android:visibility="gone"
+        android:background="@color/divider" />
+
+    <!-- Shortcuts container -->
+    <LinearLayout
+        android:id="@+id/layoutShortcuts"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone" />
+
+</LinearLayout>

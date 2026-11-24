@@ -18,8 +18,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.launcherai.LauncherApplication
-import com.example.launcherai.NovaAiSettingsActivity
 import com.example.launcherai.R
+import com.example.launcherai.ai.ui.NovaAiSettingsActivity
 import com.example.launcherai.data.repository.GridChangeResult
 import com.example.launcherai.databinding.ActivityLauncherSettingsBinding
 import com.example.launcherai.gestures.GestureAction
@@ -59,6 +59,7 @@ class LauncherSettingsActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         checkDefaultLauncherStatus()
+        updateSummaryTexts()
         if (intent.getBooleanExtra("scroll_down", false)) {
             binding.scrollViewSettingsMain.post {
                 binding.scrollViewSettingsMain.scrollTo(0, 750)
@@ -219,17 +220,17 @@ class LauncherSettingsActivity : AppCompatActivity() {
 
         // Row 2: Home screen
         binding.rowHomeScreen.setOnClickListener {
-            showHomeScreenGridDialog()
+            startActivity(Intent(this, HomeScreenSettingsActivity::class.java))
         }
 
         // Row 3: App drawer
         binding.rowAppDrawer.setOnClickListener {
-            showAppDrawerSettingsDialog()
+            startActivity(Intent(this, AppDrawerSettingsActivity::class.java))
         }
 
         // Row 4: Folders
         binding.rowFolders.setOnClickListener {
-            showFoldersDialog()
+            startActivity(Intent(this, FolderSettingsActivity::class.java))
         }
 
         // Row 5: Search
@@ -244,7 +245,7 @@ class LauncherSettingsActivity : AppCompatActivity() {
 
         // Row 7: Look & feel
         binding.rowLookFeel.setOnClickListener {
-            showLookFeelDialog()
+            startActivity(Intent(this, LookFeelSettingsActivity::class.java))
         }
 
         // Row 8: Gestures & inputs
@@ -295,18 +296,30 @@ class LauncherSettingsActivity : AppCompatActivity() {
 
     private fun updateSummaryTexts() {
         val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-        val cols = prefs.getInt("key_grid_cols", 4)
-        val rows = prefs.getInt("key_grid_rows", 5)
-        binding.tvHomeScreenSubtitle.text = "Set grid ($cols x $rows), icon layout, dock settings, and more"
+        val repository = (application as LauncherApplication).repository
+        val currentGrid = repository.getGridConfig()
+        val paddingHoriz = prefs.getInt("key_desktop_padding_horizontal", 0)
+        val paddingVert = prefs.getInt("key_desktop_padding_vertical", 0)
+        fun stepToLabel(step: Int): String = when (step) {
+            1 -> "Small"
+            2 -> "Medium"
+            3 -> "Large"
+            else -> "None"
+        }
+        binding.tvHomeScreenSubtitle.text = "${currentGrid.rows} ✕ ${currentGrid.cols} • ${stepToLabel(paddingHoriz)} ✕ ${stepToLabel(paddingVert)}"
 
         val shape = prefs.getString("key_icon_shape", "Round") ?: "Round"
         val sizePercent = prefs.getInt("key_icon_size_percent", 125)
-        binding.tvLookFeelSubtitle.text = "Shape: $shape, Size: $sizePercent%, and icon options"
+        val packPkg = prefs.getString("key_selected_icon_pack", "") ?: ""
+        val packLabel = if (packPkg.isEmpty()) "System" else {
+            IconPackManager.getInstalledIconPacks(this).firstOrNull { it.packageName == packPkg }?.label ?: "Custom"
+        }
+        binding.tvLookFeelSubtitle.text = "$packLabel • $shape • $sizePercent%"
 
         val drawerStyle = prefs.getString("key_app_drawer_style", "Vertical") ?: "Vertical"
-        val showKb = prefs.getBoolean("key_drawer_show_keyboard", true)
-        val smartFolders = prefs.getBoolean("key_drawer_smart_folders", true)
-        binding.tvAppDrawerSubtitle.text = "Style: $drawerStyle • Keyboard: ${if (showKb) "On" else "Off"} • Smart Folders: ${if (smartFolders) "On" else "Off"}"
+        val drawerRows = prefs.getInt("key_drawer_grid_rows", 6)
+        val drawerCols = prefs.getInt("key_drawer_grid_cols", 5)
+        binding.tvAppDrawerSubtitle.text = "$drawerStyle • $drawerRows ✕ $drawerCols"
 
         val searchMode = prefs.getString("key_search_mode", "Immersive") ?: "Immersive"
         val homePlacement = prefs.getString("key_search_bar_placement_home", "DOCK_BELOW") ?: "DOCK_BELOW"
@@ -316,8 +329,24 @@ class LauncherSettingsActivity : AppCompatActivity() {
             "HIDDEN" -> "Hidden"
             else -> "Dock (Below)"
         }
-        val drawerPlacement = prefs.getString("key_search_bar_placement_drawer", "Top") ?: "Top"
+        val rawDrawerPlacement = prefs.getString("key_search_bar_placement_drawer", "Top") ?: "Top"
+        val drawerPlacement = if (rawDrawerPlacement.equals("Hidden", ignoreCase = true)) "None" else rawDrawerPlacement
         binding.tvSearchSubtitle.text = "Mode: $searchMode • Home: $homeLabel • Drawer: $drawerPlacement"
+
+        val folderPreview = prefs.getString("key_folder_icon_preview", "GRID") ?: "GRID"
+        val folderPreviewName = when (folderPreview.uppercase()) {
+            "GRID_9" -> "Grid (3x3)"
+            "STACK" -> "Stack"
+            "FAN" -> "Fan"
+            "LINE" -> "Line"
+            "FIRST_APP" -> "First app (1 icon)"
+            else -> "Grid (2x2)"
+        }
+        val folderShape = prefs.getString("key_folder_icon_shape", "SYSTEM") ?: "SYSTEM"
+        val folderShapeName = if (folderShape.equals("SYSTEM", ignoreCase = true)) "System default" else folderShape
+        val folderWindowStyle = prefs.getString("key_folder_window_style", "WINDOW") ?: "WINDOW"
+        val folderStyleName = if (folderWindowStyle.equals("IMMERSIVE", ignoreCase = true)) "Immersive" else "Window"
+        binding.tvFoldersSubtitle.text = "$folderPreviewName • $folderShapeName • $folderStyleName"
     }
 
     private fun showHomeScreenGridDialog() {
@@ -417,18 +446,6 @@ class LauncherSettingsActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showFoldersDialog() {
-        val options = arrayOf("Folder Window Style (Centered)", "Grid Preview Layout (2x2)", "Background Transparency")
-
-        AlertDialog.Builder(this)
-            .setTitle("Folder Customization")
-            .setItems(options) { _, _ ->
-                Toast.makeText(this, "Folder setting saved", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Close", null)
-            .show()
-    }
-
     private fun showSearchDialog() {
         val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
         val searchMode = prefs.getString("key_search_mode", "Immersive") ?: "Immersive"
@@ -523,59 +540,6 @@ class LauncherSettingsActivity : AppCompatActivity() {
                         startActivity(Intent(this, SetupActivity::class.java).apply {
                             putExtra("setup_step", 2)
                         })
-                    }
-                }
-            }
-            .setNegativeButton("Close", null)
-            .show()
-    }
-
-    private fun showLookFeelDialog() {
-        val iconPacks = IconPackManager.getInstalledIconPacks(this)
-        val options = arrayOf(
-            "Icon Style & Shapes (Round, Squircle, Flower, Colors)",
-            "More Icon Shapes Dialog",
-            "System Default Icons"
-        ) + iconPacks.map { "Icon Pack: ${it.label}" }.toTypedArray() + arrayOf("Re-run Setup Wizard")
-
-        AlertDialog.Builder(this)
-            .setTitle("Look & feel - Icon Style")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> {
-                        startActivity(Intent(this, SetupActivity::class.java).apply {
-                            putExtra("setup_step", 4)
-                        })
-                    }
-                    1 -> {
-                        val dialog = MoreShapesDialogFragment.newInstance()
-                        dialog.onShapeSelectedListener = { selectedShape ->
-                            getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                                .edit().putString("key_icon_shape", selectedShape).apply()
-                            updateSummaryTexts()
-                            Toast.makeText(this, "Icon shape set to $selectedShape", Toast.LENGTH_SHORT).show()
-                        }
-                        dialog.show(supportFragmentManager, MoreShapesDialogFragment.TAG)
-                    }
-                    2 -> {
-                        getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                            .edit().putString("key_selected_icon_pack", "").apply()
-                        updateSummaryTexts()
-                    }
-                    options.size - 1 -> {
-                        SetupFlowUtils.resetSetup(this)
-                        startActivity(Intent(this, SetupActivity::class.java).apply {
-                            putExtra("setup_step", 1)
-                        })
-                    }
-                    else -> {
-                        val packIndex = which - 3
-                        if (packIndex in iconPacks.indices) {
-                            val selectedPkg = iconPacks[packIndex].packageName
-                            getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                                .edit().putString("key_selected_icon_pack", selectedPkg).apply()
-                            updateSummaryTexts()
-                        }
                     }
                 }
             }

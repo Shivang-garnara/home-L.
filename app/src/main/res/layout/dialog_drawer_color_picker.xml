@@ -1,0 +1,372 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_more_shapes_dialog"
+    android:paddingStart="24dp"
+    android:paddingEnd="24dp"
+    android:paddingTop="24dp"
+    android:paddingBottom="16dp">
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/tvDrawerColorDialogTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Choose Color"
+        android:textColor="@color/nova_text_brown_title"
+        android:textSize="22sp"
+        android:textStyle="bold" />
+
+    <!-- Live Preview Card -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_card_rounded"
+        android:backgroundTint="#20000000"
+        android:padding="6dp">
+
+        <View
+            android:id="@+id/viewColorPreview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_card_rounded" />
+
+    </FrameLayout>
+
+    <!-- Color Swatches Grid (Row 1) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="16dp">
+
+        <!-- Swatch 1: Surface Light -->
+        <FrameLayout
+            android:id="@+id/swatchSurface"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="true">
+            <View
+                android:id="@+id/circleSurface"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_color_circle" />
+            <ImageView
+                android:id="@+id/checkSurface"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_check"
+                app:tint="@color/nova_text_brown_primary"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <!-- Swatch 2: White -->
+        <FrameLayout
+            android:id="@+id/swatchWhite"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="true">
+            <View
+                android:id="@+id/circleWhite"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_color_circle" />
+            <ImageView
+                android:id="@+id/checkWhite"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_check"
+                app:tint="@color/nova_text_brown_primary"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <!-- Swatch 3: Dark Charcoal -->
+        <FrameLayout
+            android:id="@+id/swatchCharcoal"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="true">
+            <View
+                android:id="@+id/circleCharcoal"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_color_circle" />
+            <ImageView
+                android:id="@+id/checkCharcoal"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_check"
+                app:tint="#FFFFFF"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <!-- Swatch 4: Pitch Black -->
+        <FrameLayout
+            android:id="@+id/swatchBlack"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="true">
+            <View
+                android:id="@+id/circleBlack"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_color_circle" />
+            <ImageView
+                android:id="@+id/checkBlack"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_check"
+                app:tint="#FFFFFF"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <!-- Swatch 5: Orange -->
+        <FrameLayout
+            android:id="@+id/swatchOrange"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="true">
+            <View
+                android:id="@+id/circleOrange"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_color_circle" />
+            <ImageView
+                android:id="@+id/checkOrange"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_check"
+                app:tint="#FFFFFF"
+                android:visibility="gone" />
+        </FrameLayout>
+
+    </LinearLayout>
+
+    <!-- Color Swatches Grid (Row 2) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="8dp">
+
+        <!-- Swatch 6: Red -->
+        <FrameLayout
+            android:id="@+id/swatchRed"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="true">
+            <View
+                android:id="@+id/circleRed"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_color_circle" />
+            <ImageView
+                android:id="@+id/checkRed"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_check"
+                app:tint="#FFFFFF"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <!-- Swatch 7: Green -->
+        <FrameLayout
+            android:id="@+id/swatchGreen"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="true">
+            <View
+                android:id="@+id/circleGreen"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_color_circle" />
+            <ImageView
+                android:id="@+id/checkGreen"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_check"
+                app:tint="#FFFFFF"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <!-- Swatch 8: Blue -->
+        <FrameLayout
+            android:id="@+id/swatchBlue"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="true">
+            <View
+                android:id="@+id/circleBlue"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_color_circle" />
+            <ImageView
+                android:id="@+id/checkBlue"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_check"
+                app:tint="#FFFFFF"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <!-- Swatch 9: Purple -->
+        <FrameLayout
+            android:id="@+id/swatchPurple"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="true">
+            <View
+                android:id="@+id/circlePurple"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_color_circle" />
+            <ImageView
+                android:id="@+id/checkPurple"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_check"
+                app:tint="#FFFFFF"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <!-- Swatch 10: Gray -->
+        <FrameLayout
+            android:id="@+id/swatchGray"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:clickable="true"
+            android:focusable="true">
+            <View
+                android:id="@+id/circleGray"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="center"
+                android:background="@drawable/bg_color_circle" />
+            <ImageView
+                android:id="@+id/checkGray"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_check"
+                app:tint="#FFFFFF"
+                android:visibility="gone" />
+        </FrameLayout>
+
+    </LinearLayout>
+
+    <!-- Custom Hex Input -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="#"
+            android:textColor="@color/nova_text_brown_primary"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginEnd="4dp" />
+
+        <EditText
+            android:id="@+id/etCustomHex"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_stepper_button"
+            android:hint="RRGGBB"
+            android:textColorHint="@color/nova_text_brown_secondary"
+            android:textColor="@color/nova_text_brown_primary"
+            android:textSize="14sp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:maxLength="6"
+            android:inputType="textCapCharacters"
+            android:fontFamily="monospace" />
+
+        <Button
+            android:id="@+id/btnHexPreview"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Apply"
+            android:textColor="@color/nova_accent_orange"
+            android:layout_marginStart="8dp" />
+
+    </LinearLayout>
+
+    <!-- Buttons Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:layout_marginTop="20dp">
+
+        <Button
+            android:id="@+id/btnColorCancel"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cancel"
+            android:textColor="@color/nova_text_brown_secondary" />
+
+        <Button
+            android:id="@+id/btnColorOk"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="OK"
+            android:textColor="@color/nova_accent_orange"
+            android:textStyle="bold"
+            android:layout_marginStart="8dp" />
+
+    </LinearLayout>
+
+</LinearLayout>

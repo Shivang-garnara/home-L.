@@ -1,4 +1,4 @@
-package com.example.launcherai
+package com.example.launcherai.ai.ui
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -11,6 +11,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
+import com.example.launcherai.R
+import com.example.launcherai.ai.model.ChatMessage
 
 class ChatAdapter(
     private val messages: MutableList<ChatMessage>,

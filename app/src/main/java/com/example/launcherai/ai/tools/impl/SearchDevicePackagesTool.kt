@@ -1,10 +1,10 @@
 package com.example.launcherai.ai.tools.impl
 
 import android.content.Context
-import com.example.launcherai.AppManager
 import com.example.launcherai.ai.tools.LauncherTool
 import com.example.launcherai.ai.tools.ToolResult
 import com.example.launcherai.data.repository.WorkspaceRepository
+import com.example.launcherai.util.AppManager
 import java.util.Locale
 
 class SearchDevicePackagesTool : LauncherTool {

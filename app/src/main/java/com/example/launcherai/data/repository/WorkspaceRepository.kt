@@ -1,12 +1,12 @@
 package com.example.launcherai.data.repository
 
 import android.content.Context
-import com.example.launcherai.AppInfo
-import com.example.launcherai.AppManager
 import com.example.launcherai.data.db.LauncherDatabase
 import com.example.launcherai.data.db.WorkspaceDao
 import com.example.launcherai.data.db.WorkspaceItemEntity
 import com.example.launcherai.data.db.WorkspacePageEntity
+import com.example.launcherai.data.model.AppInfo
+import com.example.launcherai.util.AppManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -620,6 +620,87 @@ class WorkspaceRepository(
 
     suspend fun onPackageAdded(packageName: String) = withContext(Dispatchers.IO) {
         refreshInstalledApps()
+        val autoAdd = prefs.getBoolean("key_add_icon_to_home", false)
+        if (autoAdd) {
+            val pm = context.packageManager
+            val launchIntent = pm.getLaunchIntentForPackage(packageName) ?: return@withContext
+            val appInfo = try {
+                pm.getApplicationInfo(packageName, 0)
+            } catch (e: Exception) {
+                null
+            } ?: return@withContext
+
+            val appLabel = pm.getApplicationLabel(appInfo).toString()
+
+            // Check if already placed on desktop to avoid duplicate shortcuts
+            val existing = workspaceDao.getItemsByPackageName(packageName)
+            if (existing.any { it.container == WorkspaceItemEntity.CONTAINER_DESKTOP }) {
+                return@withContext
+            }
+
+            ensurePagesExist()
+            var pages = workspaceDao.getAllPagesSync()
+            if (pages.isEmpty()) {
+                workspaceDao.insertPage(WorkspacePageEntity(screenId = 0, pageOrder = 0))
+                pages = workspaceDao.getAllPagesSync()
+            }
+
+            val grid = _gridConfigFlow.value
+            val desktopItems = workspaceDao.getWorkspaceItemsByContainerSync(WorkspaceItemEntity.CONTAINER_DESKTOP)
+
+            var targetScreenId = -1
+            var targetCellX = 0
+            var targetCellY = 0
+            var foundSpot = false
+
+            for (page in pages) {
+                val occ = Array(grid.cols) { BooleanArray(grid.rows) }
+                val screenItems = desktopItems.filter { it.screenId == page.screenId }
+                for (item in screenItems) {
+                    markOccupied(occ, item.cellX, item.cellY, item.spanX, item.spanY)
+                }
+                val spot = findVacantSpot(occ, grid.cols, grid.rows, 1, 1)
+                if (spot != null) {
+                    targetScreenId = page.screenId
+                    targetCellX = spot.first
+                    targetCellY = spot.second
+                    foundSpot = true
+                    break
+                }
+            }
+
+            if (!foundSpot) {
+                // All existing pages full: create new page
+                val newScreenId = (pages.map { it.screenId }.maxOrNull() ?: 0) + 1
+                val newPageOrder = (pages.map { it.pageOrder }.maxOrNull() ?: 0) + 1
+                workspaceDao.insertPage(WorkspacePageEntity(screenId = newScreenId, pageOrder = newPageOrder))
+                targetScreenId = newScreenId
+                targetCellX = 0
+                targetCellY = 0
+            }
+
+            val newItem = WorkspaceItemEntity(
+                container = WorkspaceItemEntity.CONTAINER_DESKTOP,
+                screenId = targetScreenId,
+                cellX = targetCellX,
+                cellY = targetCellY,
+                spanX = 1,
+                spanY = 1,
+                itemType = WorkspaceItemEntity.ITEM_TYPE_APP,
+                packageName = packageName,
+                className = launchIntent.component?.className,
+                title = appLabel
+            )
+            workspaceDao.insertWorkspaceItem(newItem)
+
+            withContext(Dispatchers.Main) {
+                android.widget.Toast.makeText(
+                    context,
+                    "Shortcut \"$appLabel\" added to home screen",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
     }
 
     suspend fun onPackageRemoved(packageName: String, isReplacing: Boolean) = withContext(Dispatchers.IO) {

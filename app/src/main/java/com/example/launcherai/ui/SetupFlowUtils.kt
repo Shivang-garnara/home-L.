@@ -21,9 +21,15 @@ object SetupFlowUtils {
      */
     fun shouldLaunchSetup(context: Context, skipWizardExtra: Boolean): Boolean {
         if (skipWizardExtra) return false
+        return !isSetupCompleted(context)
+    }
+
+    /**
+     * Returns true if setup was completed.
+     */
+    fun isSetupCompleted(context: Context): Boolean {
         val prefs = context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-        val isCompleted = prefs.getBoolean(KEY_FIRST_RUN_COMPLETED, false)
-        return !isCompleted
+        return prefs.getBoolean(KEY_FIRST_RUN_COMPLETED, false)
     }
 
     /**

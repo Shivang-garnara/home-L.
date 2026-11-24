@@ -9,19 +9,29 @@
     android:clickable="true"
     android:focusable="true">
 
-    <!-- Folder Icon Preview Container (2x2 Mini Icons) -->
+    <!-- Folder Icon Preview Container -->
     <FrameLayout
         android:id="@+id/flFolderPreview"
         android:layout_width="56dp"
         android:layout_height="56dp"
-        android:background="@drawable/bg_card_rounded"
-        android:padding="4dp">
+        android:background="@null">
+
+        <ImageView
+            android:id="@+id/ivFolderIcon"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitCenter"
+            android:contentDescription="@null"
+            android:visibility="gone" />
 
         <GridLayout
+            android:id="@+id/gridFolderFallback"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:columnCount="2"
             android:rowCount="2"
+            android:padding="4dp"
+            android:background="@drawable/bg_card_rounded"
             android:alignmentMode="alignMargins"
             android:columnOrderPreserved="false">
 

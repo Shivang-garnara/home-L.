@@ -8,13 +8,13 @@ import android.view.HapticFeedbackConstants
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.Toast
-import com.example.launcherai.AppManager
 import com.example.launcherai.R
 import com.example.launcherai.data.db.WorkspaceItemEntity
 import com.example.launcherai.ui.DragLayer
 import com.example.launcherai.ui.Workspace
 import com.example.launcherai.ui.WorkspaceResolvedItem
 import com.example.launcherai.ui.WorkspaceViewModel
+import com.example.launcherai.util.AppManager
 
 class DragController(
     private val context: Context,
@@ -44,6 +44,14 @@ class DragController(
 
     var onPendingWidgetDropped: ((providerInfo: android.appwidget.AppWidgetProviderInfo, screenId: Int, cellX: Int, cellY: Int, spanX: Int, spanY: Int) -> Unit)? = null
     var onDragEnded: ((item: WorkspaceResolvedItem?, hitTarget: DropTargetType?) -> Unit)? = null
+
+    var onItemRemovedListener: ((WorkspaceResolvedItem) -> Unit)? = null
+    var onItemClickedInPlaceListener: ((View, WorkspaceResolvedItem) -> Unit)? = null
+    private var lastHoverTarget: DropTargetType? = null
+
+    private var initialMoveX: Float = -1f
+    private var initialMoveY: Float = -1f
+    private var hasMovedBeyondSlop: Boolean = false
 
     private var sourceView: View? = null
     private var dragView: DragView? = null
@@ -119,11 +127,19 @@ class DragController(
     }
 
     fun startDrag(v: View, item: WorkspaceResolvedItem, touchX: Float, touchY: Float) {
+        val prefs = context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("key_desktop_lock", false) && item.entity.id != 0L) {
+            Toast.makeText(context, "Home screen layout is locked", Toast.LENGTH_SHORT).show()
+            return
+        }
         if (isDragging) return
         isDragging = true
         draggedItem = item
         pendingWidget = null
         sourceView = v
+        initialMoveX = -1f
+        initialMoveY = -1f
+        hasMovedBeyondSlop = false
 
         v.parent?.requestDisallowInterceptTouchEvent(false)
         dragLayer?.requestDisallowInterceptTouchEvent(false)
@@ -186,11 +202,46 @@ class DragController(
         dragLayer?.addView(dv, lp)
         dv.move(touchX, touchY)
 
-        dropTargetBar?.visibility = View.VISIBLE
+        val lookFeelPrefs = context.getSharedPreferences(com.example.launcherai.ui.LookFeelSettingsActivity.PREFS_NAME, Context.MODE_PRIVATE)
+        val dropTargetsEnabled = lookFeelPrefs.getBoolean(com.example.launcherai.ui.LookFeelSettingsActivity.KEY_DROP_TARGETS, true)
+
+        if (dropTargetsEnabled) {
+            dropTargetBar?.let { bar ->
+                bar.visibility = View.VISIBLE
+                bar.alpha = 0f
+                val density = context.resources.displayMetrics.density
+                val barHeight = if (bar.height > 0) bar.height.toFloat() else 56f * density
+                bar.translationY = -barHeight
+                bar.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setDuration(175)
+                    .start()
+            }
+            // Zoom out desktop (matching Nova's drop targets desktop zoom-out effect)
+            workspace?.animate()
+                ?.scaleX(0.92f)
+                ?.scaleY(0.92f)
+                ?.setDuration(200)
+                ?.start()
+        }
     }
 
     fun onDragMove(touchX: Float, touchY: Float) {
         if (!isDragging) return
+        if (initialMoveX < 0f) {
+            initialMoveX = touchX
+            initialMoveY = touchY
+        }
+        val dx = touchX - initialMoveX
+        val dy = touchY - initialMoveY
+        val touchSlop = 30f * context.resources.displayMetrics.density
+        val dist = Math.hypot(dx.toDouble(), dy.toDouble())
+        if (!hasMovedBeyondSlop && dist > touchSlop) {
+            hasMovedBeyondSlop = true
+            android.util.Log.d("DragController", "Moved beyond slop! dist=$dist touchSlop=$touchSlop")
+        }
+
         dragView?.move(touchX, touchY)
 
         checkDropTargetHover(touchX, touchY)
@@ -274,6 +325,7 @@ class DragController(
         lastDropTargetCellLayout?.clearDropTarget()
         lastDropTargetCellLayout = null
         workspace?.clearAllDropTargets()
+        android.util.Log.d("DragController", "endDrag: hasMovedBeyondSlop=$hasMovedBeyondSlop hitTarget=${evaluateDropTargetHit(touchX, touchY)}")
 
         val item = draggedItem
         val pending = pendingWidget
@@ -288,6 +340,12 @@ class DragController(
             dockRect.contains(touchX.toInt(), touchY.toInt())
         } else false
 
+        if (!hasMovedBeyondSlop && hitTarget == null && item != null && sourceView != null) {
+            onItemClickedInPlaceListener?.invoke(sourceView!!, item)
+            cleanupDrag()
+            return
+        }
+
         if (hitTarget != null) {
             if (pending != null) {
                 Toast.makeText(context, "Cancelled adding ${pending.label}", Toast.LENGTH_SHORT).show()
@@ -297,7 +355,12 @@ class DragController(
                         if (item.entity.itemType == WorkspaceItemEntity.ITEM_TYPE_WIDGET && item.entity.appWidgetId != -1) {
                             appWidgetHost?.deleteAppWidgetId(item.entity.appWidgetId)
                         }
+                        val sourceFolderId = item.entity.container
                         viewModel?.deleteWorkspaceItem(item.entity.id)
+                        if (sourceFolderId > 0) {
+                            viewModel?.evaluateAndCleanupFolder(sourceFolderId.toLong())
+                        }
+                        onItemRemovedListener?.invoke(item)
                         Toast.makeText(context, "Removed ${item.appInfo.label} from launcher", Toast.LENGTH_SHORT).show()
                     }
                     DropTargetType.APP_INFO -> {
@@ -440,6 +503,13 @@ class DragController(
                     }
                 } else {
                     // Target cell is empty or occupied by self or widget drop
+                    val prefs = context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                    if (prefs.getBoolean("key_desktop_lock", false)) {
+                        Toast.makeText(context, "Home screen layout is locked", Toast.LENGTH_SHORT).show()
+                        cancelDrag()
+                        return
+                    }
+
                     if (item.entity.container > 0) {
                         // Dragged out of a folder onto workspace grid
                         val isAvailable = cellLayout.isCellEmpty(targetCellX, targetCellY, spanX, spanY)
@@ -549,8 +619,29 @@ class DragController(
         dragRegistrationX = 0
         dragRegistrationY = 0
 
-        dropTargetBar?.visibility = View.GONE
+        dropTargetBar?.let { bar ->
+            val density = context.resources.displayMetrics.density
+            val barHeight = if (bar.height > 0) bar.height.toFloat() else 56f * density
+            bar.animate()
+                .alpha(0f)
+                .translationY(-barHeight)
+                .setDuration(175)
+                .withEndAction {
+                    bar.visibility = View.GONE
+                    bar.alpha = 1f
+                    bar.translationY = 0f
+                }
+                .start()
+        }
+
+        workspace?.animate()
+            ?.scaleX(1.0f)
+            ?.scaleY(1.0f)
+            ?.setDuration(200)
+            ?.start()
+
         resetTargetHighlights()
+        lastHoverTarget = null
         isDragging = false
     }
 
@@ -572,6 +663,18 @@ class DragController(
 
     private fun checkDropTargetHover(x: Float, y: Float) {
         val hit = evaluateDropTargetHit(x, y)
+        if (hit != lastHoverTarget) {
+            if (hit != null) {
+                val targetView = when (hit) {
+                    DropTargetType.REMOVE -> targetRemove
+                    DropTargetType.APP_INFO -> targetAppInfo
+                    DropTargetType.UNINSTALL -> targetUninstall
+                }
+                targetView?.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            }
+            lastHoverTarget = hit
+        }
+
         targetRemove?.scaleX = if (hit == DropTargetType.REMOVE) 1.15f else 1.0f
         targetRemove?.scaleY = if (hit == DropTargetType.REMOVE) 1.15f else 1.0f
 

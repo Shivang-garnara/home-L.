@@ -9,10 +9,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.launcherai.AppInfo
 import com.example.launcherai.LauncherApplication
 import com.example.launcherai.data.db.WorkspaceItemEntity
 import com.example.launcherai.data.db.WorkspacePageEntity
+import com.example.launcherai.data.model.AppInfo
 import com.example.launcherai.data.repository.WorkspaceRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -131,7 +131,7 @@ class WorkspaceViewModel(
         loadHiddenPackages()
     }
 
-    private fun loadHiddenPackages() {
+    fun loadHiddenPackages() {
         val savedSet = prefs.getStringSet("key_hidden_packages", emptySet()) ?: emptySet()
         _hiddenPackages.value = savedSet
     }

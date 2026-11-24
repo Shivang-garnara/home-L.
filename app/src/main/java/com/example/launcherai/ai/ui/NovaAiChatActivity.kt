@@ -1,4 +1,4 @@
-package com.example.launcherai
+package com.example.launcherai.ai.ui
 
 import android.content.Intent
 import android.os.Bundle
@@ -12,7 +12,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.launcherai.R
 import com.example.launcherai.ai.execution.NovaAiEngine
+import com.example.launcherai.ai.model.ChatMessage
 import com.example.launcherai.ai.repository.AiRepository
 import com.example.launcherai.data.db.ChatMessageEntity
 import com.example.launcherai.data.repository.WorkspaceRepository

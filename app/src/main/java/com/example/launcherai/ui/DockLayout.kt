@@ -5,13 +5,16 @@ import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
-import com.example.launcherai.AppInfo
 import com.example.launcherai.R
 import com.example.launcherai.data.db.WorkspaceItemEntity
+import com.example.launcherai.data.model.AppInfo
+import com.example.launcherai.util.AppManager
+import kotlin.math.abs
 
 /**
  * Data-driven, responsive Dock (Hotseat) layout view supporting dynamic capacities (3, 5, 7 slots),
@@ -34,7 +37,7 @@ class DockLayout @JvmOverloads constructor(
 
     private var dockDisplayItems: List<WorkspaceItemDisplay> = emptyList()
 
-    private var onAppClickListener: ((AppInfo) -> Unit)? = null
+    private var onAppClickListener: ((AppInfo, View?) -> Unit)? = null
     private var onFolderClickListener: ((WorkspaceFolderResolvedItem) -> Unit)? = null
     private var onAppDrawerClickListener: (() -> Unit)? = null
     private var onAppLongClickListener: ((View, WorkspaceResolvedItem, Float, Float) -> Boolean)? = null
@@ -45,7 +48,7 @@ class DockLayout @JvmOverloads constructor(
     }
 
     fun setListeners(
-        onAppClick: (AppInfo) -> Unit,
+        onAppClick: (AppInfo, View?) -> Unit,
         onFolderClick: (WorkspaceFolderResolvedItem) -> Unit,
         onAppDrawerClick: () -> Unit,
         onAppLongClick: (View, WorkspaceResolvedItem, Float, Float) -> Boolean,
@@ -74,7 +77,20 @@ class DockLayout @JvmOverloads constructor(
 
         val prefs = context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
         val shape = prefs.getString("key_icon_shape", "Round") ?: "Round"
-        val sizePercent = prefs.getInt("key_icon_size_percent", 125)
+        val matchDesktop = prefs.getBoolean("key_dock_match_desktop_size", true)
+        val sizePercent = if (matchDesktop) {
+            prefs.getInt("key_icon_size_percent", 100)
+        } else {
+            prefs.getInt("key_dock_icon_size_percent", 100)
+        }
+        val showLabels = prefs.getBoolean("key_dock_show_labels", false)
+        val bgStyle = prefs.getString("key_dock_bg_style", "Transparent") ?: "Transparent"
+        when (bgStyle) {
+            "Glass" -> setBackgroundResource(R.drawable.bg_dock_glass)
+            "Platform" -> setBackgroundResource(R.drawable.bg_dock_platform)
+            else -> background = null
+        }
+
         val density = context.resources.displayMetrics.density
         val dockHeightPx = if (height > 0) height else (72 * density).toInt()
         val scaledDockSize = com.example.launcherai.icons.DeviceIconMetrics.getDockIconSizePx(
@@ -140,7 +156,7 @@ class DockLayout @JvmOverloads constructor(
                             isClickable = true
                             isFocusable = true
                             setOnClickListener {
-                                com.example.launcherai.AppManager.launchSystemAction(context, action)
+                                AppManager.launchSystemAction(context, action)
                             }
                         }
                         val ivIcon = ImageView(context).apply {
@@ -191,13 +207,20 @@ class DockLayout @JvmOverloads constructor(
 
                             ivAppIcon.setImageDrawable(maskedIcon ?: appInfo.icon)
 
+                            val iconShadow = prefs.getBoolean("key_icon_shadow", true)
+                            ivAppIcon.elevation = if (iconShadow) 4f * context.resources.displayMetrics.density else 0f
+
                             ivAppIcon.layoutParams = ivAppIcon.layoutParams.apply {
                                 width = scaledDockSize
                                 height = scaledDockSize
                             }
 
                             tvAppLabel.text = appInfo.label
-                            tvAppLabel.visibility = View.GONE // Dock icons show no label text in Nova design
+                            tvAppLabel.visibility = if (showLabels) View.VISIBLE else View.GONE
+                            if (showLabels) {
+                                val labelColor = prefs.getInt("key_label_color", android.graphics.Color.WHITE)
+                                tvAppLabel.setTextColor(labelColor)
+                            }
 
                             var lastTouchX = 0f
                             var lastTouchY = 0f
@@ -213,7 +236,7 @@ class DockLayout @JvmOverloads constructor(
                             }
 
                             iconView.setOnClickListener {
-                                onAppClickListener?.invoke(appInfo)
+                                onAppClickListener?.invoke(appInfo, iconView)
                             }
 
                             iconView.setOnLongClickListener { v ->
@@ -237,42 +260,148 @@ class DockLayout @JvmOverloads constructor(
                             val ivPreview4 = folderView.findViewById<ImageView>(R.id.ivPreview4)
 
                             tvFolderTitle.text = folderResolved.title
-                            tvFolderTitle.visibility = View.GONE // Dock folder shows no text label
+                            tvFolderTitle.visibility = if (showLabels) View.VISIBLE else View.GONE
+                            if (showLabels) {
+                                val labelColor = prefs.getInt("key_label_color", android.graphics.Color.WHITE)
+                                tvFolderTitle.setTextColor(labelColor)
+                            }
 
-                            val previewViews = listOf(ivPreview1, ivPreview2, ivPreview3, ivPreview4)
+                            val ivFolderIcon = folderView.findViewById<ImageView>(R.id.ivFolderIcon)
+                            val gridFolderFallback = folderView.findViewById<View>(R.id.gridFolderFallback)
+                            val flFolderPreview = folderView.findViewById<FrameLayout>(R.id.flFolderPreview)
+
+                            val iconSizePercent = prefs.getInt("key_desktop_icon_size_percent", 100)
+                            val density = context.resources.displayMetrics.density
+                            val folderTargetPx = (48f * density * (iconSizePercent / 100f)).toInt()
+                            flFolderPreview?.layoutParams?.let { lp ->
+                                lp.width = folderTargetPx
+                                lp.height = folderTargetPx
+                            }
+
                             val children = folderResolved.children
-                            previewViews.forEachIndexed { index, iv ->
-                                if (index < children.size) {
-                                    val childIcon = children[index].appInfo.icon
-                                    val masked = com.example.launcherai.icons.IconShapeMasker.createMaskedIcon(
-                                        context,
-                                        childIcon,
-                                        shape,
-                                        100
-                                    )
-                                    iv.setImageDrawable(masked ?: childIcon)
-                                    iv.visibility = View.VISIBLE
-                                } else {
-                                    iv.setImageDrawable(null)
-                                    iv.visibility = View.INVISIBLE
+                            val childrenDrawables = children.mapNotNull { it.appInfo.icon }.take(9)
+
+                            if (ivFolderIcon != null) {
+                                val rendered = com.example.launcherai.icons.FolderIconRenderer.renderFolderIconFromPrefs(
+                                    context = context,
+                                    childrenDrawables = childrenDrawables,
+                                    targetSizePx = folderTargetPx
+                                )
+                                ivFolderIcon.setImageDrawable(rendered)
+                                ivFolderIcon.visibility = View.VISIBLE
+                                gridFolderFallback?.visibility = View.GONE
+                                flFolderPreview?.background = null
+                            } else {
+                                val previewViews = listOf(ivPreview1, ivPreview2, ivPreview3, ivPreview4)
+                                previewViews.forEachIndexed { index, iv ->
+                                    if (index < children.size) {
+                                        val childIcon = children[index].appInfo.icon
+                                        val masked = com.example.launcherai.icons.IconShapeMasker.createMaskedIcon(
+                                            context,
+                                            childIcon,
+                                            shape,
+                                            100
+                                        )
+                                        iv?.setImageDrawable(masked ?: childIcon)
+                                        iv?.visibility = View.VISIBLE
+                                    } else {
+                                        iv?.setImageDrawable(null)
+                                        iv?.visibility = View.INVISIBLE
+                                    }
                                 }
                             }
 
                             var lastTouchX = 0f
                             var lastTouchY = 0f
+                            var startTouchX = 0f
+                            var startTouchY = 0f
+                            var isSwipingUp = false
+                            val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
-                            folderView.setOnTouchListener { _, event ->
-                                if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-                                    val loc = IntArray(2)
-                                    folderView.getLocationOnScreen(loc)
-                                    lastTouchX = loc[0] + event.x
-                                    lastTouchY = loc[1] + event.y
+                            folderView.setOnTouchListener { v, event ->
+                                when (event.actionMasked) {
+                                    MotionEvent.ACTION_DOWN -> {
+                                        val loc = IntArray(2)
+                                        v.getLocationOnScreen(loc)
+                                        lastTouchX = loc[0] + event.x
+                                        lastTouchY = loc[1] + event.y
+                                        startTouchX = event.x
+                                        startTouchY = event.y
+                                        isSwipingUp = false
+                                        false
+                                    }
+                                    MotionEvent.ACTION_MOVE -> {
+                                        val diffY = startTouchY - event.y
+                                        val diffX = abs(startTouchX - event.x)
+                                        if (diffY > touchSlop * 1.8f && diffY > diffX * 1.3f) {
+                                            isSwipingUp = true
+                                            v.parent?.requestDisallowInterceptTouchEvent(true)
+                                        }
+                                        false
+                                    }
+                                    MotionEvent.ACTION_UP -> {
+                                        if (isSwipingUp) {
+                                            isSwipingUp = false
+                                            v.cancelLongPress()
+                                            // Tactile bounce animation matching Nova Launcher p1
+                                            v.animate()
+                                                .translationY(-24f)
+                                                .setDuration(120)
+                                                .withEndAction {
+                                                    v.animate().translationY(0f).setDuration(100).start()
+                                                }
+                                                .start()
+
+                                            val prefs = v.context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                                            val tapAction = prefs.getString(
+                                                FolderSettingsActivity.KEY_FOLDER_TAP_ACTION,
+                                                FolderSettingsActivity.TAP_ACTION_OPEN_FOLDER
+                                            )
+
+                                            if (tapAction == FolderSettingsActivity.TAP_ACTION_FIRST_APP) {
+                                                // Swipe up opens folder overlay
+                                                onFolderClickListener?.invoke(folderResolved)
+                                            } else {
+                                                // Swipe up launches first app in folder
+                                                val firstApp = folderResolved.children.firstOrNull()?.appInfo
+                                                if (firstApp != null) {
+                                                    onAppClickListener?.invoke(firstApp, folderView)
+                                                } else {
+                                                    onFolderClickListener?.invoke(folderResolved)
+                                                }
+                                            }
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    }
+                                    MotionEvent.ACTION_CANCEL -> {
+                                        isSwipingUp = false
+                                        false
+                                    }
+                                    else -> false
                                 }
-                                false
                             }
 
-                            folderView.setOnClickListener {
-                                onFolderClickListener?.invoke(folderResolved)
+                            folderView.setOnClickListener { v ->
+                                val prefs = v.context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                                val tapAction = prefs.getString(
+                                    FolderSettingsActivity.KEY_FOLDER_TAP_ACTION,
+                                    FolderSettingsActivity.TAP_ACTION_OPEN_FOLDER
+                                )
+
+                                if (tapAction == FolderSettingsActivity.TAP_ACTION_FIRST_APP) {
+                                    // Signature Nova Mode: Tap launches first app!
+                                    val firstApp = folderResolved.children.firstOrNull()?.appInfo
+                                    if (firstApp != null) {
+                                        onAppClickListener?.invoke(firstApp, folderView)
+                                    } else {
+                                        onFolderClickListener?.invoke(folderResolved)
+                                    }
+                                } else {
+                                    // Default Mode: Tap opens folder overlay
+                                    onFolderClickListener?.invoke(folderResolved)
+                                }
                             }
 
                             folderView.setOnLongClickListener { v ->

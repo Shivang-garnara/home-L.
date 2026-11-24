@@ -1,4 +1,4 @@
-package com.example.launcherai
+package com.example.launcherai.ai.model
 
 data class ChatMessage(
     val id: String = java.util.UUID.randomUUID().toString(),

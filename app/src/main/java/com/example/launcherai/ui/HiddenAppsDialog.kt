@@ -10,8 +10,8 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.launcherai.AppInfo
 import com.example.launcherai.R
+import com.example.launcherai.data.model.AppInfo
 import com.google.android.material.bottomsheet.BottomSheetDialog
 
 /**

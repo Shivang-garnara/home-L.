@@ -121,6 +121,7 @@ class SetupActivity : AppCompatActivity() {
 
         // STEP 5: ALL DONE
         binding.btnGoHome.setOnClickListener {
+            SetupFlowUtils.markSetupCompleted(this)
             if (!SetupFlowUtils.isDefaultLauncher(this)) {
                 requestSystemDefaultLauncher(PendingActionAfterChooser.GO_HOME_FINAL)
             } else {
@@ -485,11 +486,20 @@ class SetupActivity : AppCompatActivity() {
         SetupFlowUtils.markSetupCompleted(this)
 
         val intent = Intent(this, MainActivity::class.java).apply {
+            action = Intent.ACTION_MAIN
+            addCategory(Intent.CATEGORY_HOME)
             putExtra("skip_wizard", true)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
         startActivity(intent)
         finish()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (SetupFlowUtils.isSetupCompleted(this)) {
+            finish()
+        }
     }
 
     private fun setupBackHandler() {
