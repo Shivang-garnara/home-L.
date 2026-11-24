@@ -381,6 +381,22 @@ class Phase9GridCustomizationTest {
             pages.removeIf { it.screenId == screenId }
         }
 
+        override suspend fun updatePageOrder(screenId: Int, pageOrder: Int) {
+            val p = pages.find { it.screenId == screenId }
+            if (p != null) {
+                pages.remove(p)
+                pages.add(p.copy(pageOrder = pageOrder))
+            }
+        }
+
+        override suspend fun getMaxScreenId(): Int? {
+            return pages.maxOfOrNull { it.screenId }
+        }
+
+        override suspend fun getWorkspaceItemsByScreenSync(screenId: Int): List<WorkspaceItemEntity> {
+            return items.filter { it.screenId == screenId }
+        }
+
         override fun getAllFoldersFlow(): Flow<List<FolderEntity>> = flowOf(folders)
 
         override suspend fun getAllFoldersSync(): List<FolderEntity> = folders.toList()

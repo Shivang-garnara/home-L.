@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/resizeFrameContainer"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:clipChildren="false"
+    android:clipToPadding="false">
+
+    <!-- Glowing outline border matching widget shape -->
+    <View
+        android:id="@+id/viewResizeBorder"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_widget_resize_frame" />
+
+    <!-- Top Floating Action Toolbar / Badge -->
+    <LinearLayout
+        android:id="@+id/panelResizeBadge"
+        android:layout_width="wrap_content"
+        android:layout_height="36dp"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="-44dp"
+        android:background="@drawable/bg_widget_resize_badge"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingEnd="8dp">
+
+        <TextView
+            android:id="@+id/tvResizeSpan"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="3 × 2"
+            android:textColor="@color/accent_cyan"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="18dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:background="#33FFFFFF" />
+
+        <!-- Reconfigure button if widget supports configuration -->
+        <ImageView
+            android:id="@+id/btnReconfigureWidget"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Reconfigure widget"
+            android:padding="5dp"
+            android:src="@drawable/ic_settings"
+            android:visibility="gone"
+            app:tint="@color/text_primary" />
+
+        <!-- Done / Confirm Button -->
+        <ImageView
+            android:id="@+id/btnDoneResize"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginStart="2dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Done resizing"
+            android:padding="4dp"
+            android:src="@drawable/ic_check_circle_orange" />
+
+    </LinearLayout>
+
+    <!-- Left Handle -->
+    <FrameLayout
+        android:id="@+id/handleLeft"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="center_vertical|start"
+        android:layout_marginStart="-22dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <View
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_widget_resize_handle" />
+    </FrameLayout>
+
+    <!-- Right Handle -->
+    <FrameLayout
+        android:id="@+id/handleRight"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="center_vertical|end"
+        android:layout_marginEnd="-22dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <View
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_widget_resize_handle" />
+    </FrameLayout>
+
+    <!-- Top Handle -->
+    <FrameLayout
+        android:id="@+id/handleTop"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="-22dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <View
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_widget_resize_handle" />
+    </FrameLayout>
+
+    <!-- Bottom Handle -->
+    <FrameLayout
+        android:id="@+id/handleBottom"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="-22dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <View
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_widget_resize_handle" />
+    </FrameLayout>
+
+</FrameLayout>

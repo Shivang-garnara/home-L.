@@ -375,6 +375,155 @@ class WorkspaceRepository(
     }
 
     /**
+     * Appends a new blank workspace page and returns the created WorkspacePageEntity.
+     */
+    suspend fun addNewPage(): WorkspacePageEntity = withContext(Dispatchers.IO) {
+        val pages = workspaceDao.getAllPagesSync()
+        val maxScreenId = workspaceDao.getMaxScreenId() ?: (pages.maxOfOrNull { it.screenId } ?: -1)
+        val newScreenId = maxScreenId + 1
+        val newPageOrder = pages.size
+        val newPage = WorkspacePageEntity(screenId = newScreenId, pageOrder = newPageOrder)
+        workspaceDao.insertPage(newPage)
+        newPage
+    }
+
+    /**
+     * Safely deletes a workspace page, migrating items to the nearest valid page.
+     * Prevents deletion if only 1 page remains.
+     */
+    suspend fun deletePage(screenId: Int): Boolean = withContext(Dispatchers.IO) {
+        val pages = workspaceDao.getAllPagesSync()
+        if (pages.size <= 1) return@withContext false
+
+        val pageToDelete = pages.find { it.screenId == screenId } ?: return@withContext false
+
+        // Determine destination page for item migration
+        val remainingPages = pages.filter { it.screenId != screenId }
+        val targetPage = remainingPages.find { it.pageOrder < pageToDelete.pageOrder }
+            ?: remainingPages.first()
+
+        // Migrate items on deleted page
+        val itemsOnPage = workspaceDao.getWorkspaceItemsByScreenSync(screenId)
+
+        for (item in itemsOnPage) {
+            val vacant = findVacantCellOnPage(targetPage.screenId, item.spanX, item.spanY)
+            if (vacant != null) {
+                workspaceDao.updateWorkspaceItem(
+                    item.copy(
+                        screenId = targetPage.screenId,
+                        cellX = vacant[0],
+                        cellY = vacant[1]
+                    )
+                )
+            } else {
+                // If target page has no space, move to any page with space
+                var moved = false
+                for (otherPage in remainingPages) {
+                    val otherVacant = findVacantCellOnPage(otherPage.screenId, item.spanX, item.spanY)
+                    if (otherVacant != null) {
+                        workspaceDao.updateWorkspaceItem(
+                            item.copy(
+                                screenId = otherPage.screenId,
+                                cellX = otherVacant[0],
+                                cellY = otherVacant[1]
+                            )
+                        )
+                        moved = true
+                        break
+                    }
+                }
+                if (!moved) {
+                    // Fallback: place on target page
+                    workspaceDao.updateWorkspaceItem(
+                        item.copy(
+                            screenId = targetPage.screenId,
+                            cellX = 0,
+                            cellY = 0
+                        )
+                    )
+                }
+            }
+        }
+
+        // Delete page entity
+        workspaceDao.deletePage(screenId)
+
+        // Re-index remaining page orders
+        val updatedPages = workspaceDao.getAllPagesSync()
+        updatedPages.forEachIndexed { index, page ->
+            if (page.pageOrder != index) {
+                workspaceDao.updatePageOrder(page.screenId, index)
+            }
+        }
+
+        // If deleted page was default, reset default page to first remaining page
+        val currentDefault = getDefaultPage()
+        if (currentDefault == screenId) {
+            setDefaultPage(remainingPages.first().screenId)
+        }
+
+        true
+    }
+
+    /**
+     * Reorders pages according to the provided list of screenIds, updating pageOrder column only.
+     */
+    suspend fun reorderPages(screenIdOrder: List<Int>) = withContext(Dispatchers.IO) {
+        screenIdOrder.forEachIndexed { index, screenId ->
+            workspaceDao.updatePageOrder(screenId, index)
+        }
+    }
+
+    /**
+     * Persists the default home screenId in SharedPreferences.
+     */
+    fun setDefaultPage(screenId: Int) {
+        val prefs = context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putInt("key_default_screen_id", screenId).apply()
+    }
+
+    /**
+     * Returns the persisted default home screenId.
+     */
+    fun getDefaultPage(): Int {
+        val prefs = context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        return prefs.getInt("key_default_screen_id", 0)
+    }
+
+    private suspend fun findVacantCellOnPage(screenId: Int, spanX: Int, spanY: Int): IntArray? = withContext(Dispatchers.IO) {
+        val grid = getGridConfig()
+        val itemsOnScreen = workspaceDao.getWorkspaceItemsByScreenSync(screenId)
+        val occ = Array(grid.cols) { BooleanArray(grid.rows) }
+        for (item in itemsOnScreen) {
+            val sx = item.cellX.coerceIn(0, grid.cols - 1)
+            val sy = item.cellY.coerceIn(0, grid.rows - 1)
+            val ex = (sx + item.spanX).coerceAtMost(grid.cols)
+            val ey = (sy + item.spanY).coerceAtMost(grid.rows)
+            for (x in sx until ex) {
+                for (y in sy until ey) {
+                    occ[x][y] = true
+                }
+            }
+        }
+        for (y in 0..grid.rows - spanY) {
+            for (x in 0..grid.cols - spanX) {
+                var fits = true
+                for (cx in x until x + spanX) {
+                    for (cy in y until y + spanY) {
+                        if (occ[cx][cy]) {
+                            fits = false
+                            break
+                        }
+                    }
+                    if (!fits) break
+                }
+                if (fits) return@withContext intArrayOf(x, y)
+            }
+        }
+        null
+    }
+
+    /**
      * Populates initial workspace default entries only on first installation.
      * Never resets or overwrites an existing user's workspace.
      */

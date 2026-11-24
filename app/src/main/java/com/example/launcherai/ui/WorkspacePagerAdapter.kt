@@ -23,7 +23,9 @@ class WorkspacePagerAdapter(
     private val onFolderClick: ((WorkspaceFolderResolvedItem) -> Unit)? = null,
     private val onAppLongClick: ((View, WorkspaceResolvedItem, Float, Float) -> Boolean)? = null,
     private val onFolderLongClick: ((View, WorkspaceFolderResolvedItem, Float, Float) -> Boolean)? = null,
-    private val onWidgetLongClick: ((View, WorkspaceWidgetResolvedItem, Float, Float) -> Boolean)? = null
+    private val onWidgetLongClick: ((View, WorkspaceWidgetResolvedItem, Float, Float) -> Boolean)? = null,
+    private val onWidgetDragRequested: ((View, WorkspaceWidgetResolvedItem, Float, Float) -> Unit)? = null,
+    private val onEmptySpaceLongClick: ((cellX: Int, cellY: Int) -> Boolean)? = null
 ) : RecyclerView.Adapter<WorkspacePagerAdapter.WorkspacePageViewHolder>() {
 
     fun updateData(
@@ -35,6 +37,15 @@ class WorkspacePagerAdapter(
         this.pageDisplayItemsMap = newItemsMap
         this.gridConfig = newGridConfig
         notifyDataSetChanged()
+    }
+
+    fun getPageAt(position: Int): WorkspacePageEntity? {
+        return pages.getOrNull(position)
+    }
+
+    fun getPositionForScreenId(screenId: Int): Int {
+        val index = pages.indexOfFirst { it.screenId == screenId }
+        return if (index >= 0) index else 0
     }
 
     override fun getItemCount(): Int = pages.size
@@ -51,10 +62,31 @@ class WorkspacePagerAdapter(
         return WorkspacePageViewHolder(cellLayout)
     }
 
+    private val attachedCellLayouts = mutableSetOf<CellLayout>()
+
+    fun clearAllDropTargets() {
+        for (layout in attachedCellLayouts) {
+            layout.clearDropTarget()
+        }
+    }
+
+    override fun onViewAttachedToWindow(holder: WorkspacePageViewHolder) {
+        super.onViewAttachedToWindow(holder)
+        attachedCellLayouts.add(holder.cellLayout)
+    }
+
+    override fun onViewDetachedFromWindow(holder: WorkspacePageViewHolder) {
+        super.onViewDetachedFromWindow(holder)
+        attachedCellLayouts.remove(holder.cellLayout)
+        holder.cellLayout.clearDropTarget()
+    }
+
     override fun onBindViewHolder(holder: WorkspacePageViewHolder, position: Int) {
         val cellLayout = holder.cellLayout
+        cellLayout.clearDropTarget()
         cellLayout.countX = gridConfig.cols
         cellLayout.countY = gridConfig.rows
+        cellLayout.onEmptySpaceLongClickListener = onEmptySpaceLongClick
         cellLayout.removeAllViews()
 
         val page = pages[position]
@@ -215,25 +247,34 @@ class WorkspacePagerAdapter(
 
                     val host = appWidgetHost
                     if (host != null && providerInfo != null) {
-                        val hostView = host.createView(cellLayout.context, widgetResolved.appWidgetId, providerInfo)
-                        hostView.setAppWidget(widgetResolved.appWidgetId, providerInfo)
+                        val hostView = (host.createView(cellLayout.context, widgetResolved.appWidgetId, providerInfo) as? com.example.launcherai.widgets.LauncherAppWidgetHostView)
+                            ?: com.example.launcherai.widgets.LauncherAppWidgetHostView(cellLayout.context).apply {
+                                setAppWidget(widgetResolved.appWidgetId, providerInfo)
+                            }
                         hostView.tag = entity
 
-                        var lastTouchX = 0f
-                        var lastTouchY = 0f
-
-                        hostView.setOnTouchListener { _, event ->
-                            if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-                                val loc = IntArray(2)
-                                hostView.getLocationOnScreen(loc)
-                                lastTouchX = loc[0] + event.x
-                                lastTouchY = loc[1] + event.y
-                            }
-                            false
+                        val cellW = cellLayout.getCellWidth()
+                        val cellH = cellLayout.getCellHeight()
+                        if (cellW > 0 && cellH > 0) {
+                            hostView.updateSizeOptions(entity.spanX, entity.spanY, cellW, cellH)
                         }
 
                         hostView.setOnLongClickListener { v ->
-                            onWidgetLongClick?.invoke(v, widgetResolved, lastTouchX, lastTouchY) ?: false
+                            val touchX = if (hostView.lastTouchRawX > 0f) hostView.lastTouchRawX else {
+                                val loc = IntArray(2)
+                                hostView.getLocationOnScreen(loc)
+                                loc[0] + hostView.width / 2f
+                            }
+                            val touchY = if (hostView.lastTouchRawY > 0f) hostView.lastTouchRawY else {
+                                val loc = IntArray(2)
+                                hostView.getLocationOnScreen(loc)
+                                loc[1] + hostView.height / 2f
+                            }
+                            onWidgetLongClick?.invoke(v, widgetResolved, touchX, touchY) ?: false
+                        }
+
+                        hostView.onLongPressDragListener = { rawX, rawY ->
+                            onWidgetDragRequested?.invoke(hostView, widgetResolved, rawX, rawY)
                         }
 
                         cellLayout.addViewToCell(

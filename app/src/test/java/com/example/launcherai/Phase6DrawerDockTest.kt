@@ -178,6 +178,12 @@ class Phase6DrawerDockTest {
 
         override suspend fun deletePage(screenId: Int) {}
 
+        override suspend fun updatePageOrder(screenId: Int, pageOrder: Int) {}
+
+        override suspend fun getMaxScreenId(): Int? = 0
+
+        override suspend fun getWorkspaceItemsByScreenSync(screenId: Int): List<WorkspaceItemEntity> = items.filter { it.screenId == screenId }
+
         override fun getAllFoldersFlow(): Flow<List<FolderEntity>> = flowOf(emptyList())
 
         override suspend fun getAllFoldersSync(): List<FolderEntity> = emptyList()

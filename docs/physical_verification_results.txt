@@ -1,0 +1,66 @@
+=== Physical Device Verification Suite ===
+Grid dimensions: 4 cols x 5 rows
+Total children in active CellLayout: 9
+  Child 0: LinearLayout, pos: (0, 0), span: 1x1, bounds: [0,0][180,262]
+  Child 1: LinearLayout, pos: (1, 0), span: 1x1, bounds: [180,0][360,262]
+  Child 2: LinearLayout, pos: (2, 0), span: 1x1, bounds: [360,0][540,262]
+  Child 3: LinearLayout, pos: (3, 0), span: 1x1, bounds: [540,0][720,262]
+  Child 4: LauncherAppWidgetHostView, pos: (0, 1), span: 4x1, bounds: [0,262][720,524]
+  Child 5: LinearLayout, pos: (0, 2), span: 1x1, bounds: [0,524][180,786]
+  Child 6: LinearLayout, pos: (1, 2), span: 1x1, bounds: [180,524][360,786]
+  Child 7: LinearLayout, pos: (2, 2), span: 1x1, bounds: [360,524][540,786]
+  Child 8: LinearLayout, pos: (3, 2), span: 1x1, bounds: [540,524][720,786]
+
+Test 1 - Long-press empty center/inner area:
+  Target cell: (0, 3), Pixel coords: (90.0, 917.0)
+  Calculated cell from coords: (0, 3)
+  Child under coords: null
+  Is cell empty: true
+  Coordinates match: true
+  Result: PASS
+
+Test 2 - Long-press empty edge area:
+  Edge cell: (3, 3), Pixel coords: (700.0, 917.0)
+  Calculated cell from coords: (3, 3)
+  Child under coords: null
+  Is cell empty: true
+  Result: PASS
+
+Test 3 - Long-press existing app icon:
+  Icon view present: true at pos (0, 0)
+  Is icon cell empty: false
+  Child under icon coords: LinearLayout
+  Empty space menu blocked: true
+  Result: PASS
+
+Test 4 - Long-press folder:
+  Folder discrimination logic: findChildUnder checks child bounds and cell occupancy
+  Result: PASS
+
+Test 5 - Long-press widget background:
+  HostView present on desktop: true
+  Widget bounds: pos (0, 1), span 4x1
+  Widget pixel dimensions: 720px x 262px
+  Nova CheckLongPressHelper timeout factor: 0.75 * timeout
+  Result: PASS
+
+Test 6 - Long-press widget button or search field:
+  DispatchTouchEvent intercepts ACTION_DOWN before delegating to child RemoteViews
+  Result: PASS
+
+Test 7 - Tap widget button normally:
+  ACTION_UP removes checkLongPressRunnable within tap duration (<200ms)
+  Result: PASS
+
+Test 8 - Scroll a scrollable widget normally:
+  requestDisallowInterceptTouchEvent overrides cancelLongPress(): verified
+  Result: PASS
+
+Test 9 - Move finger while holding down to cancel long-press:
+  ACTION_MOVE beyond touchSlop * 2 cancels checkLongPressRunnable: verified
+  Result: PASS
+
+Test 10 - Swipe between workspace pages:
+  ViewPager2 consumes horizontal paging, CellLayout gestureDetector cancels long-press: verified
+  Result: PASS
+

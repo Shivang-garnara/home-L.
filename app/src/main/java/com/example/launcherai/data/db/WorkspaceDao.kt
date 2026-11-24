@@ -69,6 +69,15 @@ interface WorkspaceDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPages(pages: List<WorkspacePageEntity>)
 
+    @Query("UPDATE workspace_pages SET pageOrder = :pageOrder WHERE screenId = :screenId")
+    suspend fun updatePageOrder(screenId: Int, pageOrder: Int)
+
+    @Query("SELECT MAX(screenId) FROM workspace_pages")
+    suspend fun getMaxScreenId(): Int?
+
+    @Query("SELECT * FROM workspace_items WHERE screenId = :screenId")
+    suspend fun getWorkspaceItemsByScreenSync(screenId: Int): List<WorkspaceItemEntity>
+
     @Query("DELETE FROM workspace_pages WHERE screenId = :screenId")
     suspend fun deletePage(screenId: Int)
 

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="160dp"
+    android:layout_height="280dp"
+    android:layout_marginStart="8dp"
+    android:layout_marginEnd="8dp"
+    android:gravity="center_horizontal"
+    android:orientation="vertical">
+
+    <!-- Header Controls (Home Default Badge & Delete Button) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="4dp">
+
+        <ImageView
+            android:id="@+id/ivSetDefaultPage"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:contentDescription="Set Default Home"
+            android:focusable="true"
+            android:padding="4dp"
+            android:src="@drawable/ic_settings_home"
+            app:tint="@color/text_secondary" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+
+        <ImageView
+            android:id="@+id/ivDeletePage"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:contentDescription="Delete Page"
+            android:focusable="true"
+            android:padding="4dp"
+            android:src="@drawable/ic_minus"
+            app:tint="@color/text_secondary" />
+    </LinearLayout>
+
+    <!-- Page Card Snapshot Container -->
+    <FrameLayout
+        android:id="@+id/cardPageSnapshotContainer"
+        android:layout_width="match_parent"
+        android:layout_height="210dp"
+        android:background="@drawable/bg_widget_preview_card"
+        android:elevation="4dp"
+        android:padding="8dp">
+
+        <FrameLayout
+            android:id="@+id/layoutPageThumbnailPreview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#121212" />
+
+        <TextView
+            android:id="@+id/tvPageTitleBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|center_horizontal"
+            android:layout_marginBottom="6dp"
+            android:background="#80000000"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
+            android:text="Page 1"
+            android:textColor="@color/text_primary"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </FrameLayout>
+
+</LinearLayout>

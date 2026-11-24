@@ -19,7 +19,9 @@ class LauncherAppWidgetHost(
         appWidgetId: Int,
         appWidget: AppWidgetProviderInfo?
     ): AppWidgetHostView {
-        return LauncherAppWidgetHostView(context)
+        return LauncherAppWidgetHostView(context).apply {
+            setAppWidget(appWidgetId, appWidget)
+        }
     }
 
     companion object {

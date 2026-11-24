@@ -2,27 +2,36 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
-    android:padding="12dp"
     android:background="?attr/selectableItemBackground"
     android:clickable="true"
-    android:focusable="true">
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="40dp"
+    android:paddingTop="10dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="10dp">
 
-    <ImageView
-        android:id="@+id/ivWidgetPreview"
-        android:layout_width="64dp"
-        android:layout_height="64dp"
+    <!-- Preview Image or Icon in rounded card frame -->
+    <FrameLayout
+        android:layout_width="72dp"
+        android:layout_height="72dp"
         android:background="@drawable/bg_card_rounded"
-        android:padding="4dp"
-        android:scaleType="fitCenter"
-        android:contentDescription="@null" />
+        android:padding="6dp">
+
+        <ImageView
+            android:id="@+id/ivWidgetPreview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@null"
+            android:scaleType="fitCenter" />
+    </FrameLayout>
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
         android:layout_marginStart="14dp"
+        android:layout_weight="1"
         android:orientation="vertical">
 
         <TextView
@@ -30,8 +39,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="@color/text_primary"
-            android:textStyle="bold"
-            android:textSize="14sp" />
+            android:textSize="14sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/tvWidgetApp"
@@ -42,12 +51,52 @@
             android:textSize="12sp" />
 
         <TextView
-            android:id="@+id/tvWidgetSpan"
+            android:id="@+id/tvWidgetDescription"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:textColor="@color/accent_cyan"
-            android:textSize="11sp" />
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textColor="@color/text_tertiary"
+            android:textSize="11sp"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvWidgetSpan"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_widget_resize_badge"
+                android:paddingStart="8dp"
+                android:paddingTop="2dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="2dp"
+                android:textColor="@color/accent_cyan"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvWidgetConfigBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_chip"
+                android:paddingStart="6dp"
+                android:paddingTop="2dp"
+                android:paddingEnd="6dp"
+                android:paddingBottom="2dp"
+                android:text="Setup"
+                android:textColor="@color/accent_secondary"
+                android:textSize="10sp"
+                android:visibility="gone" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

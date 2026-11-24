@@ -26,7 +26,7 @@ class HiddenAppsDialog(
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.dialog_widget_picker)
+        setContentView(R.layout.dialog_hidden_apps)
 
         val tvTitle = findViewById<TextView>(R.id.tvDialogTitle)
         tvTitle?.text = "Hide Applications"

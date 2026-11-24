@@ -101,6 +101,89 @@ class DragControllerTest {
         assertEquals("UNINSTALL", uninstallTarget.name)
     }
 
+    @Test
+    fun testCalculateDropCell_MultiSpanNoOverflow() {
+        val cellW = 250f
+        val cellH = 200f
+        val countX = 4
+        val countY = 5
+
+        // 4x1 full-width widget
+        // Holding finger in column 2 (localX = 500f), regX = 500f (center)
+        val cellCenter = DragController.calculateDropCell(
+            localX = 500f,
+            localY = 100f,
+            spanX = 4,
+            spanY = 1,
+            cellW = cellW,
+            cellH = cellH,
+            pLeft = 0f,
+            pTop = 0f,
+            regX = 500f,
+            regY = 100f,
+            countX = countX,
+            countY = countY
+        )
+        assertEquals(0, cellCenter[0])
+        assertEquals(0, cellCenter[1])
+
+        // Even if finger is near the right edge (localX = 900f), cellX must strictly be 0 for a 4-span widget
+        val cellRight = DragController.calculateDropCell(
+            localX = 900f,
+            localY = 100f,
+            spanX = 4,
+            spanY = 1,
+            cellW = cellW,
+            cellH = cellH,
+            pLeft = 0f,
+            pTop = 0f,
+            regX = 250f,
+            regY = 100f,
+            countX = countX,
+            countY = countY
+        )
+        assertEquals(0, cellRight[0])
+        assertEquals(0, cellRight[1])
+
+        // 2x2 widget: maxCellX is 2, maxCellY is 3
+        val cell2x2Right = DragController.calculateDropCell(
+            localX = 950f,
+            localY = 850f,
+            spanX = 2,
+            spanY = 2,
+            cellW = cellW,
+            cellH = cellH,
+            pLeft = 0f,
+            pTop = 0f,
+            regX = 250f,
+            regY = 200f,
+            countX = countX,
+            countY = countY
+        )
+        assertEquals(2, cell2x2Right[0])
+        assertEquals(3, cell2x2Right[1])
+        assertTrue(cell2x2Right[0] + 2 <= countX)
+        assertTrue(cell2x2Right[1] + 2 <= countY)
+
+        // Negative coordinates clamp to 0
+        val cellNegative = DragController.calculateDropCell(
+            localX = -100f,
+            localY = -50f,
+            spanX = 1,
+            spanY = 1,
+            cellW = cellW,
+            cellH = cellH,
+            pLeft = 0f,
+            pTop = 0f,
+            regX = 50f,
+            regY = 50f,
+            countX = countX,
+            countY = countY
+        )
+        assertEquals(0, cellNegative[0])
+        assertEquals(0, cellNegative[1])
+    }
+
     private class FakeDragWorkspaceDao : WorkspaceDao {
         val items = mutableListOf<WorkspaceItemEntity>()
 
@@ -168,6 +251,12 @@ class DragControllerTest {
         override suspend fun insertPages(pages: List<com.example.launcherai.data.db.WorkspacePageEntity>) {}
 
         override suspend fun deletePage(screenId: Int) {}
+
+        override suspend fun updatePageOrder(screenId: Int, pageOrder: Int) {}
+
+        override suspend fun getMaxScreenId(): Int? = 0
+
+        override suspend fun getWorkspaceItemsByScreenSync(screenId: Int): List<WorkspaceItemEntity> = items.filter { it.screenId == screenId }
 
         override fun getAllFoldersFlow(): Flow<List<com.example.launcherai.data.db.FolderEntity>> = flowOf(emptyList())
 

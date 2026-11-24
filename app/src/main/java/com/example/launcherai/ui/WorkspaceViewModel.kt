@@ -85,6 +85,48 @@ class WorkspaceViewModel(
             initialValue = listOf(WorkspacePageEntity(0, 0), WorkspacePageEntity(1, 1))
         )
 
+    private val _defaultPageId = MutableStateFlow(repository.getDefaultPage())
+    val defaultPageId: StateFlow<Int> = _defaultPageId.asStateFlow()
+
+    fun addNewPage(onCreated: ((WorkspacePageEntity) -> Unit)? = null) {
+        viewModelScope.launch {
+            val newPage = repository.addNewPage()
+            onCreated?.invoke(newPage)
+        }
+    }
+
+    fun deletePage(screenId: Int, onResult: ((Boolean) -> Unit)? = null) {
+        viewModelScope.launch {
+            val success = repository.deletePage(screenId)
+            _defaultPageId.value = repository.getDefaultPage()
+            onResult?.invoke(success)
+        }
+    }
+
+    fun reorderPages(screenIdOrder: List<Int>) {
+        viewModelScope.launch {
+            repository.reorderPages(screenIdOrder)
+        }
+    }
+
+    fun setDefaultPage(screenId: Int) {
+        repository.setDefaultPage(screenId)
+        _defaultPageId.value = screenId
+    }
+
+    fun getValidDefaultPage(): Int {
+        val currentDefault = repository.getDefaultPage()
+        val currentPages = pages.value
+        return if (currentPages.any { it.screenId == currentDefault }) {
+            currentDefault
+        } else {
+            val fallback = currentPages.firstOrNull()?.screenId ?: 0
+            repository.setDefaultPage(fallback)
+            _defaultPageId.value = fallback
+            fallback
+        }
+    }
+
     init {
         loadHiddenPackages()
     }
@@ -315,6 +357,39 @@ class WorkspaceViewModel(
 
             val existing = repository.getWorkspaceItemById(id) ?: return@launch
             repository.updateWorkspaceItem(existing.copy(spanX = validSpanX, spanY = validSpanY))
+        }
+    }
+
+    fun updateWidgetBounds(id: Long, newCellX: Int, newCellY: Int, newSpanX: Int, newSpanY: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val curGrid = repository.getGridConfig()
+            val validSpanX = newSpanX.coerceIn(1, curGrid.cols)
+            val validSpanY = newSpanY.coerceIn(1, curGrid.rows)
+            val validCellX = newCellX.coerceIn(0, curGrid.cols - validSpanX)
+            val validCellY = newCellY.coerceIn(0, curGrid.rows - validSpanY)
+
+            val existing = repository.getWorkspaceItemById(id) ?: return@launch
+            repository.updateWorkspaceItem(
+                existing.copy(
+                    cellX = validCellX,
+                    cellY = validCellY,
+                    spanX = validSpanX,
+                    spanY = validSpanY
+                )
+            )
+        }
+    }
+
+    fun deleteAppWidget(widgetResolved: WorkspaceWidgetResolvedItem, host: android.appwidget.AppWidgetHost?) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (widgetResolved.appWidgetId != -1) {
+                    host?.deleteAppWidgetId(widgetResolved.appWidgetId)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            repository.deleteWorkspaceItemById(widgetResolved.entity.id)
         }
     }
 

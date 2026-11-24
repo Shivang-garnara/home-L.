@@ -50,6 +50,14 @@ class Workspace @JvmOverloads constructor(
         addView(viewPager)
         addView(pageIndicator)
 
+        isLongClickable = true
+        setOnLongClickListener {
+            val activeCell = getActiveCellLayout()
+            if (activeCell != null) {
+                activeCell.onEmptySpaceLongClickListener?.invoke(0, 0) ?: false
+            } else false
+        }
+
         viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {
                 super.onPageScrolled(position, positionOffset, positionOffsetPixels)
@@ -60,6 +68,7 @@ class Workspace @JvmOverloads constructor(
                 super.onPageSelected(position)
                 pageIndicator.onPageSelected(position)
                 onPageSelectedListener?.invoke(position)
+                clearAllDropTargets()
             }
         })
     }
@@ -77,7 +86,9 @@ class Workspace @JvmOverloads constructor(
         onFolderClick: ((WorkspaceFolderResolvedItem) -> Unit)? = null,
         onAppLongClick: ((View, WorkspaceResolvedItem, Float, Float) -> Boolean)? = null,
         onFolderLongClick: ((View, WorkspaceFolderResolvedItem, Float, Float) -> Boolean)? = null,
-        onWidgetLongClick: ((View, WorkspaceWidgetResolvedItem, Float, Float) -> Boolean)? = null
+        onWidgetLongClick: ((View, WorkspaceWidgetResolvedItem, Float, Float) -> Boolean)? = null,
+        onWidgetDragRequested: ((View, WorkspaceWidgetResolvedItem, Float, Float) -> Unit)? = null,
+        onEmptySpaceLongClick: ((cellX: Int, cellY: Int) -> Boolean)? = null
     ) {
         pageIndicator.setPageCount(pages.size)
         if (adapter == null) {
@@ -90,7 +101,9 @@ class Workspace @JvmOverloads constructor(
                 onFolderClick = onFolderClick,
                 onAppLongClick = onAppLongClick,
                 onFolderLongClick = onFolderLongClick,
-                onWidgetLongClick = onWidgetLongClick
+                onWidgetLongClick = onWidgetLongClick,
+                onWidgetDragRequested = onWidgetDragRequested,
+                onEmptySpaceLongClick = onEmptySpaceLongClick
             )
             viewPager.adapter = adapter
         } else {
@@ -106,6 +119,18 @@ class Workspace @JvmOverloads constructor(
         return viewHolder?.cellLayout
     }
 
+    fun clearAllDropTargets() {
+        adapter?.clearAllDropTargets()
+        val recyclerView = viewPager.getChildAt(0) as? androidx.recyclerview.widget.RecyclerView
+        if (recyclerView != null) {
+            for (i in 0 until recyclerView.childCount) {
+                val child = recyclerView.getChildAt(i)
+                val holder = recyclerView.getChildViewHolder(child) as? WorkspacePagerAdapter.WorkspacePageViewHolder
+                holder?.cellLayout?.clearDropTarget()
+            }
+        }
+    }
+
     fun getPageCount(): Int = adapter?.itemCount ?: 0
 
     fun getCurrentPage(): Int = viewPager.currentItem
@@ -114,6 +139,24 @@ class Workspace @JvmOverloads constructor(
         if (pageIndex in 0 until (adapter?.itemCount ?: 0)) {
             viewPager.setCurrentItem(pageIndex, smoothScroll)
         }
+    }
+
+    fun getCurrentPageScreenId(): Int {
+        val curPos = viewPager.currentItem
+        return adapter?.getPageAt(curPos)?.screenId ?: curPos
+    }
+
+    fun getPageAtPosition(position: Int): WorkspacePageEntity? {
+        return adapter?.getPageAt(position)
+    }
+
+    fun getPositionForScreenId(screenId: Int): Int {
+        return adapter?.getPositionForScreenId(screenId) ?: 0
+    }
+
+    fun navigateToScreenId(screenId: Int, smoothScroll: Boolean = true) {
+        val targetPos = getPositionForScreenId(screenId)
+        setCurrentPage(targetPos, smoothScroll)
     }
 
     fun notifyDataChanged() {
