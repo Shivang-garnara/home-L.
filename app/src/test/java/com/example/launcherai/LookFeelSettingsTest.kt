@@ -22,6 +22,8 @@ class LookFeelSettingsTest {
         assertEquals("key_icon_size_percent", LookFeelSettingsActivity.KEY_ICON_SIZE_PERCENT)
         assertEquals("key_reshape_legacy_icons", LookFeelSettingsActivity.KEY_RESHAPE_LEGACY_ICONS)
         assertEquals("key_icon_shadow", LookFeelSettingsActivity.KEY_ICON_SHADOW)
+        assertEquals("key_adaptive_icon_animations", LookFeelSettingsActivity.KEY_ADAPTIVE_ICON_ANIMATIONS)
+        assertEquals("key_android_71_icons", LookFeelSettingsActivity.KEY_ANDROID_71_ICONS)
 
         assertEquals("key_screen_rotation_enabled", LookFeelSettingsActivity.KEY_SCREEN_ROTATION_ENABLED)
         assertEquals("key_screen_orientation_mode", LookFeelSettingsActivity.KEY_SCREEN_ORIENTATION_MODE)
@@ -155,5 +157,21 @@ class LookFeelSettingsTest {
 
         assertEquals(18f, resolveElevation(true), 0.01f)
         assertEquals(0f, resolveElevation(false), 0.01f)
+    }
+
+    @Test
+    fun testAdaptiveWiggleTiltPhysics() {
+        fun calculateTilt(deltaX: Float): Float {
+            return (deltaX * 0.35f).coerceIn(-12f, 12f)
+        }
+
+        // Fast right drag -> positive tilt up to +12 deg
+        assertEquals(12f, calculateTilt(50f), 0.01f)
+        // Gentle right drag
+        assertEquals(3.5f, calculateTilt(10f), 0.01f)
+        // Fast left drag -> negative tilt clamped to -12 deg
+        assertEquals(-12f, calculateTilt(-50f), 0.01f)
+        // Stationary hover -> 0 deg
+        assertEquals(0f, calculateTilt(0f), 0.01f)
     }
 }

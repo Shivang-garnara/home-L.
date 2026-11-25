@@ -36,6 +36,8 @@ class LookFeelSettingsActivity : AppCompatActivity() {
         const val KEY_ICON_SIZE_PERCENT = "key_icon_size_percent"
         const val KEY_RESHAPE_LEGACY_ICONS = "key_reshape_legacy_icons"
         const val KEY_ICON_SHADOW = "key_icon_shadow"
+        const val KEY_ADAPTIVE_ICON_ANIMATIONS = "key_adaptive_icon_animations"
+        const val KEY_ANDROID_71_ICONS = "key_android_71_icons"
 
         const val KEY_SCREEN_ROTATION_ENABLED = "key_screen_rotation_enabled"
         const val KEY_SCREEN_ORIENTATION_MODE = "key_screen_orientation_mode"
@@ -117,6 +119,19 @@ class LookFeelSettingsActivity : AppCompatActivity() {
         binding.swIconShadow.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean(KEY_ICON_SHADOW, isChecked).apply()
             updateLivePreview()
+        }
+
+        // Adaptive Icon Animations (Wiggle during drag and drop)
+        binding.swAdaptiveAnimations.isChecked = prefs.getBoolean(KEY_ADAPTIVE_ICON_ANIMATIONS, true)
+        binding.swAdaptiveAnimations.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean(KEY_ADAPTIVE_ICON_ANIMATIONS, isChecked).apply()
+        }
+
+        // Android 7.1 Legacy Icons Toggle
+        binding.swAndroid71Icons.isChecked = prefs.getBoolean(KEY_ANDROID_71_ICONS, false)
+        binding.swAndroid71Icons.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean(KEY_ANDROID_71_ICONS, isChecked).apply()
+            Toast.makeText(this, "Icon style updated", Toast.LENGTH_SHORT).show()
         }
 
         // Icon Size SeekBar (80% to 150%)

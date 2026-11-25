@@ -36,7 +36,22 @@ object AppManager {
             val packageName = info.activityInfo.packageName
             val activityName = info.activityInfo.name
             val icon = try {
-                info.loadIcon(pm)
+                val prefs = context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                val preferLegacy71 = prefs.getBoolean("key_android_71_icons", false)
+                var resolvedIcon: android.graphics.drawable.Drawable? = null
+                if (preferLegacy71) {
+                    try {
+                        val roundIconField = info.activityInfo.applicationInfo.javaClass.getField("roundIcon")
+                        val roundIconResId = roundIconField.getInt(info.activityInfo.applicationInfo)
+                        if (roundIconResId != 0) {
+                            resolvedIcon = pm.getResourcesForApplication(info.activityInfo.applicationInfo)
+                                .getDrawable(roundIconResId, null)
+                        }
+                    } catch (e: Exception) {
+                        // roundIcon not available or failed
+                    }
+                }
+                resolvedIcon ?: info.loadIcon(pm)
             } catch (e: Exception) {
                 pm.defaultActivityIcon
             }
