@@ -1,0 +1,737 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/nova_light_surface"
+    android:fitsSystemWindows="true">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="10dp">
+
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_arrow_back"
+            app:tint="@color/nova_text_brown_primary"
+            android:contentDescription="Back" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:text="Search"
+            android:textColor="@color/nova_text_brown_title"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="32dp">
+
+            <!-- Top Live Search Preview Card -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cardSearchPreview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="#E9E2DF">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <!-- Simulated Search Bar -->
+                    <LinearLayout
+                        android:id="@+id/previewSearchBar"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:background="#FFFFFF"
+                        android:elevation="4dp">
+
+                        <ImageView
+                            android:id="@+id/ivPreviewLogo"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:src="@drawable/ic_search"
+                            app:tint="@color/nova_orange" />
+
+                        <TextView
+                            android:id="@+id/tvPreviewSearchHint"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="12dp"
+                            android:text="Search apps, web, calculations..."
+                            android:textColor="@color/nova_text_brown_secondary"
+                            android:textSize="14sp" />
+
+                        <ImageView
+                            android:id="@+id/ivPreviewAssistant"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:src="@drawable/ic_mic"
+                            app:tint="@color/nova_text_brown_primary" />
+                    </LinearLayout>
+
+                    <!-- Simulated "Search with" Chips -->
+                    <TextView
+                        android:id="@+id/tvPreviewProviders"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="Search with: Google, Play Store, Wikipedia, Maps, YouTube"
+                        android:textColor="@color/nova_text_brown_secondary"
+                        android:textSize="11sp"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- SECTION 1: LAYOUT & ON-DEVICE RESULTS -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Layout"
+                android:textColor="@color/nova_orange"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="4dp" />
+
+            <!-- Mode (Clickable Dialog) -->
+            <LinearLayout
+                android:id="@+id/rowSearchMode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:background="?attr/selectableItemBackground">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Mode"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/tvSearchModeSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Immersive"
+                    android:textColor="@color/nova_text_brown_secondary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#D1CAC7" />
+
+            <!-- Limit apps to one row (One-line Switch) -->
+            <LinearLayout
+                android:id="@+id/rowLimitOneRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingEnd="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Limit apps to one row"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="For a better visual experience, only show the first row of app results."
+                        android:textColor="@color/nova_text_brown_secondary"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swLimitOneRow"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="false" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#D1CAC7" />
+
+            <!-- Nova Microresults (One-line Switch) -->
+            <LinearLayout
+                android:id="@+id/rowMicroresults"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingEnd="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Launcher Microresults"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Instant on-device calculations, unit conversions, and quick copy."
+                        android:textColor="@color/nova_text_brown_secondary"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swMicroresults"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#D1CAC7" />
+
+            <!-- Folders Search (One-line Switch) -->
+            <LinearLayout
+                android:id="@+id/rowSearchFolders"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingEnd="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Folders"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Search for your Launcher folders"
+                        android:textColor="@color/nova_text_brown_secondary"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swSearchFolders"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true" />
+            </LinearLayout>
+
+            <!-- SECTION 2: SHORTCUT SEARCH & PROVIDERS -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Shortcut Search"
+                android:textColor="@color/nova_orange"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="4dp" />
+
+            <!-- Shortcut Search (One-line Switch) -->
+            <LinearLayout
+                android:id="@+id/rowShortcutSearch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingEnd="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="App Shortcut Search"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Local on-device indexing of app shortcuts"
+                        android:textColor="@color/nova_text_brown_secondary"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swShortcutSearch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#D1CAC7" />
+
+            <!-- Contact Search (One-line Switch) -->
+            <LinearLayout
+                android:id="@+id/rowContactSearch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingEnd="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Contact Search"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Get contact results locally on device"
+                        android:textColor="@color/nova_text_brown_secondary"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swContactSearch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="false" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#D1CAC7" />
+
+            <!-- Contact Card View (One-line Switch) -->
+            <LinearLayout
+                android:id="@+id/rowContactCardView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingEnd="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Contact card view"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Display contacts as card results with quick interaction options."
+                        android:textColor="@color/nova_text_brown_secondary"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swContactCardView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#D1CAC7" />
+
+            <!-- API Integrations (Clickable Dialog) -->
+            <LinearLayout
+                android:id="@+id/rowApiIntegrations"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:background="?attr/selectableItemBackground">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="API Integrations"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/tvApiIntegrationsSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Connect other apps and services to get more searchable links"
+                    android:textColor="@color/nova_text_brown_secondary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#D1CAC7" />
+
+            <!-- Web Suggestions (Clickable Dialog) -->
+            <LinearLayout
+                android:id="@+id/rowWebSuggestions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:background="?attr/selectableItemBackground">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Web suggestions"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/tvWebSuggestionsSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Google"
+                    android:textColor="@color/nova_text_brown_secondary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#D1CAC7" />
+
+            <!-- Search More Providers (Clickable Multi-Select Dialog) -->
+            <LinearLayout
+                android:id="@+id/rowSearchProviders"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:background="?attr/selectableItemBackground">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Search More providers"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/tvSearchProvidersSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Google, Play Store, Wikipedia, Google Maps, YouTube"
+                    android:textColor="@color/nova_text_brown_secondary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#D1CAC7" />
+
+            <!-- Nova AI in Search (Clickable Dialog) -->
+            <LinearLayout
+                android:id="@+id/rowNovaAiInSearch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:background="?attr/selectableItemBackground">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Nova AI in search"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/tvNovaAiInSearchSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Tap to open"
+                    android:textColor="@color/nova_text_brown_secondary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <!-- SECTION 3: BEHAVIOR & PRIVACY -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Behavior &amp; Privacy"
+                android:textColor="@color/nova_orange"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="4dp" />
+
+            <!-- Make shortcuts from recent searches (One-line Switch) -->
+            <LinearLayout
+                android:id="@+id/rowRecentShortcuts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingEnd="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Make shortcuts from my recent searches"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Past searches will be converted to reusable shortcuts"
+                        android:textColor="@color/nova_text_brown_secondary"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swRecentShortcuts"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="false" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#D1CAC7" />
+
+            <!-- Private Keyboard (One-line Switch) -->
+            <LinearLayout
+                android:id="@+id/rowPrivateKeyboard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingEnd="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Private keyboard"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Request keyboard not track what is typed."
+                        android:textColor="@color/nova_text_brown_secondary"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swPrivateKeyboard"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="false" />
+            </LinearLayout>
+
+            <!-- SECTION 4: SEARCH BARS -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Search Bars"
+                android:textColor="@color/nova_orange"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="4dp" />
+
+            <!-- Desktop Search Bar (Clickable Dialog) -->
+            <LinearLayout
+                android:id="@+id/rowDesktopSearchBar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:background="?attr/selectableItemBackground">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Desktop search bar"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/tvDesktopSearchBarSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Dock (Below icons) • 22dp radius"
+                    android:textColor="@color/nova_text_brown_secondary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#D1CAC7" />
+
+            <!-- Drawer Search Bar (Clickable Dialog) -->
+            <LinearLayout
+                android:id="@+id/rowDrawerSearchBar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:background="?attr/selectableItemBackground">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Drawer search bar"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/tvDrawerSearchBarSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Top • Voice search"
+                    android:textColor="@color/nova_text_brown_secondary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#D1CAC7" />
+
+            <!-- Nova Now Search Bar (Clickable Dialog) -->
+            <LinearLayout
+                android:id="@+id/rowNovaNowSearchBar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:background="?attr/selectableItemBackground">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Nova Now search bar"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/tvNovaNowSearchBarSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Enabled • 25% corner radius"
+                    android:textColor="@color/nova_text_brown_secondary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

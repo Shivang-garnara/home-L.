@@ -106,6 +106,14 @@
             android:parentActivityName=".ui.LauncherSettingsActivity"
             android:theme="@style/Theme.NovaLight" />
 
+        <!-- Dedicated Search Settings Activity -->
+        <activity
+            android:name=".ui.SearchSettingsActivity"
+            android:exported="true"
+            android:label="Search"
+            android:parentActivityName=".ui.LauncherSettingsActivity"
+            android:theme="@style/Theme.NovaLight" />
+
         <!-- Dedicated Popup Menu Settings Activity -->
         <activity
             android:name=".ui.PopupMenuSettingsActivity"

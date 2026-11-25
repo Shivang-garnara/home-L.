@@ -235,7 +235,7 @@ class LauncherSettingsActivity : AppCompatActivity() {
 
         // Row 5: Search
         binding.rowSearch.setOnClickListener {
-            showSearchDialog()
+            startActivity(Intent(this, SearchSettingsActivity::class.java))
         }
 
         // Row 6: Cards

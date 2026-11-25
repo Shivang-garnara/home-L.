@@ -356,6 +356,23 @@ class MainActivity : AppCompatActivity() {
         val dockHotseat = findViewById<View>(R.id.dockHotseat)
 
         val density = resources.displayMetrics.density
+        val homeRadiusDp = prefs.getInt(com.example.launcherai.ui.SearchSettingsActivity.KEY_HOME_BAR_RADIUS, 22)
+        val homeShadow = prefs.getBoolean(com.example.launcherai.ui.SearchSettingsActivity.KEY_HOME_BAR_SHADOW, true)
+        val homeWireframe = prefs.getBoolean(com.example.launcherai.ui.SearchSettingsActivity.KEY_HOME_BAR_WIREFRAME, false)
+        searchBar.elevation = if (homeShadow) 4f * density else 0f
+        if (homeWireframe) {
+            searchBar.background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = homeRadiusDp * density
+                setColor(android.graphics.Color.TRANSPARENT)
+                setStroke((1.5f * density).toInt(), android.graphics.Color.WHITE)
+            }
+        } else if (homeRadiusDp != 22) {
+            searchBar.background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = homeRadiusDp * density
+                setColor(android.graphics.Color.parseColor("#E6FFFFFF"))
+            }
+        }
+
         val lp = searchBar.layoutParams as? LinearLayout.LayoutParams ?: LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             (55 * density).toInt()
@@ -868,7 +885,8 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener {
                 val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
                 val searchMode = prefs.getString("key_search_mode", "Immersive") ?: "Immersive"
-                if (searchMode.equals("Standard", ignoreCase = true)) {
+                val searchInterface = prefs.getString(com.example.launcherai.ui.SearchSettingsActivity.KEY_HOME_BAR_INTERFACE, "Nova Search") ?: "Nova Search"
+                if (searchMode.equals("Standard", ignoreCase = true) || searchInterface.contains("Google App", ignoreCase = true)) {
                     try {
                         val intent = Intent(Intent.ACTION_WEB_SEARCH)
                         startActivity(intent)
@@ -883,6 +901,12 @@ class MainActivity : AppCompatActivity() {
                 startActivity(Intent(this@MainActivity, NovaAiChatActivity::class.java))
                 true
             }
+        }
+
+        // Apply Private Keyboard IME flag if enabled
+        val searchPrefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        if (searchPrefs.getBoolean(com.example.launcherai.ui.SearchSettingsActivity.KEY_PRIVATE_KEYBOARD, false)) {
+            etDrawerSearch.imeOptions = etDrawerSearch.imeOptions or android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
         }
 
         // Suggestion Chips (Ref 11)
