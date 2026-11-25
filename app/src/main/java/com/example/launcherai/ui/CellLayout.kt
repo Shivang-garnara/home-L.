@@ -67,6 +67,11 @@ class CellLayout @JvmOverloads constructor(
         if (ev.actionMasked == MotionEvent.ACTION_DOWN) {
             lastTouchX = ev.x
             lastTouchY = ev.y
+        } else if (ev.actionMasked == MotionEvent.ACTION_MOVE) {
+            val touchSlop = android.view.ViewConfiguration.get(context).scaledTouchSlop
+            if (Math.abs(ev.x - lastTouchX) > touchSlop || Math.abs(ev.y - lastTouchY) > touchSlop) {
+                cancelLongPress()
+            }
         }
         gestureDetector.onTouchEvent(ev)
         return super.onInterceptTouchEvent(ev)
@@ -76,6 +81,11 @@ class CellLayout @JvmOverloads constructor(
         if (ev.actionMasked == MotionEvent.ACTION_DOWN) {
             lastTouchX = ev.x
             lastTouchY = ev.y
+        } else if (ev.actionMasked == MotionEvent.ACTION_MOVE) {
+            val touchSlop = android.view.ViewConfiguration.get(context).scaledTouchSlop
+            if (Math.abs(ev.x - lastTouchX) > touchSlop || Math.abs(ev.y - lastTouchY) > touchSlop) {
+                cancelLongPress()
+            }
         }
         gestureDetector.onTouchEvent(ev)
         return true

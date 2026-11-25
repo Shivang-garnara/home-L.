@@ -67,11 +67,21 @@ class DragLayer @JvmOverloads constructor(
                             isDraggingDrawer = true
                             initialDrawerTransY = height
                             parent?.requestDisallowInterceptTouchEvent(true)
+
+                            val cancelEvent = MotionEvent.obtain(ev)
+                            cancelEvent.action = MotionEvent.ACTION_CANCEL
+                            super.dispatchTouchEvent(cancelEvent)
+                            cancelEvent.recycle()
                         } else if (drawerOpen && dy > 18 * density && isDrawerAtTop()) {
                             // Start dragging DOWN from open drawer to close drawer
                             isDraggingDrawer = true
                             initialDrawerTransY = 0f
                             parent?.requestDisallowInterceptTouchEvent(true)
+
+                            val cancelEvent = MotionEvent.obtain(ev)
+                            cancelEvent.action = MotionEvent.ACTION_CANCEL
+                            super.dispatchTouchEvent(cancelEvent)
+                            cancelEvent.recycle()
                         }
                     }
                 }
