@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_more_shapes_dialog"
+    android:paddingStart="24dp"
+    android:paddingEnd="24dp"
+    android:paddingTop="22dp"
+    android:paddingBottom="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:text="Grid"
+        android:textColor="@color/nova_text_brown_title"
+        android:textSize="22sp"
+        android:textStyle="bold" />
+
+    <!-- Top Columns Stepper: - <cols> + -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="44dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="14dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_stepper_button"
+        android:paddingStart="6dp"
+        android:paddingEnd="6dp">
+
+        <ImageButton
+            android:id="@+id/btnFolderColsMinus"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Decrease columns"
+            android:src="@drawable/ic_minus"
+            app:tint="@color/nova_text_brown_primary" />
+
+        <TextView
+            android:id="@+id/tvFolderColsCount"
+            android:layout_width="38dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="4"
+            android:textColor="@color/nova_text_brown_primary"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/btnFolderColsPlus"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Increase columns"
+            android:src="@drawable/ic_plus"
+            app:tint="@color/nova_text_brown_primary" />
+    </LinearLayout>
+
+    <!-- Visual Preview + Right Vertical Rows Stepper -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <com.example.launcherai.ui.FolderGridBlockPreviewView
+            android:id="@+id/folderGridPreview"
+            android:layout_width="0dp"
+            android:layout_height="190dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="12dp" />
+
+        <LinearLayout
+            android:layout_width="46dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/bg_stepper_button"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp">
+
+            <ImageButton
+                android:id="@+id/btnFolderRowsPlus"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Increase rows"
+                android:src="@drawable/ic_plus"
+                app:tint="@color/nova_text_brown_primary" />
+
+            <TextView
+                android:id="@+id/tvFolderRowsCount"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:gravity="center"
+                android:text="3"
+                android:textColor="@color/nova_text_brown_primary"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <ImageButton
+                android:id="@+id/btnFolderRowsMinus"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Decrease rows"
+                android:src="@drawable/ic_minus"
+                app:tint="@color/nova_text_brown_primary" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:orientation="horizontal"
+        android:gravity="end">
+
+        <Button
+            android:id="@+id/btnFolderGridCancel"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cancel"
+            android:textAllCaps="false"
+            android:textColor="#6D3B68" />
+
+        <Button
+            android:id="@+id/btnFolderGridOk"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="OK"
+            android:textAllCaps="false"
+            android:textStyle="bold"
+            android:textColor="#6D3B68" />
+    </LinearLayout>
+
+</LinearLayout>

@@ -24,6 +24,8 @@ object FolderIconRenderer {
 
     const val PREVIEW_GRID = "GRID"
     const val PREVIEW_GRID_9 = "GRID_9"
+    const val PREVIEW_RADIAL_5 = "RADIAL_5"
+    const val PREVIEW_RADIAL_9 = "RADIAL_9"
     const val PREVIEW_STACK = "STACK"
     const val PREVIEW_FAN = "FAN"
     const val PREVIEW_LINE = "LINE"
@@ -35,6 +37,7 @@ object FolderIconRenderer {
     const val SHAPE_SQUIRCLE = "Squircle"
     const val SHAPE_SQUARE = "Square"
     const val SHAPE_TEARDROP = "Teardrop"
+    const val SHAPE_FLOWER = "Flower"
     const val SHAPE_PLATFORM = "Platform"
 
     /**
@@ -48,8 +51,16 @@ object FolderIconRenderer {
         val prefs = context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
         val preview = prefs.getString("key_folder_icon_preview", PREVIEW_GRID) ?: PREVIEW_GRID
         val shape = prefs.getString("key_folder_icon_shape", SHAPE_SYSTEM) ?: SHAPE_SYSTEM
-        val bgColor = prefs.getInt("key_folder_icon_bg_color", 0xFFE0E0E0.toInt())
-        val bgAlpha = prefs.getInt("key_folder_icon_bg_alpha", 20)
+        val matchWindowColor = prefs.getBoolean("key_folder_icon_match_window_color", true)
+        val resolvedPlate = FolderGeometry.resolveFolderIconColor(
+            matchWindowColor = matchWindowColor,
+            windowBgColor = prefs.getInt("key_folder_window_bg_color", 0xFF202534.toInt()),
+            windowBgOpacityPercent = prefs.getInt("key_folder_window_bg_alpha", 80),
+            customIconBgColor = prefs.getInt("key_folder_icon_bg_color", 0xFFE0E0E0.toInt()),
+            customIconBgTransparencyPercent = prefs.getInt("key_folder_icon_bg_alpha", 20)
+        )
+        val bgColor = resolvedPlate.color
+        val bgAlpha = resolvedPlate.transparencyPercent
         val outline = prefs.getBoolean("key_folder_icon_outline", true)
         val clip = prefs.getBoolean("key_folder_icon_clip", true)
 
@@ -113,6 +124,14 @@ object FolderIconRenderer {
             }
             if (shapePath != null) {
                 canvas.drawPath(shapePath, fillPaint)
+            } else if (effectiveShape.equals(SHAPE_PLATFORM, ignoreCase = true)) {
+                val platRect = android.graphics.RectF(
+                    size * 0.08f,
+                    size * 0.64f,
+                    size * 0.92f,
+                    size * 0.94f
+                )
+                canvas.drawOval(platRect, fillPaint)
             } else {
                 canvas.drawRect(0f, 0f, size.toFloat(), size.toFloat(), fillPaint)
             }
@@ -127,6 +146,8 @@ object FolderIconRenderer {
         // Pass 3: Draw Sub-Icons according to Preview Layout
         when (previewLayout.uppercase()) {
             PREVIEW_GRID_9 -> drawGrid9Preview(canvas, children, size)
+            PREVIEW_RADIAL_5 -> drawRadialPreview(canvas, children, size, maxRingSlots = 5)
+            PREVIEW_RADIAL_9 -> drawRadialPreview(canvas, children, size, maxRingSlots = 9)
             PREVIEW_STACK -> drawStackPreview(canvas, children, size)
             PREVIEW_FAN -> drawFanPreview(canvas, children, size)
             PREVIEW_LINE -> drawLinePreview(canvas, children, size)
@@ -191,6 +212,24 @@ object FolderIconRenderer {
             val top = (padding + row * (itemSize + padding)).toInt()
             val drawable = children[i]
             drawable.bounds = Rect(left, top, left + itemSize, top + itemSize)
+            drawable.draw(canvas)
+        }
+    }
+
+    /**
+     * RADIAL (5-icon outer ring) & RADIAL_9 (clustered center + outer ring) using Nova's Laa/a math.
+     */
+    private fun drawRadialPreview(canvas: Canvas, children: List<Drawable>, size: Int, maxRingSlots: Int) {
+        val slots = FolderGeometry.computeRadialSlots(children.size, size.toFloat(), maxRingSlots)
+        for (i in slots.indices) {
+            val slot = slots[i]
+            val drawable = children[i]
+            drawable.bounds = Rect(
+                slot.left.toInt(),
+                slot.top.toInt(),
+                slot.right.toInt(),
+                slot.bottom.toInt()
+            )
             drawable.draw(canvas)
         }
     }

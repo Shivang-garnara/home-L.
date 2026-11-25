@@ -141,8 +141,11 @@ object IconShapeMasker {
             "pentagon" -> {
                 createPolygonPath(path, cx, cy, radius, 5)
             }
-            "hexagon", "hexagon2" -> {
-                createPolygonPath(path, cx, cy, radius, 6)
+            "hexagon" -> {
+                createPolygonPath(path, cx, cy, radius, 6, startAngle = 0.0)
+            }
+            "hexagon2", "hexagon_90" -> {
+                createPolygonPath(path, cx, cy, radius, 6, startAngle = -Math.PI / 2.0)
             }
             "heptagon" -> {
                 createPolygonPath(path, cx, cy, radius, 7)
@@ -171,9 +174,15 @@ object IconShapeMasker {
         return path
     }
 
-    private fun createPolygonPath(path: Path, cx: Float, cy: Float, radius: Float, sides: Int) {
+    private fun createPolygonPath(
+        path: Path,
+        cx: Float,
+        cy: Float,
+        radius: Float,
+        sides: Int,
+        startAngle: Double = -Math.PI / 2.0
+    ) {
         val angleStep = 2.0 * Math.PI / sides
-        val startAngle = -Math.PI / 2.0
         for (i in 0 until sides) {
             val angle = startAngle + i * angleStep
             val x = cx + radius * cos(angle).toFloat()

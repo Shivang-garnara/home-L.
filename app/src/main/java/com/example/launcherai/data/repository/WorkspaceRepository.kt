@@ -858,6 +858,46 @@ class WorkspaceRepository(
         }
     }
 
+    suspend fun sortFolderAppsAlphabetically(folderId: Long) = withContext(Dispatchers.IO) {
+        val children = workspaceDao.getWorkspaceItemsByContainerSync(folderId.toInt())
+        val sorted = children.sortedBy { (it.title ?: "").lowercase() }
+        sorted.forEachIndexed { idx, child ->
+            if (child.rank != idx) {
+                workspaceDao.updateWorkspaceItem(child.copy(rank = idx))
+            }
+        }
+    }
+
+    suspend fun addAppsToFolder(
+        folderId: Long,
+        apps: List<com.example.launcherai.data.model.AppInfo>
+    ) = withContext(Dispatchers.IO) {
+        val existing = workspaceDao.getWorkspaceItemsByContainerSync(folderId.toInt())
+        val existingKeys = existing.map { "${it.packageName}/${it.className ?: ""}" }.toHashSet()
+        var nextRank = (existing.maxOfOrNull { it.rank } ?: -1) + 1
+        for (app in apps) {
+            val key = "${app.packageName}/${app.activityName}"
+            if (key !in existingKeys) {
+                existingKeys.add(key)
+                workspaceDao.insertWorkspaceItem(
+                    WorkspaceItemEntity(
+                        itemType = WorkspaceItemEntity.ITEM_TYPE_APP,
+                        packageName = app.packageName,
+                        className = app.activityName,
+                        container = folderId.toInt(),
+                        screenId = 0,
+                        cellX = 0,
+                        cellY = 0,
+                        spanX = 1,
+                        spanY = 1,
+                        rank = nextRank++,
+                        title = app.label
+                    )
+                )
+            }
+        }
+    }
+
     suspend fun getWorkspaceItemById(id: Long): WorkspaceItemEntity? = withContext(Dispatchers.IO) {
         workspaceDao.getWorkspaceItemById(id)
     }

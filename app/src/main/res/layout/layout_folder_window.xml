@@ -21,8 +21,9 @@
         android:clickable="true"
         android:focusable="true">
 
-        <!-- Folder Header with Editable Title -->
+        <!-- Folder Header with Editable Title, Overflow Menu, and Close -->
         <LinearLayout
+            android:id="@+id/folderHeaderRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
@@ -44,6 +45,18 @@
                 android:imeOptions="actionDone"
                 android:singleLine="true"
                 android:lines="1" />
+
+            <TextView
+                android:id="@+id/btnFolderMenu"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:gravity="center"
+                android:text="⋮"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_secondary"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Folder Menu" />
 
             <ImageView
                 android:id="@+id/btnCloseFolder"

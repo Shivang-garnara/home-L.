@@ -1,33 +1,83 @@
 package com.example.launcherai.ui
 
+import android.app.WallpaperManager
 import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.text.InputType
+import android.view.Gravity
 import android.view.View
-import android.widget.LinearLayout
+import android.widget.EditText
+import android.widget.FrameLayout
+import android.widget.GridLayout
 import android.widget.SeekBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import androidx.lifecycle.lifecycleScope
 import com.example.launcherai.R
-import com.example.launcherai.databinding.ActivityFolderSettingsBinding
-import com.example.launcherai.icons.FolderIconRenderer
 import com.example.launcherai.util.AppManager
+import com.example.launcherai.databinding.ActivityFolderSettingsBinding
+import com.example.launcherai.icons.FolderGeometry
+import com.example.launcherai.icons.FolderIconRenderer
+import com.example.launcherai.icons.IconShapeMasker
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
- * Dedicated Folders Settings activity matching Nova Launcher 8.9.9 (SettingsFolder / SettingsFolderIcon).
- * Provides live folder icon preview, preview layout selector, shape picker, background color & alpha slider,
- * outline stroke toggle, clip to bounds toggle, complete Window Style configuration (Presentation style,
- * Window Background color & alpha, Corner radius, Drop shadow, Grid dimensions, Scroll direction), and
- * independent Folder Content Icon Layout controls (match desktop size, icon size, label visibility, font,
- * text size, text color, shadow, single line).
+ * Nova Launcher Folders Settings Screen (SettingsFolder + FolderWindowSettings).
+ * Includes live wallpaper opened-folder preview, Folder Icon Appearance navigation row,
+ * Icon size + Match desktop size, expandable Label accordion, expandable 3-tab Colors accordion,
+ * Mode-conditional Window/Immersive controls (Shadow, Card background, Align Bottom, Grid AUTO vs Picker),
+ * Corner radius, Show folder name, Scroll direction, and Gestures & Behavior.
  */
 class FolderSettingsActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityFolderSettingsBinding
+    private lateinit var prefs: SharedPreferences
+    private var sampleDrawables: List<Drawable> = emptyList()
+
+    private var activeColorTab = TAB_SURFACE
+    private var isColorsExpanded = false
+    private var isLabelExpanded = false
+
+    // Folder Window state
+    private var windowStyle: String = WINDOW_STYLE_WINDOW
+    private var windowBgColor: Int = 0xFF202534.toInt()
+    private var windowBgAlpha: Int = 80 // opacity % 0..100
+    private var windowTextColor: Int = 0xFFFFFFFF.toInt()
+    private var windowAccentColor: Int = 0xFFD54526.toInt()
+    private var windowCornerRadius: Int = 16
+    private var windowShadow: Boolean = true
+    private var cardBackground: Boolean = false
+    private var alignBottom: Boolean = false
+    private var showFolderName: Boolean = true
+    private var windowGridRows: Int = 3
+    private var windowGridCols: Int = 4
+    private var windowScrollDir: String = SCROLL_DIR_VERTICAL
+
+    // Layout & Labels state
+    private var matchDesktopSize: Boolean = true
+    private var folderIconSizePercent: Int = 100
+    private var folderLabelVisible: Boolean = true
+    private var folderLabelSizePercent: Int = 100
+    private var folderLabelFont: String = "Normal"
+    private var folderLabelColor: Int = 0xFFFFFFFF.toInt()
+    private var folderLabelShadow: Boolean = true
+    private var folderLabelSingleLine: Boolean = true
+
+    // Behavior state
+    private var folderTapAction: String = TAP_ACTION_OPEN_FOLDER
+    private var folderAutoClose: Boolean = true
 
     companion object {
         const val WINDOW_STYLE_WINDOW = "WINDOW"
@@ -38,13 +88,17 @@ class FolderSettingsActivity : AppCompatActivity() {
         const val KEY_FOLDER_WINDOW_STYLE = "key_folder_window_style"
         const val KEY_FOLDER_WINDOW_BG_COLOR = "key_folder_window_bg_color"
         const val KEY_FOLDER_WINDOW_BG_ALPHA = "key_folder_window_bg_alpha"
+        const val KEY_FOLDER_WINDOW_TEXT_COLOR = "key_folder_window_text_color"
+        const val KEY_FOLDER_WINDOW_ACCENT_COLOR = "key_folder_window_accent_color"
         const val KEY_FOLDER_WINDOW_CORNER_RADIUS = "key_folder_window_corner_radius"
         const val KEY_FOLDER_WINDOW_SHADOW = "key_folder_window_shadow"
+        const val KEY_FOLDER_IMMERSIVE_CARD_BG = "key_folder_immersive_card_bg"
+        const val KEY_FOLDER_IMMERSIVE_ALIGN_BOTTOM = "key_folder_immersive_align_bottom"
+        const val KEY_FOLDER_SHOW_NAME = "key_folder_show_name"
         const val KEY_FOLDER_GRID_ROWS = "key_folder_grid_rows"
         const val KEY_FOLDER_GRID_COLS = "key_folder_grid_cols"
         const val KEY_FOLDER_SCROLL_DIRECTION = "key_folder_scroll_direction"
 
-        // Folder Content Icon Layout Keys (matching Nova's folder_cellspecs)
         const val KEY_FOLDER_MATCH_DESKTOP_SIZE = "key_folder_match_desktop_size"
         const val KEY_FOLDER_ICON_SIZE_PERCENT = "key_folder_icon_size_percent"
         const val KEY_FOLDER_LABEL_VISIBLE = "key_folder_label_visible"
@@ -54,723 +108,665 @@ class FolderSettingsActivity : AppCompatActivity() {
         const val KEY_FOLDER_LABEL_SHADOW = "key_folder_label_shadow"
         const val KEY_FOLDER_LABEL_SINGLE_LINE = "key_folder_label_single_line"
 
-        // Gestures & Behavior Keys (matching Nova Launcher ia.f / kx.g0)
-        const val TAP_ACTION_OPEN_FOLDER = "OPEN_FOLDER"
-        const val TAP_ACTION_FIRST_APP = "FIRST_APP"
         const val KEY_FOLDER_TAP_ACTION = "key_folder_tap_action"
         const val KEY_FOLDER_AUTO_CLOSE = "key_folder_auto_close"
+        const val TAP_ACTION_OPEN_FOLDER = "OPEN_FOLDER"
+        const val TAP_ACTION_FIRST_APP = "FIRST_APP"
+
+        private const val TAB_SURFACE = 0
+        private const val TAB_TEXT = 1
+        private const val TAB_ACCENT = 2
     }
 
-    private lateinit var binding: ActivityFolderSettingsBinding
-
-    // Folder Icon State
-    private var previewLayout: String = FolderIconRenderer.PREVIEW_GRID
-    private var shape: String = FolderIconRenderer.SHAPE_SYSTEM
-    private var bgColor: Int = 0xFFE0E0E0.toInt()
-    private var bgAlpha: Int = 20
-    private var outline: Boolean = true
-    private var clipToBounds: Boolean = true
-
-    // Folder Window Style State
-    private var windowStyle: String = WINDOW_STYLE_WINDOW
-    private var windowBgColor: Int = 0xFF202534.toInt()
-    private var windowBgAlpha: Int = 80
-    private var windowCornerRadius: Int = 16
-    private var windowShadow: Boolean = true
-    private var windowGridRows: Int = 3
-    private var windowGridCols: Int = 4
-    private var windowScrollDir: String = SCROLL_DIR_VERTICAL
-
-    // Folder Content Icon Layout State (folder_cellspecs)
-    private var matchDesktopSize: Boolean = true
-    private var folderIconSizePercent: Int = 100
-    private var folderLabelVisible: Boolean = true
-    private var folderLabelSizePercent: Int = 100
-    private var folderLabelFont: String = "Normal"
-    private var folderLabelColor: Int = 0xFFFFFFFF.toInt()
-    private var folderLabelShadow: Boolean = true
-    private var folderLabelSingleLine: Boolean = true
-
-    // Gestures & Behavior State
-    private var folderTapAction: String = TAP_ACTION_OPEN_FOLDER
-    private var folderAutoClose: Boolean = true
-
-    // Sample drawables for live preview
-    private var sampleDrawables: List<Drawable> = emptyList()
-
     override fun onCreate(savedInstanceState: Bundle?) {
-        setTheme(R.style.Theme_NovaLight)
         super.onCreate(savedInstanceState)
-        SystemBarHelper.applySystemBars(this, isLightTheme = true, transparentBars = false)
         binding = ActivityFolderSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        SystemBarHelper.applyEdgeToEdgeInsets(
-            insetsRootView = binding.root,
-            topInsetView = binding.headerContainer,
-            bottomInsetView = null
-        )
+        SystemBarHelper.applySystemBars(this, isLightTheme = true)
+        prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
 
-        loadPreferences()
-        loadSampleDrawables()
-        setupUI()
+        loadState()
+        setupWallpaperBackdrop()
+        loadSampleIcons()
         setupListeners()
-        updatePreview()
+        refreshAllUi()
     }
 
-    private fun loadPreferences() {
-        val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-        // Icon prefs
-        previewLayout = prefs.getString("key_folder_icon_preview", FolderIconRenderer.PREVIEW_GRID) ?: FolderIconRenderer.PREVIEW_GRID
-        shape = prefs.getString("key_folder_icon_shape", FolderIconRenderer.SHAPE_SYSTEM) ?: FolderIconRenderer.SHAPE_SYSTEM
-        bgColor = prefs.getInt("key_folder_icon_bg_color", 0xFFE0E0E0.toInt())
-        bgAlpha = prefs.getInt("key_folder_icon_bg_alpha", 20)
-        outline = prefs.getBoolean("key_folder_icon_outline", true)
-        clipToBounds = prefs.getBoolean("key_folder_icon_clip", true)
+    override fun onResume() {
+        super.onResume()
+        refreshFolderIconAppearanceRow()
+    }
 
-        // Window style prefs
+    private fun loadState() {
         windowStyle = prefs.getString(KEY_FOLDER_WINDOW_STYLE, WINDOW_STYLE_WINDOW) ?: WINDOW_STYLE_WINDOW
         windowBgColor = prefs.getInt(KEY_FOLDER_WINDOW_BG_COLOR, 0xFF202534.toInt())
-        windowBgAlpha = prefs.getInt(KEY_FOLDER_WINDOW_BG_ALPHA, 80)
-        windowCornerRadius = prefs.getInt(KEY_FOLDER_WINDOW_CORNER_RADIUS, 16)
+        windowBgAlpha = prefs.getInt(KEY_FOLDER_WINDOW_BG_ALPHA, 80).coerceIn(0, 100)
+        windowTextColor = prefs.getInt(KEY_FOLDER_WINDOW_TEXT_COLOR, 0xFFFFFFFF.toInt())
+        windowAccentColor = prefs.getInt(KEY_FOLDER_WINDOW_ACCENT_COLOR, 0xFFD54526.toInt())
+        windowCornerRadius = prefs.getInt(KEY_FOLDER_WINDOW_CORNER_RADIUS, 16).coerceIn(0, 32)
         windowShadow = prefs.getBoolean(KEY_FOLDER_WINDOW_SHADOW, true)
-        windowGridRows = prefs.getInt(KEY_FOLDER_GRID_ROWS, 3)
-        windowGridCols = prefs.getInt(KEY_FOLDER_GRID_COLS, 4)
+        cardBackground = prefs.getBoolean(KEY_FOLDER_IMMERSIVE_CARD_BG, false)
+        alignBottom = prefs.getBoolean(KEY_FOLDER_IMMERSIVE_ALIGN_BOTTOM, false)
+        showFolderName = prefs.getBoolean(KEY_FOLDER_SHOW_NAME, true)
+        windowGridRows = prefs.getInt(KEY_FOLDER_GRID_ROWS, 3).coerceIn(2, 7)
+        windowGridCols = prefs.getInt(KEY_FOLDER_GRID_COLS, 4).coerceIn(3, 6)
         windowScrollDir = prefs.getString(KEY_FOLDER_SCROLL_DIRECTION, SCROLL_DIR_VERTICAL) ?: SCROLL_DIR_VERTICAL
 
-        // Folder content icon layout prefs
         matchDesktopSize = prefs.getBoolean(KEY_FOLDER_MATCH_DESKTOP_SIZE, true)
-        folderIconSizePercent = prefs.getInt(KEY_FOLDER_ICON_SIZE_PERCENT, 100)
+        folderIconSizePercent = prefs.getInt(KEY_FOLDER_ICON_SIZE_PERCENT, 100).coerceIn(70, 150)
         folderLabelVisible = prefs.getBoolean(KEY_FOLDER_LABEL_VISIBLE, true)
-        folderLabelSizePercent = prefs.getInt(KEY_FOLDER_LABEL_SIZE_PERCENT, 100)
+        folderLabelSizePercent = prefs.getInt(KEY_FOLDER_LABEL_SIZE_PERCENT, 100).coerceIn(80, 130)
         folderLabelFont = prefs.getString(KEY_FOLDER_LABEL_FONT, "Normal") ?: "Normal"
-        folderLabelColor = prefs.getInt(KEY_FOLDER_LABEL_COLOR, 0xFFFFFFFF.toInt())
+        folderLabelColor = prefs.getInt(KEY_FOLDER_LABEL_COLOR, windowTextColor)
         folderLabelShadow = prefs.getBoolean(KEY_FOLDER_LABEL_SHADOW, true)
         folderLabelSingleLine = prefs.getBoolean(KEY_FOLDER_LABEL_SINGLE_LINE, true)
 
-        // Gestures & Behavior prefs
         folderTapAction = prefs.getString(KEY_FOLDER_TAP_ACTION, TAP_ACTION_OPEN_FOLDER) ?: TAP_ACTION_OPEN_FOLDER
         folderAutoClose = prefs.getBoolean(KEY_FOLDER_AUTO_CLOSE, true)
     }
 
-    private fun loadSampleDrawables() {
-        sampleDrawables = listOfNotNull(
-            ContextCompat.getDrawable(this, R.drawable.ic_launcher_foreground),
-            ContextCompat.getDrawable(this, R.drawable.ic_settings_folders),
-            ContextCompat.getDrawable(this, R.drawable.ic_settings_home),
-            ContextCompat.getDrawable(this, R.drawable.ic_settings_drawer)
-        )
+    private fun setupWallpaperBackdrop() {
+        try {
+            val wp = WallpaperManager.getInstance(this).drawable
+            if (wp != null) {
+                binding.previewBackdrop.background = wp
+            }
+        } catch (_: Exception) {
+        }
+    }
 
-        lifecycleScope.launch {
-            try {
-                val apps = AppManager.getInstalledApps(this@FolderSettingsActivity)
-                val drawables = apps.mapNotNull { it.icon }.take(9)
-                if (drawables.isNotEmpty()) {
-                    sampleDrawables = drawables
-                    updatePreview()
-                }
-            } catch (_: Exception) {
+    private fun loadSampleIcons() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val apps = AppManager.getInstalledApps(this@FolderSettingsActivity)
+            val icons = apps.take(9).mapNotNull { it.icon }
+            val fallback = ContextCompat.getDrawable(this@FolderSettingsActivity, R.mipmap.ic_launcher)!!
+            val resolved = if (icons.isNotEmpty()) icons else List(9) { fallback }
+            withContext(Dispatchers.Main) {
+                sampleDrawables = resolved
+                refreshFolderIconAppearanceRow()
+                refreshOpenedFolderPreview()
             }
         }
-    }
-
-    private fun setupUI() {
-        // Folder Icon UI
-        binding.tvFolderPreviewLayoutSubtitle.text = getPreviewLayoutDisplayName(previewLayout)
-        binding.tvFolderShapeSubtitle.text = getShapeDisplayName(shape)
-        updateColorSwatchUI()
-
-        binding.sbFolderBgAlpha.progress = bgAlpha
-        binding.tvFolderBgAlphaValue.text = "$bgAlpha%"
-
-        binding.swFolderOutline.isChecked = outline
-        binding.swFolderClip.isChecked = clipToBounds
-
-        // Window Style UI
-        updateWindowStyleUI()
-
-        // Icon Layout UI
-        updateIconLayoutUI()
-
-        // Gestures & Behavior UI
-        updateGesturesUI()
-    }
-
-    private fun updateWindowStyleUI() {
-        binding.tvFolderWindowStyleSubtitle.text = if (windowStyle == WINDOW_STYLE_IMMERSIVE) "Immersive" else "Window"
-        updateWindowColorSwatchUI()
-
-        binding.sbFolderWindowBgAlpha.progress = windowBgAlpha
-        binding.tvFolderWindowBgAlphaValue.text = "$windowBgAlpha%"
-
-        binding.tvFolderWindowCornerRadiusSubtitle.text = "$windowCornerRadius dp"
-        binding.swFolderWindowShadow.isChecked = windowShadow
-
-        binding.layoutWindowSpecificSettings.visibility =
-            if (windowStyle == WINDOW_STYLE_WINDOW) View.VISIBLE else View.GONE
-
-        binding.tvFolderWindowGridSubtitle.text = "$windowGridRows rows ✕ $windowGridCols columns"
-        binding.tvFolderWindowScrollDirSubtitle.text =
-            if (windowScrollDir == SCROLL_DIR_HORIZONTAL) "Horizontal paged" else "Vertical scroll"
-    }
-
-    private fun updateIconLayoutUI() {
-        binding.swFolderMatchDesktopSize.isChecked = matchDesktopSize
-        binding.layoutFolderCustomIconSize.visibility = if (matchDesktopSize) View.GONE else View.VISIBLE
-        binding.sbFolderIconSize.progress = (folderIconSizePercent - 70).coerceIn(0, 80)
-        binding.tvFolderIconSizeValue.text = "$folderIconSizePercent%"
-
-        binding.swFolderLabelVisible.isChecked = folderLabelVisible
-        binding.layoutFolderLabelSettings.visibility = if (folderLabelVisible) View.VISIBLE else View.GONE
-        binding.tvFolderLabelFontSubtitle.text = folderLabelFont
-        binding.sbFolderLabelSize.progress = (folderLabelSizePercent - 70).coerceIn(0, 70)
-        binding.tvFolderLabelSizeValue.text = "$folderLabelSizePercent%"
-        updateFolderLabelColorSwatchUI()
-        binding.swFolderLabelShadow.isChecked = folderLabelShadow
-        binding.swFolderLabelSingleLine.isChecked = folderLabelSingleLine
-    }
-
-    private fun updateWindowColorSwatchUI() {
-        val hexString = String.format("#%06X", windowBgColor and 0x00FFFFFF)
-        val colorName = getColorName(windowBgColor)
-        binding.tvFolderWindowBgColorSubtitle.text = "$colorName ($hexString)"
-
-        val density = resources.displayMetrics.density
-        val strokePx = (1.5f * density).toInt()
-        val drawable = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(windowBgColor or 0xFF000000.toInt())
-            setStroke(strokePx, 0x44000000.toInt())
-        }
-        binding.viewFolderWindowBgColorSwatch.background = drawable
-    }
-
-    private fun updateFolderLabelColorSwatchUI() {
-        val hexString = String.format("#%06X", folderLabelColor and 0x00FFFFFF)
-        val colorName = getColorName(folderLabelColor)
-        binding.tvFolderLabelColorSubtitle.text = "$colorName ($hexString)"
-
-        val density = resources.displayMetrics.density
-        val strokePx = (1.5f * density).toInt()
-        val drawable = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            setColor(folderLabelColor or 0xFF000000.toInt())
-            setStroke(strokePx, 0x44000000.toInt())
-        }
-        binding.viewFolderLabelColorSwatch.background = drawable
-    }
-
-    private fun updateGesturesUI() {
-        binding.tvFolderTapActionSubtitle.text = if (folderTapAction == TAP_ACTION_FIRST_APP) {
-            "Launch first app (swipe to open)"
-        } else {
-            "Open folder"
-        }
-        binding.swFolderAutoClose.isChecked = folderAutoClose
     }
 
     private fun setupListeners() {
         binding.btnBack.setOnClickListener { finish() }
 
-        // Icon Listeners
-        binding.rowFolderPreviewLayout.setOnClickListener { showPreviewLayoutDialog() }
-        binding.rowFolderShape.setOnClickListener { showShapeDialog() }
-        binding.rowFolderBgColor.setOnClickListener { showColorPickerDialog() }
-
-        binding.sbFolderBgAlpha.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                bgAlpha = progress
-                binding.tvFolderBgAlphaValue.text = "$bgAlpha%"
-                updatePreview()
-            }
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putInt("key_folder_icon_bg_alpha", bgAlpha).apply()
-            }
-        })
-
-        binding.swFolderOutline.setOnCheckedChangeListener { _, isChecked ->
-            outline = isChecked
-            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putBoolean("key_folder_icon_outline", isChecked).apply()
-            updatePreview()
+        // Folder icon appearance sub-screen entry
+        binding.rowFolderIconAppearance.setOnClickListener {
+            startActivity(Intent(this, FolderIconAppearanceActivity::class.java))
         }
-        binding.rowFolderOutline.setOnClickListener { binding.swFolderOutline.toggle() }
 
-        binding.swFolderClip.setOnCheckedChangeListener { _, isChecked ->
-            clipToBounds = isChecked
-            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putBoolean("key_folder_icon_clip", isChecked).apply()
-            updatePreview()
-        }
-        binding.rowFolderClip.setOnClickListener { binding.swFolderClip.toggle() }
-
-        // Window Style Listeners
-        binding.rowFolderWindowStyle.setOnClickListener { showWindowStyleDialog() }
-        binding.rowFolderWindowBgColor.setOnClickListener { showWindowColorPickerDialog() }
-
-        binding.sbFolderWindowBgAlpha.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                windowBgAlpha = progress
-                binding.tvFolderWindowBgAlphaValue.text = "$windowBgAlpha%"
-            }
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putInt(KEY_FOLDER_WINDOW_BG_ALPHA, windowBgAlpha).apply()
-            }
-        })
-
-        binding.rowFolderWindowCornerRadius.setOnClickListener { showCornerRadiusDialog() }
-
-        binding.swFolderWindowShadow.setOnCheckedChangeListener { _, isChecked ->
-            windowShadow = isChecked
-            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putBoolean(KEY_FOLDER_WINDOW_SHADOW, isChecked).apply()
-        }
-        binding.rowFolderWindowShadow.setOnClickListener { binding.swFolderWindowShadow.toggle() }
-
-        binding.rowFolderWindowGrid.setOnClickListener { showGridDialog() }
-        binding.rowFolderWindowScrollDir.setOnClickListener { showScrollDirDialog() }
-
-        // Icon Layout Listeners (folder_cellspecs)
-        binding.swFolderMatchDesktopSize.setOnCheckedChangeListener { _, isChecked ->
-            matchDesktopSize = isChecked
-            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putBoolean(KEY_FOLDER_MATCH_DESKTOP_SIZE, isChecked).apply()
-            binding.layoutFolderCustomIconSize.visibility = if (isChecked) View.GONE else View.VISIBLE
-        }
-        binding.rowFolderMatchDesktopSize.setOnClickListener { binding.swFolderMatchDesktopSize.toggle() }
-
+        // Layout: Icon size + Match desktop size
         binding.sbFolderIconSize.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                folderIconSizePercent = progress + 70
-                binding.tvFolderIconSizeValue.text = "$folderIconSizePercent%"
+                val pct = 70 + progress
+                if (fromUser && !matchDesktopSize) {
+                    folderIconSizePercent = pct
+                    prefs.edit().putInt(KEY_FOLDER_ICON_SIZE_PERCENT, pct).apply()
+                    refreshIconSizeUi()
+                    refreshOpenedFolderPreview()
+                }
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putInt(KEY_FOLDER_ICON_SIZE_PERCENT, folderIconSizePercent).apply()
-            }
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
-
-        binding.swFolderLabelVisible.setOnCheckedChangeListener { _, isChecked ->
-            folderLabelVisible = isChecked
-            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putBoolean(KEY_FOLDER_LABEL_VISIBLE, isChecked).apply()
-            binding.layoutFolderLabelSettings.visibility = if (isChecked) View.VISIBLE else View.GONE
-            updatePreview()
+        binding.btnIconSizeMinus.setOnClickListener {
+            if (!matchDesktopSize && folderIconSizePercent > 70) {
+                folderIconSizePercent = (folderIconSizePercent - 5).coerceAtLeast(70)
+                prefs.edit().putInt(KEY_FOLDER_ICON_SIZE_PERCENT, folderIconSizePercent).apply()
+                refreshIconSizeUi()
+                refreshOpenedFolderPreview()
+            }
         }
-        binding.rowFolderLabelVisible.setOnClickListener { binding.swFolderLabelVisible.toggle() }
+        binding.btnIconSizePlus.setOnClickListener {
+            if (!matchDesktopSize && folderIconSizePercent < 150) {
+                folderIconSizePercent = (folderIconSizePercent + 5).coerceAtMost(150)
+                prefs.edit().putInt(KEY_FOLDER_ICON_SIZE_PERCENT, folderIconSizePercent).apply()
+                refreshIconSizeUi()
+                refreshOpenedFolderPreview()
+            }
+        }
+        binding.cbMatchDesktopSize.setOnCheckedChangeListener { _, isChecked ->
+            matchDesktopSize = isChecked
+            prefs.edit().putBoolean(KEY_FOLDER_MATCH_DESKTOP_SIZE, isChecked).apply()
+            refreshIconSizeUi()
+            refreshOpenedFolderPreview()
+        }
+        binding.rowMatchDesktopSize.setOnClickListener {
+            binding.cbMatchDesktopSize.isChecked = !binding.cbMatchDesktopSize.isChecked
+        }
 
-        binding.rowFolderLabelFont.setOnClickListener { showLabelFontDialog() }
-
+        // Expandable Label accordion
+        binding.rowLabelHeader.setOnClickListener {
+            isLabelExpanded = !isLabelExpanded
+            binding.containerLabelExpanded.visibility = if (isLabelExpanded) View.VISIBLE else View.GONE
+            binding.ivLabelChevron.setImageResource(
+                if (isLabelExpanded) R.drawable.ic_chevron_up else R.drawable.ic_chevron_down
+            )
+        }
+        binding.swFolderLabel.setOnCheckedChangeListener { _, isChecked ->
+            folderLabelVisible = isChecked
+            prefs.edit().putBoolean(KEY_FOLDER_LABEL_VISIBLE, isChecked).apply()
+            refreshOpenedFolderPreview()
+        }
         binding.sbFolderLabelSize.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                folderLabelSizePercent = progress + 70
-                binding.tvFolderLabelSizeValue.text = "$folderLabelSizePercent%"
-                updatePreview()
+                val pct = (80 + progress).coerceIn(80, 130)
+                binding.tvFolderLabelSizeValue.text = "$pct%"
+                if (fromUser) {
+                    folderLabelSizePercent = pct
+                    prefs.edit().putInt(KEY_FOLDER_LABEL_SIZE_PERCENT, pct).apply()
+                    refreshOpenedFolderPreview()
+                }
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putInt(KEY_FOLDER_LABEL_SIZE_PERCENT, folderLabelSizePercent).apply()
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        binding.btnLabelFontDropdown.setOnClickListener {
+            val fonts = arrayOf("Normal", "Medium", "Condensed", "Light")
+            val cur = fonts.indexOfFirst { it.equals(folderLabelFont, ignoreCase = true) }.coerceAtLeast(0)
+            AlertDialog.Builder(this)
+                .setTitle("Font")
+                .setSingleChoiceItems(fonts, cur) { dialog, idx ->
+                    folderLabelFont = fonts[idx]
+                    prefs.edit().putString(KEY_FOLDER_LABEL_FONT, folderLabelFont).apply()
+                    binding.tvFolderLabelFontValue.text = folderLabelFont
+                    refreshOpenedFolderPreview()
+                    dialog.dismiss()
+                }
+                .show()
+        }
+        binding.cbLabelShadow.setOnCheckedChangeListener { _, isChecked ->
+            folderLabelShadow = isChecked
+            prefs.edit().putBoolean(KEY_FOLDER_LABEL_SHADOW, isChecked).apply()
+            refreshOpenedFolderPreview()
+        }
+        binding.cbLabelSingleLine.setOnCheckedChangeListener { _, isChecked ->
+            folderLabelSingleLine = isChecked
+            prefs.edit().putBoolean(KEY_FOLDER_LABEL_SINGLE_LINE, isChecked).apply()
+            refreshOpenedFolderPreview()
+        }
+
+        // Expandable 3-Tab Colors Accordion
+        binding.rowColorsHeader.setOnClickListener {
+            isColorsExpanded = !isColorsExpanded
+            binding.containerColorsExpanded.visibility = if (isColorsExpanded) View.VISIBLE else View.GONE
+            binding.ivColorsChevron.setImageResource(
+                if (isColorsExpanded) R.drawable.ic_chevron_up else R.drawable.ic_chevron_down
+            )
+            if (isColorsExpanded) rebuildPaletteGrids()
+        }
+        binding.tabColorSurface.setOnClickListener { switchColorTab(TAB_SURFACE) }
+        binding.tabColorText.setOnClickListener { switchColorTab(TAB_TEXT) }
+        binding.tabColorAccent.setOnClickListener { switchColorTab(TAB_ACCENT) }
+        binding.rowCustomColor.setOnClickListener { showCustomHexDialog() }
+
+        binding.sbWindowTransparency.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val transparency = progress.coerceIn(0, 100)
+                binding.tvWindowTransparencyValue.text = "$transparency%"
+                if (fromUser) {
+                    windowBgAlpha = (100 - transparency).coerceIn(0, 100)
+                    prefs.edit().putInt(KEY_FOLDER_WINDOW_BG_ALPHA, windowBgAlpha).apply()
+                    refreshFolderIconAppearanceRow()
+                    refreshOpenedFolderPreview()
+                }
             }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
-        binding.rowFolderLabelColor.setOnClickListener { showLabelColorPickerDialog() }
-
-        binding.swFolderLabelShadow.setOnCheckedChangeListener { _, isChecked ->
-            folderLabelShadow = isChecked
-            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putBoolean(KEY_FOLDER_LABEL_SHADOW, isChecked).apply()
-            updatePreview()
+        // Mode dropdown (Window | Immersive)
+        binding.btnModeDropdown.setOnClickListener {
+            val labels = arrayOf("Window", "Immersive")
+            val cur = if (windowStyle.equals(WINDOW_STYLE_IMMERSIVE, ignoreCase = true)) 1 else 0
+            AlertDialog.Builder(this)
+                .setTitle("Mode")
+                .setSingleChoiceItems(labels, cur) { dialog, idx ->
+                    windowStyle = if (idx == 1) WINDOW_STYLE_IMMERSIVE else WINDOW_STYLE_WINDOW
+                    prefs.edit().putString(KEY_FOLDER_WINDOW_STYLE, windowStyle).apply()
+                    refreshModeDependentControls()
+                    refreshOpenedFolderPreview()
+                    dialog.dismiss()
+                }
+                .show()
         }
-        binding.rowFolderLabelShadow.setOnClickListener { binding.swFolderLabelShadow.toggle() }
 
-        binding.swFolderLabelSingleLine.setOnCheckedChangeListener { _, isChecked ->
-            folderLabelSingleLine = isChecked
-            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putBoolean(KEY_FOLDER_LABEL_SINGLE_LINE, isChecked).apply()
+        // Window Shadow (WINDOW only)
+        binding.swWindowShadow.setOnCheckedChangeListener { _, isChecked ->
+            windowShadow = isChecked
+            prefs.edit().putBoolean(KEY_FOLDER_WINDOW_SHADOW, isChecked).apply()
+            refreshOpenedFolderPreview()
         }
-        binding.rowFolderLabelSingleLine.setOnClickListener { binding.swFolderLabelSingleLine.toggle() }
+        binding.rowWindowShadow.setOnClickListener {
+            binding.swWindowShadow.isChecked = !binding.swWindowShadow.isChecked
+        }
 
-        // Gestures & Behavior Listeners
-        binding.rowFolderTapAction.setOnClickListener { showTapActionDialog() }
+        // Card background (IMMERSIVE only)
+        binding.swCardBackground.setOnCheckedChangeListener { _, isChecked ->
+            cardBackground = isChecked
+            prefs.edit().putBoolean(KEY_FOLDER_IMMERSIVE_CARD_BG, isChecked).apply()
+            refreshModeDependentControls()
+            refreshOpenedFolderPreview()
+        }
+        binding.rowCardBackground.setOnClickListener {
+            binding.swCardBackground.isChecked = !binding.swCardBackground.isChecked
+        }
 
-        binding.swFolderAutoClose.setOnCheckedChangeListener { _, isChecked ->
+        // Align Bottom (IMMERSIVE only)
+        binding.swAlignBottom.setOnCheckedChangeListener { _, isChecked ->
+            alignBottom = isChecked
+            prefs.edit().putBoolean(KEY_FOLDER_IMMERSIVE_ALIGN_BOTTOM, isChecked).apply()
+            refreshOpenedFolderPreview()
+        }
+        binding.rowAlignBottom.setOnClickListener {
+            binding.swAlignBottom.isChecked = !binding.swAlignBottom.isChecked
+        }
+
+        // Grid row (AUTO in Window; visual picker in Immersive)
+        binding.rowFolderGrid.setOnClickListener {
+            val resolved = FolderGeometry.resolveFolderWindowAppearance(
+                windowStyle, windowShadow, cardBackground, alignBottom, windowCornerRadius, windowBgAlpha
+            )
+            if (resolved.isGridAutoLocked) return@setOnClickListener
+            val dlg = FolderGridDialogFragment.newInstance()
+            dlg.setOnGridSavedListener { cols, rows ->
+                windowGridCols = cols
+                windowGridRows = rows
+                refreshModeDependentControls()
+                refreshOpenedFolderPreview()
+            }
+            dlg.show(supportFragmentManager, FolderGridDialogFragment.TAG)
+        }
+
+        // Corner radius slider + clickable number
+        binding.sbCornerRadius.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                windowCornerRadius = progress.coerceIn(0, 32)
+                binding.tvCornerRadiusValue.text = "${windowCornerRadius}dp"
+                if (fromUser) {
+                    prefs.edit().putInt(KEY_FOLDER_WINDOW_CORNER_RADIUS, windowCornerRadius).apply()
+                    refreshOpenedFolderPreview()
+                }
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        binding.tvCornerRadiusValue.setOnClickListener {
+            if (!binding.sbCornerRadius.isEnabled) return@setOnClickListener
+            val input = EditText(this).apply {
+                inputType = InputType.TYPE_CLASS_NUMBER
+                setText(windowCornerRadius.toString())
+                setPadding(48, 32, 48, 24)
+            }
+            AlertDialog.Builder(this)
+                .setTitle("Corner radius (0–32dp)")
+                .setView(input)
+                .setPositiveButton("OK") { _, _ ->
+                    val parsed = input.text.toString().toIntOrNull()?.coerceIn(0, 32) ?: return@setPositiveButton
+                    windowCornerRadius = parsed
+                    prefs.edit().putInt(KEY_FOLDER_WINDOW_CORNER_RADIUS, parsed).apply()
+                    binding.sbCornerRadius.progress = parsed
+                    binding.tvCornerRadiusValue.text = "${parsed}dp"
+                    refreshOpenedFolderPreview()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+
+        // Show folder name switch
+        binding.swShowFolderName.setOnCheckedChangeListener { _, isChecked ->
+            showFolderName = isChecked
+            prefs.edit().putBoolean(KEY_FOLDER_SHOW_NAME, isChecked).apply()
+            refreshOpenedFolderPreview()
+        }
+        binding.rowShowFolderName.setOnClickListener {
+            binding.swShowFolderName.isChecked = !binding.swShowFolderName.isChecked
+        }
+
+        // Scroll direction dropdown
+        binding.btnScrollDirectionDropdown.setOnClickListener {
+            val labels = arrayOf("Vertical", "Horizontal")
+            val cur = if (windowScrollDir == SCROLL_DIR_HORIZONTAL) 1 else 0
+            AlertDialog.Builder(this)
+                .setTitle("Scroll direction")
+                .setSingleChoiceItems(labels, cur) { dialog, idx ->
+                    windowScrollDir = if (idx == 1) SCROLL_DIR_HORIZONTAL else SCROLL_DIR_VERTICAL
+                    prefs.edit().putString(KEY_FOLDER_SCROLL_DIRECTION, windowScrollDir).apply()
+                    binding.tvScrollDirectionValue.text = labels[idx]
+                    refreshOpenedFolderPreview()
+                    dialog.dismiss()
+                }
+                .show()
+        }
+
+        // Gestures & Behavior
+        binding.rowTapAction.setOnClickListener {
+            val items = arrayOf("Open folder (swipe opens 1st app)", "Launch first app (swipe opens folder)")
+            val cur = if (folderTapAction == TAP_ACTION_FIRST_APP) 1 else 0
+            AlertDialog.Builder(this)
+                .setTitle("Tap action")
+                .setSingleChoiceItems(items, cur) { dialog, idx ->
+                    folderTapAction = if (idx == 1) TAP_ACTION_FIRST_APP else TAP_ACTION_OPEN_FOLDER
+                    prefs.edit().putString(KEY_FOLDER_TAP_ACTION, folderTapAction).apply()
+                    refreshTapActionSummary()
+                    dialog.dismiss()
+                }
+                .show()
+        }
+        binding.swAutoClose.setOnCheckedChangeListener { _, isChecked ->
             folderAutoClose = isChecked
-            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
             prefs.edit().putBoolean(KEY_FOLDER_AUTO_CLOSE, isChecked).apply()
         }
-        binding.rowFolderAutoClose.setOnClickListener { binding.swFolderAutoClose.toggle() }
-    }
-
-    private fun showTapActionDialog() {
-        val options = arrayOf(
-            "Open folder",
-            "Launch first app (swipe to open)"
-        )
-        val currentIndex = if (folderTapAction == TAP_ACTION_FIRST_APP) 1 else 0
-
-        AlertDialog.Builder(this)
-            .setTitle("Tap action")
-            .setSingleChoiceItems(options, currentIndex) { dialog, which ->
-                folderTapAction = if (which == 1) TAP_ACTION_FIRST_APP else TAP_ACTION_OPEN_FOLDER
-                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putString(KEY_FOLDER_TAP_ACTION, folderTapAction).apply()
-                updateGesturesUI()
-                dialog.dismiss()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun showLabelFontDialog() {
-        val fonts = arrayOf("Normal", "Medium", "Light", "Condensed")
-        val currentIndex = fonts.indexOf(folderLabelFont).coerceAtLeast(0)
-
-        AlertDialog.Builder(this)
-            .setTitle("Folder label font")
-            .setSingleChoiceItems(fonts, currentIndex) { dialog, which ->
-                folderLabelFont = fonts[which]
-                binding.tvFolderLabelFontSubtitle.text = folderLabelFont
-                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putString(KEY_FOLDER_LABEL_FONT, folderLabelFont).apply()
-                updatePreview()
-                dialog.dismiss()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun showLabelColorPickerDialog() {
-        val dialog = DrawerColorPickerDialogFragment.newInstance(
-            title = "Folder label text color",
-            initialColor = folderLabelColor
-        )
-        dialog.setOnColorSavedListener { color ->
-            folderLabelColor = color
-            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putInt(KEY_FOLDER_LABEL_COLOR, color).apply()
-            updateFolderLabelColorSwatchUI()
-            updatePreview()
+        binding.rowAutoClose.setOnClickListener {
+            binding.swAutoClose.isChecked = !binding.swAutoClose.isChecked
         }
-        dialog.show(supportFragmentManager, "folder_label_color_dialog")
     }
 
-    private fun showWindowStyleDialog() {
-        val options = arrayOf(
-            "Window (Centered dialog card)",
-            "Immersive (Full-screen blurred sheet)"
-        )
-        val values = arrayOf(WINDOW_STYLE_WINDOW, WINDOW_STYLE_IMMERSIVE)
-        val currentIndex = values.indexOf(windowStyle).coerceAtLeast(0)
+    private fun refreshAllUi() {
+        binding.cbMatchDesktopSize.isChecked = matchDesktopSize
+        binding.swFolderLabel.isChecked = folderLabelVisible
+        binding.sbFolderLabelSize.progress = (folderLabelSizePercent - 80).coerceIn(0, 50)
+        binding.tvFolderLabelSizeValue.text = "${folderLabelSizePercent}%"
+        binding.tvFolderLabelFontValue.text = folderLabelFont
+        binding.cbLabelShadow.isChecked = folderLabelShadow
+        binding.cbLabelSingleLine.isChecked = folderLabelSingleLine
 
-        AlertDialog.Builder(this)
-            .setTitle("Presentation style")
-            .setSingleChoiceItems(options, currentIndex) { dialog, which ->
-                windowStyle = values[which]
-                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putString(KEY_FOLDER_WINDOW_STYLE, windowStyle).apply()
-                updateWindowStyleUI()
-                dialog.dismiss()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        binding.sbWindowTransparency.progress = (100 - windowBgAlpha).coerceIn(0, 100)
+        binding.tvWindowTransparencyValue.text = "${100 - windowBgAlpha}%"
+
+        binding.swWindowShadow.isChecked = windowShadow
+        binding.swCardBackground.isChecked = cardBackground
+        binding.swAlignBottom.isChecked = alignBottom
+        binding.sbCornerRadius.progress = windowCornerRadius
+        binding.tvCornerRadiusValue.text = "${windowCornerRadius}dp"
+        binding.swShowFolderName.isChecked = showFolderName
+        binding.tvScrollDirectionValue.text =
+            if (windowScrollDir == SCROLL_DIR_HORIZONTAL) "Horizontal" else "Vertical"
+        binding.swAutoClose.isChecked = folderAutoClose
+
+        switchColorTab(activeColorTab)
+        refreshColorBadge()
+        refreshIconSizeUi()
+        refreshModeDependentControls()
+        refreshTapActionSummary()
+        refreshFolderIconAppearanceRow()
+        refreshOpenedFolderPreview()
     }
 
-    private fun showWindowColorPickerDialog() {
-        val dialog = DrawerColorPickerDialogFragment.newInstance(
-            title = "Window background color",
-            initialColor = windowBgColor
-        )
-        dialog.setOnColorSavedListener { color ->
-            windowBgColor = color
-            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putInt(KEY_FOLDER_WINDOW_BG_COLOR, color).apply()
-            updateWindowColorSwatchUI()
-        }
-        dialog.show(supportFragmentManager, "folder_window_bg_color_dialog")
+    private fun refreshIconSizeUi() {
+        val desktopPct = prefs.getInt("key_desktop_icon_size_percent", 100).coerceIn(70, 150)
+        val effective = if (matchDesktopSize) desktopPct else folderIconSizePercent
+        binding.sbFolderIconSize.progress = (effective - 70).coerceIn(0, 80)
+        binding.sbFolderIconSize.isEnabled = !matchDesktopSize
+        binding.btnIconSizeMinus.isEnabled = !matchDesktopSize
+        binding.btnIconSizePlus.isEnabled = !matchDesktopSize
+        binding.sbFolderIconSize.alpha = if (matchDesktopSize) 0.45f else 1.0f
+        binding.tvFolderIconSizeValue.text = if (matchDesktopSize) "$effective% (Desktop)" else "$effective%"
     }
 
-    private fun showCornerRadiusDialog() {
-        val density = resources.displayMetrics.density
-        val paddingPx = (24 * density).toInt()
-
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(paddingPx, (16 * density).toInt(), paddingPx, (8 * density).toInt())
-        }
-
-        val tvValue = TextView(this).apply {
-            text = "$windowCornerRadius dp"
-            textSize = 18f
-            setTextColor(ContextCompat.getColor(this@FolderSettingsActivity, R.color.nova_orange))
-            textAlignment = View.TEXT_ALIGNMENT_CENTER
-            setPadding(0, 0, 0, (12 * density).toInt())
-        }
-
-        val seekBar = SeekBar(this).apply {
-            max = 32
-            progress = windowCornerRadius
-            progressTintList = ContextCompat.getColorStateList(this@FolderSettingsActivity, R.color.nova_orange)
-            thumbTintList = ContextCompat.getColorStateList(this@FolderSettingsActivity, R.color.nova_orange)
-            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
-                    tvValue.text = "$progress dp"
-                }
-                override fun onStartTrackingTouch(sb: SeekBar?) {}
-                override fun onStopTrackingTouch(sb: SeekBar?) {}
-            })
-        }
-
-        layout.addView(tvValue)
-        layout.addView(seekBar)
-
-        AlertDialog.Builder(this)
-            .setTitle("Corner radius (0 – 32 dp)")
-            .setView(layout)
-            .setPositiveButton("Save") { _, _ ->
-                windowCornerRadius = seekBar.progress
-                binding.tvFolderWindowCornerRadiusSubtitle.text = "$windowCornerRadius dp"
-                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putInt(KEY_FOLDER_WINDOW_CORNER_RADIUS, windowCornerRadius).apply()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun showGridDialog() {
-        val options = arrayOf(
-            "3 rows ✕ 3 columns",
-            "3 rows ✕ 4 columns (Default)",
-            "4 rows ✕ 4 columns",
-            "4 rows ✕ 5 columns",
-            "5 rows ✕ 5 columns"
+    private fun refreshModeDependentControls() {
+        val resolved = FolderGeometry.resolveFolderWindowAppearance(
+            style = windowStyle,
+            shadowEnabled = windowShadow,
+            cardBackgroundEnabled = cardBackground,
+            alignBottomEnabled = alignBottom,
+            cornerRadiusDp = windowCornerRadius,
+            bgAlphaPercent = windowBgAlpha
         )
-        val gridPairs = arrayOf(
-            Pair(3, 3),
-            Pair(3, 4),
-            Pair(4, 4),
-            Pair(4, 5),
-            Pair(5, 5)
-        )
+        binding.tvModeValue.text = if (resolved.isImmersive) "Immersive" else "Window"
+        binding.rowWindowShadow.visibility = if (!resolved.isImmersive) View.VISIBLE else View.GONE
+        binding.rowCardBackground.visibility = if (resolved.isImmersive) View.VISIBLE else View.GONE
+        binding.rowAlignBottom.visibility = if (resolved.isImmersive) View.VISIBLE else View.GONE
 
-        var selectedIndex = gridPairs.indexOfFirst { it.first == windowGridRows && it.second == windowGridCols }
-        if (selectedIndex < 0) selectedIndex = 1
-
-        AlertDialog.Builder(this)
-            .setTitle("Folder grid dimensions")
-            .setSingleChoiceItems(options, selectedIndex) { dialog, which ->
-                val pair = gridPairs[which]
-                windowGridRows = pair.first
-                windowGridCols = pair.second
-                binding.tvFolderWindowGridSubtitle.text = "$windowGridRows rows ✕ $windowGridCols columns"
-                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                prefs.edit()
-                    .putInt(KEY_FOLDER_GRID_ROWS, windowGridRows)
-                    .putInt(KEY_FOLDER_GRID_COLS, windowGridCols)
-                    .apply()
-                dialog.dismiss()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun showScrollDirDialog() {
-        val options = arrayOf(
-            "Vertical scroll (Default)",
-            "Horizontal paged"
-        )
-        val values = arrayOf(SCROLL_DIR_VERTICAL, SCROLL_DIR_HORIZONTAL)
-        val currentIndex = values.indexOf(windowScrollDir).coerceAtLeast(0)
-
-        AlertDialog.Builder(this)
-            .setTitle("Scroll direction")
-            .setSingleChoiceItems(options, currentIndex) { dialog, which ->
-                windowScrollDir = values[which]
-                binding.tvFolderWindowScrollDirSubtitle.text = options[which]
-                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putString(KEY_FOLDER_SCROLL_DIRECTION, windowScrollDir).apply()
-                dialog.dismiss()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun showPreviewLayoutDialog() {
-        val options = arrayOf(
-            "Grid (2x2)",
-            "Grid (3x3)",
-            "Stack",
-            "Fan",
-            "Line",
-            "First app (1 icon)"
-        )
-        val values = arrayOf(
-            FolderIconRenderer.PREVIEW_GRID,
-            FolderIconRenderer.PREVIEW_GRID_9,
-            FolderIconRenderer.PREVIEW_STACK,
-            FolderIconRenderer.PREVIEW_FAN,
-            FolderIconRenderer.PREVIEW_LINE,
-            FolderIconRenderer.PREVIEW_FIRST_APP
-        )
-        val currentIndex = values.indexOf(previewLayout).coerceAtLeast(0)
-
-        AlertDialog.Builder(this)
-            .setTitle("Folder preview")
-            .setSingleChoiceItems(options, currentIndex) { dialog, which ->
-                previewLayout = values[which]
-                binding.tvFolderPreviewLayoutSubtitle.text = options[which]
-                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putString("key_folder_icon_preview", previewLayout).apply()
-                updatePreview()
-                dialog.dismiss()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun showShapeDialog() {
-        val options = arrayOf(
-            "System default",
-            "Round",
-            "Rounded square",
-            "Squircle",
-            "Square",
-            "Teardrop",
-            "Platform / None"
-        )
-        val values = arrayOf(
-            FolderIconRenderer.SHAPE_SYSTEM,
-            FolderIconRenderer.SHAPE_ROUND,
-            FolderIconRenderer.SHAPE_ROUNDED_SQUARE,
-            FolderIconRenderer.SHAPE_SQUIRCLE,
-            FolderIconRenderer.SHAPE_SQUARE,
-            FolderIconRenderer.SHAPE_TEARDROP,
-            FolderIconRenderer.SHAPE_PLATFORM
-        )
-        val currentIndex = values.indexOf(shape).coerceAtLeast(0)
-
-        AlertDialog.Builder(this)
-            .setTitle("Folder icon shape")
-            .setSingleChoiceItems(options, currentIndex) { dialog, which ->
-                shape = values[which]
-                binding.tvFolderShapeSubtitle.text = options[which]
-                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putString("key_folder_icon_shape", shape).apply()
-                updatePreview()
-                dialog.dismiss()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun showColorPickerDialog() {
-        val dialog = DrawerColorPickerDialogFragment.newInstance(
-            title = "Folder background color",
-            initialColor = bgColor
-        )
-        dialog.setOnColorSavedListener { color ->
-            bgColor = color
-            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putInt("key_folder_icon_bg_color", color).apply()
-            updateColorSwatchUI()
-            updatePreview()
-        }
-        dialog.show(supportFragmentManager, "folder_bg_color_dialog")
-    }
-
-    private fun updateColorSwatchUI() {
-        val hexString = String.format("#%06X", bgColor and 0x00FFFFFF)
-        val colorName = getColorName(bgColor)
-        binding.tvFolderBgColorSubtitle.text = "$colorName ($hexString)"
-
-        val density = resources.displayMetrics.density
-        val strokePx = (1.5f * density).toInt()
-        val drawable = GradientDrawable().apply {
-            this.shape = GradientDrawable.OVAL
-            setColor(bgColor or 0xFF000000.toInt())
-            setStroke(strokePx, 0x44000000.toInt())
-        }
-        binding.viewFolderBgColorSwatch.background = drawable
-    }
-
-    private fun updatePreview() {
-        val density = resources.displayMetrics.density
-        val previewSizePx = (64f * density).toInt()
-
-        val renderedDrawable = FolderIconRenderer.renderFolderIcon(
-            context = this,
-            children = sampleDrawables,
-            previewLayout = previewLayout,
-            shape = shape,
-            bgColor = bgColor,
-            bgAlphaPercent = bgAlpha,
-            outline = outline,
-            clipToBounds = clipToBounds,
-            targetSizePx = previewSizePx
-        )
-
-        binding.ivFolderPreview.setImageDrawable(renderedDrawable)
-
-        // Live preview of label styling matching Nova Launcher
-        if (folderLabelVisible) {
-            binding.tvFolderPreviewLabel.visibility = View.VISIBLE
-            binding.tvFolderPreviewLabel.setTextColor(folderLabelColor)
-            val baseSizeSp = 12f
-            binding.tvFolderPreviewLabel.textSize = baseSizeSp * (folderLabelSizePercent / 100f)
-            val tf = when (folderLabelFont.lowercase()) {
-                "medium" -> android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
-                "light" -> android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL)
-                "condensed" -> android.graphics.Typeface.create("sans-serif-condensed", android.graphics.Typeface.NORMAL)
-                else -> android.graphics.Typeface.DEFAULT
-            }
-            binding.tvFolderPreviewLabel.typeface = tf
-            if (folderLabelShadow) {
-                binding.tvFolderPreviewLabel.setShadowLayer(4f, 2f, 2f, 0x88000000.toInt())
-            } else {
-                binding.tvFolderPreviewLabel.setShadowLayer(0f, 0f, 0f, 0)
-            }
+        // Grid locked to AUTO in Window mode, interactive in Immersive mode
+        binding.rowFolderGrid.isEnabled = !resolved.isGridAutoLocked
+        binding.rowFolderGrid.alpha = if (resolved.isGridAutoLocked) 0.55f else 1.0f
+        if (resolved.isGridAutoLocked) {
+            binding.tvGridAutoBadge.visibility = View.VISIBLE
+            binding.miniGridPreview.visibility = View.GONE
+            binding.tvFolderGridSubtitle.text = "Automatic"
         } else {
-            binding.tvFolderPreviewLabel.visibility = View.GONE
+            binding.tvGridAutoBadge.visibility = View.GONE
+            binding.miniGridPreview.visibility = View.VISIBLE
+            binding.miniGridPreview.isMiniThumbnail = true
+            binding.miniGridPreview.setGrid(windowGridRows, windowGridCols)
+            binding.tvFolderGridSubtitle.text = "$windowGridRows × $windowGridCols"
+        }
+
+        // Corner radius active when Window OR Immersive Card background is ON
+        binding.sbCornerRadius.isEnabled = resolved.isCornerRadiusEnabled
+        binding.rowCornerRadius.alpha = if (resolved.isCornerRadiusEnabled) 1.0f else 0.45f
+    }
+
+    private fun refreshTapActionSummary() {
+        binding.tvTapActionSummary.text = if (folderTapAction == TAP_ACTION_FIRST_APP) {
+            "Launch first app (swipe opens folder)"
+        } else {
+            "Open folder (swipe opens 1st app)"
         }
     }
 
-    private fun getPreviewLayoutDisplayName(layout: String): String = when (layout.uppercase()) {
-        FolderIconRenderer.PREVIEW_GRID_9 -> "Grid (3x3)"
-        FolderIconRenderer.PREVIEW_STACK -> "Stack"
-        FolderIconRenderer.PREVIEW_FAN -> "Fan"
-        FolderIconRenderer.PREVIEW_LINE -> "Line"
-        FolderIconRenderer.PREVIEW_FIRST_APP -> "First app (1 icon)"
-        else -> "Grid (2x2)"
+    private fun refreshFolderIconAppearanceRow() {
+        val preview = prefs.getString("key_folder_icon_preview", FolderIconRenderer.PREVIEW_GRID)
+            ?: FolderIconRenderer.PREVIEW_GRID
+        val previewName = when (preview.uppercase()) {
+            FolderIconRenderer.PREVIEW_GRID_9 -> "Grid (3×3)"
+            FolderIconRenderer.PREVIEW_RADIAL_5 -> "Radial"
+            FolderIconRenderer.PREVIEW_RADIAL_9 -> "Radial (Clustered)"
+            FolderIconRenderer.PREVIEW_STACK -> "Stack"
+            FolderIconRenderer.PREVIEW_FAN -> "Fan"
+            FolderIconRenderer.PREVIEW_LINE -> "Line"
+            FolderIconRenderer.PREVIEW_FIRST_APP -> "First app"
+            else -> "Grid"
+        }
+        val rawShape = prefs.getString("key_folder_icon_shape", FolderIconRenderer.SHAPE_SYSTEM)
+            ?: FolderIconRenderer.SHAPE_SYSTEM
+        val shapeLabel = if (rawShape == FolderIconRenderer.SHAPE_SYSTEM) "Adaptive" else rawShape
+        val matched = prefs.getBoolean("key_folder_icon_match_window_color", true)
+        val colorTag = if (matched) "Match window" else "Custom color"
+        binding.tvFolderIconAppearanceSummary.text = "$previewName • $shapeLabel • $colorTag"
+
+        if (sampleDrawables.isNotEmpty()) {
+            val sizePx = (44 * resources.displayMetrics.density).toInt()
+            binding.ivFolderIconThumb.setImageDrawable(
+                FolderIconRenderer.renderFolderIconFromPrefs(this, sampleDrawables, sizePx)
+            )
+        }
     }
 
-    private fun getShapeDisplayName(shapeName: String): String = when (shapeName.trim().lowercase()) {
-        "round" -> "Round"
-        "rounded square", "roundedsquare" -> "Rounded square"
-        "squircle" -> "Squircle"
-        "square" -> "Square"
-        "teardrop" -> "Teardrop"
-        "platform", "none" -> "Platform / None"
-        else -> "System default"
+    private fun switchColorTab(tab: Int) {
+        activeColorTab = tab
+        val activeColor = Color.parseColor("#6D3B68")
+        val inactiveColor = ContextCompat.getColor(this, R.color.nova_text_brown_secondary)
+        val tabs = arrayOf(binding.tabColorSurface, binding.tabColorText, binding.tabColorAccent)
+        tabs.forEachIndexed { idx, tv ->
+            val selected = idx == tab
+            tv.setTextColor(if (selected) activeColor else inactiveColor)
+            tv.setBackgroundColor(if (selected) Color.parseColor("#D9CEEC") else Color.TRANSPARENT)
+        }
+        if (isColorsExpanded) rebuildPaletteGrids()
     }
 
-    private fun getColorName(color: Int): String = when (color and 0x00FFFFFF) {
-        0xFFFFFF -> "White"
-        0xE0E0E0 -> "Light Gray"
-        0x202534 -> "Dark Slate"
-        0x212121, 0x2C2523, 0x2A2A2A -> "Charcoal"
-        0xB0B0B0 -> "Gray"
-        0xF44336 -> "Red"
-        0xFF9800 -> "Orange"
-        0xFFEB3B -> "Yellow"
-        0x4CAF50 -> "Green"
-        0x2196F3 -> "Blue"
-        0x9C27B0 -> "Purple"
-        0xE91E63 -> "Pink"
-        else -> String.format("#%06X", color and 0x00FFFFFF)
+    private fun currentTabColor(): Int = when (activeColorTab) {
+        TAB_TEXT -> windowTextColor
+        TAB_ACCENT -> windowAccentColor
+        else -> windowBgColor
+    }
+
+    private fun applyColorForActiveTab(color: Int) {
+        when (activeColorTab) {
+            TAB_TEXT -> {
+                windowTextColor = color
+                folderLabelColor = color
+                prefs.edit()
+                    .putInt(KEY_FOLDER_WINDOW_TEXT_COLOR, color)
+                    .putInt(KEY_FOLDER_LABEL_COLOR, color)
+                    .apply()
+            }
+            TAB_ACCENT -> {
+                windowAccentColor = color
+                prefs.edit().putInt(KEY_FOLDER_WINDOW_ACCENT_COLOR, color).apply()
+            }
+            else -> {
+                windowBgColor = color
+                prefs.edit().putInt(KEY_FOLDER_WINDOW_BG_COLOR, color).apply()
+                refreshFolderIconAppearanceRow()
+            }
+        }
+        rebuildPaletteGrids()
+        refreshColorBadge()
+        refreshOpenedFolderPreview()
+    }
+
+    private fun refreshColorBadge() {
+        (binding.badgeColorPreview.background as? GradientDrawable)?.setColor(windowBgColor or 0xFF000000.toInt())
+        binding.tvBadgeTt.setTextColor(windowTextColor)
+        (binding.viewBadgeAccentDot.background as? GradientDrawable)?.setColor(windowAccentColor or 0xFF000000.toInt())
+    }
+
+    private fun rebuildPaletteGrids() {
+        populateSwatchGrid(binding.gridSystemPalette, SearchBarConfig.SYSTEM_PALETTE_COLORS)
+        populateSwatchGrid(binding.gridFixedPalette, SearchBarConfig.FIXED_PALETTE_COLORS)
+        binding.tvCustomColorHex.text = String.format("#%06X", 0xFFFFFF and currentTabColor())
+    }
+
+    private fun populateSwatchGrid(grid: GridLayout, colors: IntArray) {
+        grid.removeAllViews()
+        val selected = currentTabColor()
+        val density = resources.displayMetrics.density
+        val sizePx = (38 * density).toInt()
+        val marginPx = (5 * density).toInt()
+
+        for (color in colors) {
+            val circle = View(this).apply {
+                layoutParams = GridLayout.LayoutParams().apply {
+                    width = sizePx
+                    height = sizePx
+                    setMargins(marginPx, marginPx, marginPx, marginPx)
+                }
+                val isSelected = (color and 0xFFFFFF) == (selected and 0xFFFFFF)
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(color)
+                    if (isSelected) {
+                        setStroke((3 * density).toInt(), Color.parseColor("#6D3B68"))
+                    } else {
+                        setStroke((1 * density).toInt(), Color.parseColor("#33000000"))
+                    }
+                }
+                setOnClickListener { applyColorForActiveTab(color) }
+            }
+            grid.addView(circle)
+        }
+    }
+
+    private fun showCustomHexDialog() {
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_TEXT
+            setText(String.format("%06X", 0xFFFFFF and currentTabColor()))
+            hint = "Hex e.g. 202534"
+            setPadding(48, 32, 48, 24)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Custom color")
+            .setView(input)
+            .setPositiveButton("OK") { _, _ ->
+                val raw = input.text.toString().trim().removePrefix("#")
+                try {
+                    val parsed = Integer.parseInt(raw, 16) or 0xFF000000.toInt()
+                    applyColorForActiveTab(parsed)
+                } catch (_: Exception) {
+                    Toast.makeText(this, "Invalid hex color", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun refreshOpenedFolderPreview() {
+        val density = resources.displayMetrics.density
+        val resolved = FolderGeometry.resolveFolderWindowAppearance(
+            style = windowStyle,
+            shadowEnabled = windowShadow,
+            cardBackgroundEnabled = cardBackground,
+            alignBottomEnabled = alignBottom,
+            cornerRadiusDp = windowCornerRadius,
+            bgAlphaPercent = windowBgAlpha
+        )
+
+        val lp = binding.previewFolderCard.layoutParams as FrameLayout.LayoutParams
+        if (resolved.isImmersive) {
+            lp.width = FrameLayout.LayoutParams.MATCH_PARENT
+            lp.gravity = if (resolved.alignBottom) Gravity.BOTTOM else Gravity.CENTER
+        } else {
+            lp.width = (256 * density).toInt()
+            lp.gravity = Gravity.CENTER
+        }
+        binding.previewFolderCard.layoutParams = lp
+
+        binding.previewFolderCard.elevation = resolved.effectiveElevationDp * density
+        val alphaInt = ((resolved.effectiveBackgroundAlpha / 100f) * 255).toInt().coerceIn(0, 255)
+        val fillColor = if (resolved.showCardBackground) {
+            ColorUtils.setAlphaComponent(windowBgColor, alphaInt)
+        } else {
+            Color.TRANSPARENT
+        }
+        binding.previewFolderCard.background = GradientDrawable().apply {
+            setColor(fillColor)
+            cornerRadius = resolved.effectiveCornerRadiusDp * density
+        }
+
+        // Folder header name + accent dots
+        binding.previewFolderHeader.visibility = if (showFolderName) View.VISIBLE else View.GONE
+        binding.tvPreviewFolderTitle.setTextColor(windowTextColor)
+        binding.tvPreviewOverflowDots.setTextColor(windowTextColor)
+        (binding.dotPreviewActive.background as? GradientDrawable)?.setColor(windowAccentColor or 0xFF000000.toInt())
+        (binding.dotPreviewInactive.background as? GradientDrawable)?.setColor(windowTextColor or 0xFF000000.toInt())
+
+        // Sample icons & labels
+        val effectiveIconPct = if (matchDesktopSize) {
+            prefs.getInt("key_desktop_icon_size_percent", 100)
+        } else {
+            folderIconSizePercent
+        }
+        val iconPx = (36f * density * (effectiveIconPct / 100f)).toInt().coerceIn((24 * density).toInt(), (48 * density).toInt())
+        val iconShape = prefs.getString("key_icon_shape", "Round") ?: "Round"
+        val iconViews = arrayOf(binding.ivSampleApp1, binding.ivSampleApp2, binding.ivSampleApp3, binding.ivSampleApp4)
+        val labelViews = arrayOf(binding.tvSampleApp1, binding.tvSampleApp2, binding.tvSampleApp3, binding.tvSampleApp4)
+
+        val tf = when (folderLabelFont) {
+            "Medium" -> Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            "Condensed" -> Typeface.create("sans-serif-condensed", Typeface.NORMAL)
+            "Light" -> Typeface.create("sans-serif-light", Typeface.NORMAL)
+            else -> Typeface.DEFAULT
+        }
+
+        for (i in 0 until 4) {
+            val iv = iconViews[i]
+            iv.layoutParams = iv.layoutParams.apply {
+                width = iconPx
+                height = iconPx
+            }
+            if (i < sampleDrawables.size) {
+                val masked = IconShapeMasker.createMaskedIcon(this, sampleDrawables[i], iconShape, effectiveIconPct, iconPx)
+                iv.setImageDrawable(masked ?: sampleDrawables[i])
+            }
+
+            val tv = labelViews[i]
+            tv.visibility = if (folderLabelVisible) View.VISIBLE else View.GONE
+            tv.textSize = 10.5f * (folderLabelSizePercent / 100f)
+            tv.typeface = tf
+            tv.setTextColor(folderLabelColor)
+            if (folderLabelShadow) {
+                tv.setShadowLayer(3f, 0f, 1f, 0x88000000.toInt())
+            } else {
+                tv.setShadowLayer(0f, 0f, 0f, 0)
+            }
+            tv.maxLines = if (folderLabelSingleLine) 1 else 2
+            tv.isSingleLine = folderLabelSingleLine
+        }
     }
 }

@@ -41,8 +41,10 @@ class MoreShapesDialogFragment : DialogFragment() {
         super.onViewCreated(view, savedInstanceState)
         dialog?.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
+        val prefKey = arguments?.getString(ARG_PREF_KEY) ?: "key_icon_shape"
+        val defaultShape = arguments?.getString(ARG_DEFAULT_SHAPE) ?: "Round"
         val prefs = requireContext().getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-        val currentShape = prefs.getString("key_icon_shape", "Round") ?: "Round"
+        val currentShape = prefs.getString(prefKey, defaultShape) ?: defaultShape
 
         val activeColor = ContextCompat.getColor(requireContext(), R.color.nova_accent_orange)
         val inactiveColor = Color.parseColor("#555555")
@@ -68,7 +70,7 @@ class MoreShapesDialogFragment : DialogFragment() {
                 tv?.setTextColor(textColor)
 
                 child.setOnClickListener {
-                    prefs.edit().putString("key_icon_shape", shapeTag).apply()
+                    prefs.edit().putString(prefKey, shapeTag).apply()
                     onShapeSelectedListener?.invoke(shapeTag)
                     dismiss()
                 }
@@ -78,6 +80,15 @@ class MoreShapesDialogFragment : DialogFragment() {
 
     companion object {
         const val TAG = "MoreShapesDialogFragment"
-        fun newInstance() = MoreShapesDialogFragment()
+        private const val ARG_PREF_KEY = "arg_pref_key"
+        private const val ARG_DEFAULT_SHAPE = "arg_default_shape"
+
+        fun newInstance(prefKey: String = "key_icon_shape", defaultShape: String = "Round") =
+            MoreShapesDialogFragment().apply {
+                arguments = Bundle().apply {
+                    putString(ARG_PREF_KEY, prefKey)
+                    putString(ARG_DEFAULT_SHAPE, defaultShape)
+                }
+            }
     }
 }

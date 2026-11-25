@@ -98,6 +98,14 @@
             android:parentActivityName=".ui.LauncherSettingsActivity"
             android:theme="@style/Theme.NovaLight" />
 
+        <!-- Folder Icon Appearance Sub-Screen -->
+        <activity
+            android:name=".ui.FolderIconAppearanceActivity"
+            android:exported="false"
+            android:label="Folder icon appearance"
+            android:parentActivityName=".ui.FolderSettingsActivity"
+            android:theme="@style/Theme.NovaLight" />
+
         <!-- Look & Feel Settings Activity -->
         <activity
             android:name=".ui.LookFeelSettingsActivity"

@@ -1,10 +1,13 @@
 package com.example.launcherai
 
+import com.example.launcherai.icons.FolderGeometry
+import com.example.launcherai.icons.FolderIconRenderer
 import com.example.launcherai.ui.FolderSettingsActivity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.hypot
 
 /**
  * Unit tests for Folder Window Style configurations matching Nova Launcher 8.9.9
@@ -191,5 +194,112 @@ class FolderWindowStyleTest {
         val autoCloseDisabled = false
         if (autoCloseDisabled) closeOverlay()
         assertFalse(overlayClosed)
+    }
+
+    @Test
+    fun testNovaParityKeysAndConstants() {
+        assertEquals("key_folder_show_name", FolderSettingsActivity.KEY_FOLDER_SHOW_NAME)
+        assertEquals("key_folder_immersive_card_bg", FolderSettingsActivity.KEY_FOLDER_IMMERSIVE_CARD_BG)
+        assertEquals("key_folder_immersive_align_bottom", FolderSettingsActivity.KEY_FOLDER_IMMERSIVE_ALIGN_BOTTOM)
+        assertEquals("key_folder_window_text_color", FolderSettingsActivity.KEY_FOLDER_WINDOW_TEXT_COLOR)
+        assertEquals("key_folder_window_accent_color", FolderSettingsActivity.KEY_FOLDER_WINDOW_ACCENT_COLOR)
+        assertEquals("RADIAL_5", FolderIconRenderer.PREVIEW_RADIAL_5)
+        assertEquals("RADIAL_9", FolderIconRenderer.PREVIEW_RADIAL_9)
+        assertEquals("Flower", FolderIconRenderer.SHAPE_FLOWER)
+    }
+
+    @Test
+    fun testRadial5AndRadial9SlotGeometryInsidePlateWithoutOverlap() {
+        val plateSize = 100f
+        val radial5 = FolderGeometry.computeRadialSlots(itemCount = 5, plateSizePx = plateSize, maxRingSlots = 5)
+        assertEquals(5, radial5.size)
+        radial5.forEach { slot ->
+            assertTrue(slot.left >= 0f && slot.top >= 0f)
+            assertTrue(slot.right <= plateSize && slot.bottom <= plateSize)
+        }
+
+        val radial9 = FolderGeometry.computeRadialSlots(itemCount = 9, plateSizePx = plateSize, maxRingSlots = 9)
+        assertEquals(9, radial9.size)
+        // First slot acts as centered hub, remaining 8 sit evenly around orbit radius
+        assertEquals(plateSize / 2f, radial9[0].centerX, 0.5f)
+        assertEquals(plateSize / 2f, radial9[0].centerY, 0.5f)
+        for (i in 1 until radial9.size) {
+            val slot = radial9[i]
+            assertTrue(slot.left >= 0f && slot.top >= 0f)
+            assertTrue(slot.right <= plateSize && slot.bottom <= plateSize)
+            val distFromCenter = hypot(slot.centerX - plateSize / 2f, slot.centerY - plateSize / 2f)
+            assertTrue("Outer icon must sit outside center icon radius", distFromCenter >= slot.size * 0.85f)
+        }
+    }
+
+    @Test
+    fun testModeConditionalGridAutoAndImmersiveControls() {
+        val windowState = FolderGeometry.resolveFolderWindowAppearance(
+            style = FolderSettingsActivity.WINDOW_STYLE_WINDOW,
+            shadowEnabled = true,
+            cardBackgroundEnabled = false,
+            alignBottomEnabled = true,
+            cornerRadiusDp = 16,
+            bgAlphaPercent = 80
+        )
+        assertFalse(windowState.isImmersive)
+        assertTrue(windowState.showShadow)
+        assertTrue(windowState.isGridAutoLocked)
+        assertFalse(windowState.alignBottom)
+        assertTrue(windowState.isCornerRadiusEnabled)
+        assertEquals(5f, windowState.effectiveElevationDp, 0.01f)
+        assertEquals(16f, windowState.effectiveCornerRadiusDp, 0.01f)
+
+        val immersiveNoCard = FolderGeometry.resolveFolderWindowAppearance(
+            style = FolderSettingsActivity.WINDOW_STYLE_IMMERSIVE,
+            shadowEnabled = true,
+            cardBackgroundEnabled = false,
+            alignBottomEnabled = true,
+            cornerRadiusDp = 20,
+            bgAlphaPercent = 80
+        )
+        assertTrue(immersiveNoCard.isImmersive)
+        assertFalse(immersiveNoCard.showShadow)
+        assertFalse(immersiveNoCard.isGridAutoLocked)
+        assertTrue(immersiveNoCard.alignBottom)
+        assertFalse(immersiveNoCard.isCornerRadiusEnabled)
+        assertEquals(0f, immersiveNoCard.effectiveCornerRadiusDp, 0.01f)
+        assertEquals(0, immersiveNoCard.effectiveBackgroundAlpha)
+
+        val immersiveWithCard = FolderGeometry.resolveFolderWindowAppearance(
+            style = FolderSettingsActivity.WINDOW_STYLE_IMMERSIVE,
+            shadowEnabled = true,
+            cardBackgroundEnabled = true,
+            alignBottomEnabled = false,
+            cornerRadiusDp = 20,
+            bgAlphaPercent = 80
+        )
+        assertTrue(immersiveWithCard.showCardBackground)
+        assertTrue(immersiveWithCard.isCornerRadiusEnabled)
+        assertEquals(20f, immersiveWithCard.effectiveCornerRadiusDp, 0.01f)
+        assertEquals(80, immersiveWithCard.effectiveBackgroundAlpha)
+    }
+
+    @Test
+    fun testMatchFolderWindowColorResolution() {
+        val matched = FolderGeometry.resolveFolderIconColor(
+            matchWindowColor = true,
+            windowBgColor = 0xFF1E88E5.toInt(),
+            windowBgOpacityPercent = 80,
+            customIconBgColor = 0xFFE0E0E0.toInt(),
+            customIconBgTransparencyPercent = 40
+        )
+        assertEquals(0xFF1E88E5.toInt(), matched.color)
+        assertEquals(20, matched.transparencyPercent) // 80% opaque == 20% transparency
+
+        val unmatched = FolderGeometry.resolveFolderIconColor(
+            matchWindowColor = false,
+            windowBgColor = 0xFF1E88E5.toInt(),
+            windowBgOpacityPercent = 80,
+            customIconBgColor = 0xFF4CAF50.toInt(),
+            customIconBgTransparencyPercent = 40
+        )
+        assertEquals(0xFF4CAF50.toInt(), unmatched.color)
+        assertEquals(40, unmatched.transparencyPercent)
     }
 }

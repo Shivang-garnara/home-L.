@@ -7,6 +7,7 @@ import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -19,20 +20,25 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.widget.ImageViewCompat
+import com.example.launcherai.icons.FolderGeometry
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -74,6 +80,7 @@ import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -109,12 +116,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var folderOverlay: FrameLayout
     private lateinit var folderCard: LinearLayout
     private lateinit var etFolderTitle: EditText
+    private lateinit var btnFolderMenu: TextView
     private lateinit var btnCloseFolder: ImageView
     private lateinit var rvFolderApps: RecyclerView
     private lateinit var folderPageIndicator: PageIndicatorView
     private lateinit var folderAppsAdapter: AppsAdapter
     private var folderSnapHelper: PagerSnapHelper? = null
     private var activeFolderId: Long? = null
+    private var activeFolderApps: MutableList<AppInfo> = mutableListOf()
 
     private lateinit var drawerAdapter: AppsAdapter
     private lateinit var fastScroller: FastScroller
@@ -609,6 +618,7 @@ class MainActivity : AppCompatActivity() {
         folderOverlay = findViewById(R.id.folderOverlay)
         folderCard = findViewById(R.id.folderCard)
         etFolderTitle = findViewById(R.id.etFolderTitle)
+        btnFolderMenu = findViewById(R.id.btnFolderMenu)
         btnCloseFolder = findViewById(R.id.btnCloseFolder)
         rvFolderApps = findViewById(R.id.rvFolderApps)
         folderPageIndicator = findViewById(R.id.folderPageIndicator)
@@ -712,6 +722,7 @@ class MainActivity : AppCompatActivity() {
 
         // Folder popup overlay controls
         folderOverlay.setOnClickListener { closeFolderOverlay() }
+        btnFolderMenu.setOnClickListener { showActiveFolderMenu(it) }
         btnCloseFolder.setOnClickListener { closeFolderOverlay() }
 
         etFolderTitle.setOnEditorActionListener { _, actionId, _ ->
@@ -1493,46 +1504,79 @@ class MainActivity : AppCompatActivity() {
         val style = prefs.getString(FolderSettingsActivity.KEY_FOLDER_WINDOW_STYLE, FolderSettingsActivity.WINDOW_STYLE_WINDOW) ?: FolderSettingsActivity.WINDOW_STYLE_WINDOW
         val bgColor = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_WINDOW_BG_COLOR, 0xFF202534.toInt())
         val bgAlpha = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_WINDOW_BG_ALPHA, 80)
+        val textColor = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_WINDOW_TEXT_COLOR, 0xFFFFFFFF.toInt())
+        val accentColor = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_WINDOW_ACCENT_COLOR, 0xFFD54526.toInt())
         val cornerRadiusDp = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_WINDOW_CORNER_RADIUS, 16)
         val shadow = prefs.getBoolean(FolderSettingsActivity.KEY_FOLDER_WINDOW_SHADOW, true)
-        val rows = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_GRID_ROWS, 3).coerceIn(2, 6)
+        val cardBgEnabled = prefs.getBoolean(FolderSettingsActivity.KEY_FOLDER_IMMERSIVE_CARD_BG, false)
+        val alignBottom = prefs.getBoolean(FolderSettingsActivity.KEY_FOLDER_IMMERSIVE_ALIGN_BOTTOM, false)
+        val showFolderName = prefs.getBoolean(FolderSettingsActivity.KEY_FOLDER_SHOW_NAME, true)
+        val rows = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_GRID_ROWS, 3).coerceIn(2, 7)
         val cols = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_GRID_COLS, 4).coerceIn(3, 6)
         val scrollDir = prefs.getString(FolderSettingsActivity.KEY_FOLDER_SCROLL_DIRECTION, FolderSettingsActivity.SCROLL_DIR_VERTICAL) ?: FolderSettingsActivity.SCROLL_DIR_VERTICAL
+
+        val resolved = FolderGeometry.resolveFolderWindowAppearance(
+            style = style,
+            shadowEnabled = shadow,
+            cardBackgroundEnabled = cardBgEnabled,
+            alignBottomEnabled = alignBottom,
+            cornerRadiusDp = cornerRadiusDp,
+            bgAlphaPercent = bgAlpha
+        )
 
         val density = resources.displayMetrics.density
         val alphaInt = ((bgAlpha / 100f) * 255).toInt().coerceIn(0, 255)
         val cardBgTint = ColorUtils.setAlphaComponent(bgColor, alphaInt)
 
-        if (style == FolderSettingsActivity.WINDOW_STYLE_IMMERSIVE) {
-            // Full-screen blurred/tinted sheet presentation (Nova Immersive mode)
-            val scrimColor = ColorUtils.setAlphaComponent(bgColor, alphaInt)
-            folderOverlay.setBackgroundColor(scrimColor)
+        etFolderTitle.visibility = if (showFolderName) View.VISIBLE else View.INVISIBLE
+        etFolderTitle.setTextColor(textColor)
+        btnFolderMenu.setTextColor(textColor)
+        ImageViewCompat.setImageTintList(btnCloseFolder, ColorStateList.valueOf(textColor))
+        folderPageIndicator.setIndicatorColor(accentColor)
 
-            val params = folderCard.layoutParams as FrameLayout.LayoutParams
-            params.width = ViewGroup.LayoutParams.MATCH_PARENT
-            params.height = ViewGroup.LayoutParams.MATCH_PARENT
-            params.gravity = Gravity.NO_GRAVITY
-            params.setMargins(0, 0, 0, 0)
-            folderCard.layoutParams = params
-
-            // In Immersive mode, elevation is 0 and corner radius is 0
-            folderCard.elevation = 0f
-            val cardBg = GradientDrawable().apply {
-                setColor(Color.TRANSPARENT)
-                cornerRadius = 0f
-            }
-            folderCard.background = cardBg
-
-            // Apply system insets for status bar and navigation bar
+        if (resolved.isImmersive) {
             val insets = ViewCompat.getRootWindowInsets(folderOverlay)
             val statusBarTop = insets?.getInsets(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout())?.top ?: (24 * density).toInt()
             val navBarBottom = insets?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: (24 * density).toInt()
-            folderCard.setPadding(
-                (24 * density).toInt(),
-                statusBarTop + (16 * density).toInt(),
-                (24 * density).toInt(),
-                navBarBottom + (16 * density).toInt()
-            )
+
+            val params = folderCard.layoutParams as FrameLayout.LayoutParams
+            folderCard.elevation = 0f
+
+            if (resolved.showCardBackground) {
+                folderOverlay.setBackgroundColor(Color.argb((0.6f * 255).toInt(), 0, 0, 0))
+                params.width = ViewGroup.LayoutParams.MATCH_PARENT
+                params.height = if (resolved.alignBottom) ViewGroup.LayoutParams.WRAP_CONTENT else ViewGroup.LayoutParams.MATCH_PARENT
+                params.gravity = if (resolved.alignBottom) Gravity.BOTTOM else Gravity.CENTER
+                val horiz = (16 * density).toInt()
+                val topMargin = if (resolved.alignBottom) statusBarTop else statusBarTop + (12 * density).toInt()
+                val bottomMargin = if (resolved.alignBottom) navBarBottom + (84 * density).toInt() else navBarBottom + (12 * density).toInt()
+                params.setMargins(horiz, topMargin, horiz, bottomMargin)
+                folderCard.layoutParams = params
+
+                folderCard.background = GradientDrawable().apply {
+                    setColor(cardBgTint)
+                    cornerRadius = resolved.effectiveCornerRadiusDp * density
+                }
+                folderCard.setPadding((20 * density).toInt(), (18 * density).toInt(), (20 * density).toInt(), (18 * density).toInt())
+            } else {
+                folderOverlay.setBackgroundColor(cardBgTint)
+                params.width = ViewGroup.LayoutParams.MATCH_PARENT
+                params.height = if (resolved.alignBottom) ViewGroup.LayoutParams.WRAP_CONTENT else ViewGroup.LayoutParams.MATCH_PARENT
+                params.gravity = if (resolved.alignBottom) Gravity.BOTTOM else Gravity.NO_GRAVITY
+                params.setMargins(0, 0, 0, if (resolved.alignBottom) navBarBottom + (84 * density).toInt() else 0)
+                folderCard.layoutParams = params
+
+                folderCard.background = GradientDrawable().apply {
+                    setColor(Color.TRANSPARENT)
+                    cornerRadius = 0f
+                }
+                folderCard.setPadding(
+                    (24 * density).toInt(),
+                    if (resolved.alignBottom) (16 * density).toInt() else statusBarTop + (16 * density).toInt(),
+                    (24 * density).toInt(),
+                    if (resolved.alignBottom) (16 * density).toInt() else navBarBottom + (16 * density).toInt()
+                )
+            }
         } else {
             // Window mode: Centered floating card with elevation and rounded corners
             val scrimAlpha = (0.6f * 255).toInt()
@@ -1549,7 +1593,7 @@ class MainActivity : AppCompatActivity() {
             params.setMargins((24 * density).toInt(), (48 * density).toInt(), (24 * density).toInt(), (48 * density).toInt())
             folderCard.layoutParams = params
 
-            folderCard.elevation = if (shadow) (5f * density) else 0f
+            folderCard.elevation = resolved.effectiveElevationDp * density
             val cardBg = GradientDrawable().apply {
                 setColor(cardBgTint)
                 cornerRadius = cornerRadiusDp * density
@@ -1559,9 +1603,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Configure Grid Dimensions & Scroll Direction
-        val apps = folderResolved.children.map { it.appInfo }
+        activeFolderApps = folderResolved.children.map { it.appInfo }.toMutableList()
         folderAppsAdapter = AppsAdapter(
-            apps = apps,
+            apps = activeFolderApps,
             onAppClick = { appInfo, view ->
                 AppManager.launchApp(this, appInfo, view)
                 val autoClose = prefs.getBoolean(FolderSettingsActivity.KEY_FOLDER_AUTO_CLOSE, true)
@@ -1581,7 +1625,7 @@ class MainActivity : AppCompatActivity() {
             rvFolderApps.adapter = folderAppsAdapter
 
             val itemsPerPage = rows * cols
-            val pageCount = if (itemsPerPage > 0) Math.ceil(apps.size.toDouble() / itemsPerPage).toInt().coerceAtLeast(1) else 1
+            val pageCount = if (itemsPerPage > 0) Math.ceil(activeFolderApps.size.toDouble() / itemsPerPage).toInt().coerceAtLeast(1) else 1
 
             if (pageCount > 1) {
                 folderPageIndicator.visibility = View.VISIBLE
@@ -1620,6 +1664,75 @@ class MainActivity : AppCompatActivity() {
         folderOverlay.visibility = View.VISIBLE
         folderOverlay.alpha = 0f
         folderOverlay.animate().alpha(1f).setDuration(200).start()
+    }
+
+    private fun showActiveFolderMenu(anchor: View) {
+        val folderId = activeFolderId ?: return
+        val popup = PopupMenu(this, anchor)
+        popup.menu.add(0, 1, 0, "Select apps")
+        popup.menu.add(0, 2, 1, "Sort alphabetically")
+        popup.menu.add(0, 3, 2, "Rename folder")
+        popup.menu.add(0, 4, 3, "Folder settings")
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                1 -> {
+                    showSelectAppsForFolderDialog(folderId)
+                    true
+                }
+                2 -> {
+                    viewModel.sortFolderAppsAlphabetically(folderId)
+                    activeFolderApps = activeFolderApps.sortedBy { it.label.lowercase() }.toMutableList()
+                    folderAppsAdapter.updateApps(activeFolderApps)
+                    true
+                }
+                3 -> {
+                    etFolderTitle.visibility = View.VISIBLE
+                    etFolderTitle.requestFocus()
+                    etFolderTitle.selectAll()
+                    val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+                    imm?.showSoftInput(etFolderTitle, InputMethodManager.SHOW_IMPLICIT)
+                    true
+                }
+                4 -> {
+                    closeFolderOverlay()
+                    startActivity(Intent(this, FolderSettingsActivity::class.java))
+                    true
+                }
+                else -> false
+            }
+        }
+        popup.show()
+    }
+
+    private fun showSelectAppsForFolderDialog(folderId: Long) {
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val allApps = AppManager.getInstalledApps(this@MainActivity).sortedBy { it.label.lowercase() }
+            val currentKeys = activeFolderApps.map { "${it.packageName}/${it.activityName}" }.toHashSet()
+            val available = allApps.filter { "${it.packageName}/${it.activityName}" !in currentKeys }
+            val labels = available.map { it.label }.toTypedArray()
+            val checked = BooleanArray(available.size)
+            withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (available.isEmpty()) {
+                    Toast.makeText(this@MainActivity, "All apps already added", Toast.LENGTH_SHORT).show()
+                    return@withContext
+                }
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Add apps to folder")
+                    .setMultiChoiceItems(labels, checked) { _, idx, isChecked ->
+                        checked[idx] = isChecked
+                    }
+                    .setPositiveButton("Add") { _, _ ->
+                        val chosen = available.filterIndexed { idx, _ -> checked[idx] }
+                        if (chosen.isNotEmpty()) {
+                            viewModel.addAppsToFolder(folderId, chosen)
+                            activeFolderApps.addAll(chosen)
+                            folderAppsAdapter.updateApps(activeFolderApps)
+                        }
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
+        }
     }
 
     private fun closeFolderOverlay() {

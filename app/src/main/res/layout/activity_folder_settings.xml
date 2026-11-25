@@ -6,7 +6,7 @@
     android:orientation="vertical"
     android:background="@color/nova_light_surface">
 
-    <!-- Top Action Bar Header -->
+    <!-- Top App Bar Header -->
     <LinearLayout
         android:id="@+id/headerContainer"
         android:layout_width="match_parent"
@@ -27,16 +27,185 @@
 
         <TextView
             android:id="@+id/tvHeaderTitle"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:layout_marginStart="8dp"
             android:text="Folders"
             android:textColor="@color/nova_text_brown_title"
             android:textSize="20sp"
             android:textStyle="bold" />
-
     </LinearLayout>
 
+    <!-- Live Opened-Folder Preview Backdrop (Nova SettingsFolder live wallpaper preview) -->
+    <FrameLayout
+        android:id="@+id/previewBackdrop"
+        android:layout_width="match_parent"
+        android:layout_height="205dp"
+        android:background="#262626"
+        android:padding="12dp">
+
+        <!-- Preview Opened Folder Container -->
+        <LinearLayout
+            android:id="@+id/previewFolderCard"
+            android:layout_width="252dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:orientation="vertical"
+            android:padding="14dp"
+            android:background="@drawable/bg_card_rounded">
+
+            <!-- Header inside preview folder -->
+            <LinearLayout
+                android:id="@+id/previewFolderHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="10dp">
+
+                <TextView
+                    android:id="@+id/tvPreviewFolderTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Sample Folder"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:singleLine="true" />
+
+                <TextView
+                    android:id="@+id/tvPreviewOverflowDots"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="⋮"
+                    android:textColor="#FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <!-- 4 Sample App Icons Row -->
+            <LinearLayout
+                android:id="@+id/previewAppsRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center">
+                    <ImageView
+                        android:id="@+id/ivSampleApp1"
+                        android:layout_width="38dp"
+                        android:layout_height="38dp" />
+                    <TextView
+                        android:id="@+id/tvSampleApp1"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="App 1"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10.5sp"
+                        android:gravity="center" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center">
+                    <ImageView
+                        android:id="@+id/ivSampleApp2"
+                        android:layout_width="38dp"
+                        android:layout_height="38dp" />
+                    <TextView
+                        android:id="@+id/tvSampleApp2"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="App 2"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10.5sp"
+                        android:gravity="center" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center">
+                    <ImageView
+                        android:id="@+id/ivSampleApp3"
+                        android:layout_width="38dp"
+                        android:layout_height="38dp" />
+                    <TextView
+                        android:id="@+id/tvSampleApp3"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="App 3"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10.5sp"
+                        android:gravity="center" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center">
+                    <ImageView
+                        android:id="@+id/ivSampleApp4"
+                        android:layout_width="38dp"
+                        android:layout_height="38dp" />
+                    <TextView
+                        android:id="@+id/tvSampleApp4"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Long App Name"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10.5sp"
+                        android:gravity="center" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Page indicator dots -->
+            <LinearLayout
+                android:id="@+id/previewPageDots"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <View
+                    android:id="@+id/dotPreviewActive"
+                    android:layout_width="6dp"
+                    android:layout_height="6dp"
+                    android:layout_marginEnd="5dp"
+                    android:background="@drawable/bg_color_swatch_circle" />
+
+                <View
+                    android:id="@+id/dotPreviewInactive"
+                    android:layout_width="6dp"
+                    android:layout_height="6dp"
+                    android:alpha="0.4"
+                    android:background="@drawable/bg_color_swatch_circle" />
+            </LinearLayout>
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- Scrollable Controls -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -51,1030 +220,877 @@
             android:paddingEnd="20dp"
             android:paddingBottom="40dp">
 
-            <!-- Top Live Folder Preview Card -->
-            <FrameLayout
-                android:id="@+id/cardFolderPreviewContainer"
+            <!-- SECTION: FOLDER ICON APPEARANCE SUB-SCREEN ENTRY -->
+            <LinearLayout
+                android:id="@+id/rowFolderIconAppearance"
                 android:layout_width="match_parent"
-                android:layout_height="160dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:background="?attr/selectableItemBackground">
+
+                <ImageView
+                    android:id="@+id/ivFolderIconThumb"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:scaleType="fitCenter"
+                    android:contentDescription="Folder icon appearance preview" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="14dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Folder icon appearance"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvFolderIconAppearanceSummary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Grid • System default • Match window color"
+                        android:textColor="@color/nova_text_brown_secondary"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:rotation="-90"
+                    android:src="@drawable/ic_chevron_down"
+                    app:tint="@color/nova_text_brown_secondary" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="6dp"
+                android:background="@color/nova_divider" />
+
+            <!-- SECTION: LAYOUT -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:layout_marginBottom="8dp"
+                android:text="Layout"
+                android:textColor="#6D3B68"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <!-- Icon size + steppers + value -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="4dp"
+                android:paddingBottom="6dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Icon size"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/tvFolderIconSizeValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="100%"
+                        android:textColor="#6D3B68"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ImageButton
+                        android:id="@+id/btnIconSizeMinus"
+                        android:layout_width="34dp"
+                        android:layout_height="34dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Decrease icon size"
+                        android:src="@drawable/ic_minus"
+                        app:tint="@color/nova_text_brown_primary" />
+
+                    <SeekBar
+                        android:id="@+id/sbFolderIconSize"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:max="80"
+                        android:progressDrawable="@drawable/seekbar_track_nova"
+                        android:thumb="@drawable/seekbar_thumb_nova" />
+
+                    <ImageButton
+                        android:id="@+id/btnIconSizePlus"
+                        android:layout_width="34dp"
+                        android:layout_height="34dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Increase icon size"
+                        android:src="@drawable/ic_plus"
+                        app:tint="@color/nova_text_brown_primary" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Match desktop size checkbox -->
+            <LinearLayout
+                android:id="@+id/rowMatchDesktopSize"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="?attr/selectableItemBackground">
+
+                <com.google.android.material.checkbox.MaterialCheckBox
+                    android:id="@+id/cbMatchDesktopSize"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:buttonTint="#6D3B68"
+                    app:buttonIconTint="@android:color/white" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    android:text="Match desktop size"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="15sp" />
+            </LinearLayout>
+
+            <!-- Expandable Label Accordion Card -->
+            <LinearLayout
+                android:id="@+id/cardLabelAccordion"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:background="@drawable/bg_card_rounded"
-                android:backgroundTint="#262626">
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:gravity="center_horizontal"
-                    android:orientation="vertical">
-
-                    <ImageView
-                        android:id="@+id/ivFolderPreview"
-                        android:layout_width="64dp"
-                        android:layout_height="64dp"
-                        android:contentDescription="Folder Icon Preview" />
-
-                    <TextView
-                        android:id="@+id/tvFolderPreviewLabel"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="Sample Folder"
-                        android:textColor="#FFFFFF"
-                        android:textSize="12sp"
-                        android:textStyle="bold" />
-
-                </LinearLayout>
-
-            </FrameLayout>
-
-            <!-- SECTION: FOLDER ICON -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="28dp"
-                android:layout_marginBottom="8dp"
-                android:text="FOLDER ICON"
-                android:textColor="@color/nova_orange"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.05" />
-
-            <!-- Row 1: Folder Preview Layout -->
-            <LinearLayout
-                android:id="@+id/rowFolderPreviewLayout"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:paddingTop="12dp"
-                android:paddingBottom="12dp"
-                android:background="?attr/selectableItemBackground">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Folder preview"
-                    android:textColor="@color/nova_text_brown_primary"
-                    android:textSize="16sp" />
-
-                <TextView
-                    android:id="@+id/tvFolderPreviewLayoutSubtitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="Grid (2x2)"
-                    android:textColor="@color/nova_text_brown_secondary"
-                    android:textSize="13sp" />
-
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/nova_divider" />
-
-            <!-- Row 2: Folder Shape -->
-            <LinearLayout
-                android:id="@+id/rowFolderShape"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingTop="12dp"
-                android:paddingBottom="12dp"
-                android:background="?attr/selectableItemBackground">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Folder icon shape"
-                    android:textColor="@color/nova_text_brown_primary"
-                    android:textSize="16sp" />
-
-                <TextView
-                    android:id="@+id/tvFolderShapeSubtitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="System default"
-                    android:textColor="@color/nova_text_brown_secondary"
-                    android:textSize="13sp" />
-
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/nova_divider" />
-
-            <!-- Row 3: Background Color -->
-            <LinearLayout
-                android:id="@+id/rowFolderBgColor"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingTop="12dp"
-                android:paddingBottom="12dp"
-                android:background="?attr/selectableItemBackground">
+                android:background="#EFE9E7"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp">
 
                 <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Background color"
-                        android:textColor="@color/nova_text_brown_primary"
-                        android:textSize="16sp" />
-
-                    <TextView
-                        android:id="@+id/tvFolderBgColorSubtitle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="Light Gray (#E0E0E0)"
-                        android:textColor="@color/nova_text_brown_secondary"
-                        android:textSize="13sp" />
-
-                </LinearLayout>
-
-                <View
-                    android:id="@+id/viewFolderBgColorSwatch"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:background="@drawable/bg_color_circle" />
-
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/nova_divider" />
-
-            <!-- Row 4: Background Transparency / Alpha -->
-            <LinearLayout
-                android:id="@+id/rowFolderBgAlpha"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingTop="12dp"
-                android:paddingBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Background transparency"
-                        android:textColor="@color/nova_text_brown_primary"
-                        android:textSize="16sp" />
-
-                    <TextView
-                        android:id="@+id/tvFolderBgAlphaValue"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="20%"
-                        android:textColor="@color/nova_orange"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
-
-                </LinearLayout>
-
-                <SeekBar
-                    android:id="@+id/sbFolderBgAlpha"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:max="100"
-                    android:progress="20"
-                    android:progressTint="@color/nova_orange"
-                    android:thumbTint="@color/nova_orange" />
-
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/nova_divider" />
-
-            <!-- Row 5: Outline Border -->
-            <LinearLayout
-                android:id="@+id/rowFolderOutline"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingTop="12dp"
-                android:paddingBottom="12dp"
-                android:background="?attr/selectableItemBackground">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Outline border"
-                        android:textColor="@color/nova_text_brown_primary"
-                        android:textSize="16sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="Draw a border stroke around the folder shape"
-                        android:textColor="@color/nova_text_brown_secondary"
-                        android:textSize="13sp" />
-
-                </LinearLayout>
-
-                <com.google.android.material.switchmaterial.SwitchMaterial
-                    android:id="@+id/swFolderOutline"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:checked="true"
-                    app:useMaterialThemeColors="true" />
-
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/nova_divider" />
-
-            <!-- Row 6: Clip to Bounds -->
-            <LinearLayout
-                android:id="@+id/rowFolderClip"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingTop="12dp"
-                android:paddingBottom="12dp"
-                android:background="?attr/selectableItemBackground">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Clip to bounds"
-                        android:textColor="@color/nova_text_brown_primary"
-                        android:textSize="16sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="Mask items inside the folder shape boundary"
-                        android:textColor="@color/nova_text_brown_secondary"
-                        android:textSize="13sp" />
-
-                </LinearLayout>
-
-                <com.google.android.material.switchmaterial.SwitchMaterial
-                    android:id="@+id/swFolderClip"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:checked="true"
-                    app:useMaterialThemeColors="true" />
-
-            </LinearLayout>
-
-            <!-- SECTION: WINDOW STYLE -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="28dp"
-                android:layout_marginBottom="8dp"
-                android:text="WINDOW STYLE"
-                android:textColor="@color/nova_orange"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.05" />
-
-            <!-- Row 7: Presentation Style -->
-            <LinearLayout
-                android:id="@+id/rowFolderWindowStyle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingTop="12dp"
-                android:paddingBottom="12dp"
-                android:background="?attr/selectableItemBackground">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Presentation style"
-                    android:textColor="@color/nova_text_brown_primary"
-                    android:textSize="16sp" />
-
-                <TextView
-                    android:id="@+id/tvFolderWindowStyleSubtitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="Window"
-                    android:textColor="@color/nova_text_brown_secondary"
-                    android:textSize="13sp" />
-
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/nova_divider" />
-
-            <!-- Row 8: Window Background Color -->
-            <LinearLayout
-                android:id="@+id/rowFolderWindowBgColor"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingTop="12dp"
-                android:paddingBottom="12dp"
-                android:background="?attr/selectableItemBackground">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Background color"
-                        android:textColor="@color/nova_text_brown_primary"
-                        android:textSize="16sp" />
-
-                    <TextView
-                        android:id="@+id/tvFolderWindowBgColorSubtitle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="Dark Slate (#202534)"
-                        android:textColor="@color/nova_text_brown_secondary"
-                        android:textSize="13sp" />
-
-                </LinearLayout>
-
-                <View
-                    android:id="@+id/viewFolderWindowBgColorSwatch"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:background="@drawable/bg_color_circle" />
-
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/nova_divider" />
-
-            <!-- Row 9: Window Background Transparency / Alpha -->
-            <LinearLayout
-                android:id="@+id/rowFolderWindowBgAlpha"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingTop="12dp"
-                android:paddingBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Background transparency"
-                        android:textColor="@color/nova_text_brown_primary"
-                        android:textSize="16sp" />
-
-                    <TextView
-                        android:id="@+id/tvFolderWindowBgAlphaValue"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="80%"
-                        android:textColor="@color/nova_orange"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
-
-                </LinearLayout>
-
-                <SeekBar
-                    android:id="@+id/sbFolderWindowBgAlpha"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:max="100"
-                    android:progress="80"
-                    android:progressTint="@color/nova_orange"
-                    android:thumbTint="@color/nova_orange" />
-
-            </LinearLayout>
-
-            <!-- Container for Window-specific settings (Corner Radius & Shadow) -->
-            <LinearLayout
-                android:id="@+id/layoutWindowSpecificSettings"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/nova_divider" />
-
-                <!-- Row 10: Corner Radius -->
-                <LinearLayout
-                    android:id="@+id/rowFolderWindowCornerRadius"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingTop="12dp"
-                    android:paddingBottom="12dp"
-                    android:background="?attr/selectableItemBackground">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Corner radius"
-                        android:textColor="@color/nova_text_brown_primary"
-                        android:textSize="16sp" />
-
-                    <TextView
-                        android:id="@+id/tvFolderWindowCornerRadiusSubtitle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="16 dp"
-                        android:textColor="@color/nova_text_brown_secondary"
-                        android:textSize="13sp" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/nova_divider" />
-
-                <!-- Row 11: Drop Shadow -->
-                <LinearLayout
-                    android:id="@+id/rowFolderWindowShadow"
+                    android:id="@+id/rowLabelHeader"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:paddingTop="12dp"
-                    android:paddingBottom="12dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
                     android:background="?attr/selectableItemBackground">
 
-                    <LinearLayout
+                    <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Drop shadow"
-                            android:textColor="@color/nova_text_brown_primary"
-                            android:textSize="16sp" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="Elevation shadow behind window card"
-                            android:textColor="@color/nova_text_brown_secondary"
-                            android:textSize="13sp" />
-
-                    </LinearLayout>
-
-                    <com.google.android.material.switchmaterial.SwitchMaterial
-                        android:id="@+id/swFolderWindowShadow"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:checked="true"
-                        app:useMaterialThemeColors="true" />
-
-                </LinearLayout>
-
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/nova_divider" />
-
-            <!-- Row 12: Grid Dimensions (Rows x Cols) -->
-            <LinearLayout
-                android:id="@+id/rowFolderWindowGrid"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingTop="12dp"
-                android:paddingBottom="12dp"
-                android:background="?attr/selectableItemBackground">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Grid size"
-                    android:textColor="@color/nova_text_brown_primary"
-                    android:textSize="16sp" />
-
-                <TextView
-                    android:id="@+id/tvFolderWindowGridSubtitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="3 rows ✕ 4 columns"
-                    android:textColor="@color/nova_text_brown_secondary"
-                    android:textSize="13sp" />
-
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/nova_divider" />
-
-            <!-- Row 13: Scroll Direction -->
-            <LinearLayout
-                android:id="@+id/rowFolderWindowScrollDir"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingTop="12dp"
-                android:paddingBottom="12dp"
-                android:background="?attr/selectableItemBackground">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Scroll direction"
-                    android:textColor="@color/nova_text_brown_primary"
-                    android:textSize="16sp" />
-
-                <TextView
-                    android:id="@+id/tvFolderWindowScrollDirSubtitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="Vertical scroll"
-                    android:textColor="@color/nova_text_brown_secondary"
-                    android:textSize="13sp" />
-
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/nova_divider" />
-
-            <!-- SECTION: ICON LAYOUT (FOLDER CONTENT ICONS) -->
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="28dp"
-                android:layout_marginBottom="8dp"
-                android:text="ICON LAYOUT"
-                android:textColor="@color/nova_orange"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.05" />
-
-            <!-- Row 14: Match Desktop Size -->
-            <LinearLayout
-                android:id="@+id/rowFolderMatchDesktopSize"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingTop="12dp"
-                android:paddingBottom="12dp"
-                android:background="?attr/selectableItemBackground">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Match desktop size"
-                        android:textColor="@color/nova_text_brown_primary"
-                        android:textSize="16sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="Use same icon size as desktop"
-                        android:textColor="@color/nova_text_brown_secondary"
-                        android:textSize="13sp" />
-
-                </LinearLayout>
-
-                <com.google.android.material.switchmaterial.SwitchMaterial
-                    android:id="@+id/swFolderMatchDesktopSize"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:checked="true"
-                    app:useMaterialThemeColors="true" />
-
-            </LinearLayout>
-
-            <!-- Row 15: Independent Icon Size (shown when Match Desktop Size is false) -->
-            <LinearLayout
-                android:id="@+id/layoutFolderCustomIconSize"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone">
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/nova_divider" />
-
-                <LinearLayout
-                    android:id="@+id/rowFolderIconSize"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingTop="12dp"
-                    android:paddingBottom="12dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Icon size"
-                            android:textColor="@color/nova_text_brown_primary"
-                            android:textSize="16sp" />
-
-                        <TextView
-                            android:id="@+id/tvFolderIconSizeValue"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="100%"
-                            android:textColor="@color/nova_orange"
-                            android:textSize="15sp"
-                            android:textStyle="bold" />
-
-                    </LinearLayout>
-
-                    <SeekBar
-                        android:id="@+id/sbFolderIconSize"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:max="80"
-                        android:progress="30"
-                        android:progressTint="@color/nova_orange"
-                        android:thumbTint="@color/nova_orange" />
-
-                </LinearLayout>
-
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/nova_divider" />
-
-            <!-- Row 16: Label Visibility -->
-            <LinearLayout
-                android:id="@+id/rowFolderLabelVisible"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingTop="12dp"
-                android:paddingBottom="12dp"
-                android:background="?attr/selectableItemBackground">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
                         android:text="Label"
                         android:textColor="@color/nova_text_brown_primary"
                         android:textSize="16sp" />
 
-                    <TextView
+                    <ImageView
+                        android:id="@+id/ivLabelChevron"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginEnd="10dp"
+                        android:src="@drawable/ic_chevron_down"
+                        app:tint="@color/nova_text_brown_primary" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/swFolderLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="Show app names under folder icons"
-                        android:textColor="@color/nova_text_brown_secondary"
-                        android:textSize="13sp" />
-
+                        android:checked="true" />
                 </LinearLayout>
 
-                <com.google.android.material.switchmaterial.SwitchMaterial
-                    android:id="@+id/swFolderLabelVisible"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:checked="true"
-                    app:useMaterialThemeColors="true" />
-
-            </LinearLayout>
-
-            <!-- Container for Label Formatting (hidden when Label Visibility is false) -->
-            <LinearLayout
-                android:id="@+id/layoutFolderLabelSettings"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/nova_divider" />
-
-                <!-- Row 17: Label Font -->
                 <LinearLayout
-                    android:id="@+id/rowFolderLabelFont"
+                    android:id="@+id/containerLabelExpanded"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:paddingTop="12dp"
-                    android:paddingBottom="12dp"
-                    android:background="?attr/selectableItemBackground">
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="10dp"
+                    android:visibility="gone">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Font"
-                        android:textColor="@color/nova_text_brown_primary"
-                        android:textSize="16sp" />
-
-                    <TextView
-                        android:id="@+id/tvFolderLabelFontSubtitle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="Normal"
-                        android:textColor="@color/nova_text_brown_secondary"
-                        android:textSize="13sp" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/nova_divider" />
-
-                <!-- Row 18: Label Size -->
-                <LinearLayout
-                    android:id="@+id/rowFolderLabelSize"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingTop="12dp"
-                    android:paddingBottom="12dp">
-
+                    <!-- Size slider -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:gravity="center_vertical">
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="4dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Size"
+                            android:textColor="@color/nova_text_brown_primary"
+                            android:textSize="14sp" />
+
+                        <SeekBar
+                            android:id="@+id/sbFolderLabelSize"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="10dp"
+                            android:layout_marginEnd="10dp"
+                            android:max="50"
+                            android:progressDrawable="@drawable/seekbar_track_nova"
+                            android:thumb="@drawable/seekbar_thumb_nova" />
+
+                        <TextView
+                            android:id="@+id/tvFolderLabelSizeValue"
+                            android:layout_width="42dp"
+                            android:layout_height="wrap_content"
+                            android:gravity="end"
+                            android:text="100%"
+                            android:textColor="#6D3B68"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Font dropdown -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="10dp">
 
                         <TextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Text size"
+                            android:text="Font"
                             android:textColor="@color/nova_text_brown_primary"
-                            android:textSize="16sp" />
+                            android:textSize="14sp" />
 
-                        <TextView
-                            android:id="@+id/tvFolderLabelSizeValue"
+                        <LinearLayout
+                            android:id="@+id/btnLabelFontDropdown"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="100%"
-                            android:textColor="@color/nova_orange"
-                            android:textSize="15sp"
-                            android:textStyle="bold" />
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:background="@drawable/bg_setup_outlined_dropdown"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="8dp"
+                            android:paddingTop="6dp"
+                            android:paddingBottom="6dp">
 
+                            <TextView
+                                android:id="@+id/tvFolderLabelFontValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Normal"
+                                android:textColor="@color/nova_text_brown_primary"
+                                android:textSize="13.5sp" />
+
+                            <ImageView
+                                android:layout_width="16dp"
+                                android:layout_height="16dp"
+                                android:layout_marginStart="6dp"
+                                android:src="@drawable/ic_chevron_down"
+                                app:tint="@color/nova_text_brown_primary" />
+                        </LinearLayout>
                     </LinearLayout>
 
-                    <SeekBar
-                        android:id="@+id/sbFolderLabelSize"
+                    <!-- Side-by-side Shadow & Single line checkboxes -->
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:max="70"
-                        android:progress="30"
-                        android:progressTint="@color/nova_orange"
-                        android:thumbTint="@color/nova_orange" />
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="8dp">
 
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/nova_divider" />
-
-                <!-- Row 19: Label Color -->
-                <LinearLayout
-                    android:id="@+id/rowFolderLabelColor"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingTop="12dp"
-                    android:paddingBottom="12dp"
-                    android:background="?attr/selectableItemBackground">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Text color"
-                            android:textColor="@color/nova_text_brown_primary"
-                            android:textSize="16sp" />
-
-                        <TextView
-                            android:id="@+id/tvFolderLabelColorSubtitle"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="White (#FFFFFF)"
-                            android:textColor="@color/nova_text_brown_secondary"
-                            android:textSize="13sp" />
-
-                    </LinearLayout>
-
-                    <View
-                        android:id="@+id/viewFolderLabelColorSwatch"
-                        android:layout_width="28dp"
-                        android:layout_height="28dp"
-                        android:background="@drawable/bg_color_circle" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/nova_divider" />
-
-                <!-- Row 20: Label Shadow -->
-                <LinearLayout
-                    android:id="@+id/rowFolderLabelShadow"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingTop="12dp"
-                    android:paddingBottom="12dp"
-                    android:background="?attr/selectableItemBackground">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
+                        <com.google.android.material.checkbox.MaterialCheckBox
+                            android:id="@+id/cbLabelShadow"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Shadow"
                             android:textColor="@color/nova_text_brown_primary"
-                            android:textSize="16sp" />
+                            android:textSize="14sp"
+                            app:buttonTint="#6D3B68"
+                            app:buttonIconTint="@android:color/white" />
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="Display a drop shadow under text"
-                            android:textColor="@color/nova_text_brown_secondary"
-                            android:textSize="13sp" />
+                        <Space
+                            android:layout_width="16dp"
+                            android:layout_height="wrap_content" />
 
-                    </LinearLayout>
-
-                    <com.google.android.material.switchmaterial.SwitchMaterial
-                        android:id="@+id/swFolderLabelShadow"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:checked="true"
-                        app:useMaterialThemeColors="true" />
-
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/nova_divider" />
-
-                <!-- Row 21: Single Line -->
-                <LinearLayout
-                    android:id="@+id/rowFolderLabelSingleLine"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingTop="12dp"
-                    android:paddingBottom="12dp"
-                    android:background="?attr/selectableItemBackground">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
+                        <com.google.android.material.checkbox.MaterialCheckBox
+                            android:id="@+id/cbLabelSingleLine"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Single line"
                             android:textColor="@color/nova_text_brown_primary"
-                            android:textSize="16sp" />
+                            android:textSize="14sp"
+                            app:buttonTint="#6D3B68"
+                            app:buttonIconTint="@android:color/white" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="16dp"
+                android:background="@color/nova_divider" />
+
+            <!-- SECTION: FOLDER WINDOW -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:layout_marginBottom="8dp"
+                android:text="Window"
+                android:textColor="#6D3B68"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <!-- Expandable Colors Accordion (Surface | Text | Accent + Transparency) -->
+            <LinearLayout
+                android:id="@+id/cardColorsAccordion"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#EFE9E7"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:layout_marginBottom="6dp">
+
+                <LinearLayout
+                    android:id="@+id/rowColorsHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:background="?attr/selectableItemBackground">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Colors"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp" />
+
+                    <ImageView
+                        android:id="@+id/ivColorsChevron"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginEnd="12dp"
+                        android:src="@drawable/ic_chevron_down"
+                        app:tint="@color/nova_text_brown_primary" />
+
+                    <!-- Multi-Color Preview Badge -->
+                    <FrameLayout
+                        android:id="@+id/badgeColorPreview"
+                        android:layout_width="34dp"
+                        android:layout_height="34dp"
+                        android:background="@drawable/bg_color_swatch_circle">
+
+                        <TextView
+                            android:id="@+id/tvBadgeTt"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:text="Tᴛ"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <View
+                            android:id="@+id/viewBadgeAccentDot"
+                            android:layout_width="10dp"
+                            android:layout_height="10dp"
+                            android:layout_gravity="bottom|end"
+                            android:background="@drawable/bg_color_swatch_circle" />
+                    </FrameLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/containerColorsExpanded"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="10dp"
+                    android:visibility="gone">
+
+                    <!-- 3-Tab Switcher: Surface | Text | Accent -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="8dp"
+                        android:background="#E4DCDA"
+                        android:padding="4dp">
+
+                        <TextView
+                            android:id="@+id/tabColorSurface"
+                            android:layout_width="0dp"
+                            android:layout_height="34dp"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="Surface"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            android:textColor="#6D3B68" />
+
+                        <TextView
+                            android:id="@+id/tabColorText"
+                            android:layout_width="0dp"
+                            android:layout_height="34dp"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="Text"
+                            android:textSize="13sp"
+                            android:textColor="@color/nova_text_brown_secondary" />
+
+                        <TextView
+                            android:id="@+id/tabColorAccent"
+                            android:layout_width="0dp"
+                            android:layout_height="34dp"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="Accent"
+                            android:textSize="13sp"
+                            android:textColor="@color/nova_text_brown_secondary" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="System palette"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="13sp"
+                        android:layout_marginBottom="6dp" />
+
+                    <GridLayout
+                        android:id="@+id/gridSystemPalette"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:columnCount="6" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Fixed colors"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="13sp"
+                        android:layout_marginTop="10dp"
+                        android:layout_marginBottom="6dp" />
+
+                    <GridLayout
+                        android:id="@+id/gridFixedPalette"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:columnCount="6" />
+
+                    <LinearLayout
+                        android:id="@+id/rowCustomColor"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingTop="10dp"
+                        android:paddingBottom="6dp"
+                        android:background="?attr/selectableItemBackground">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Custom color"
+                            android:textColor="@color/nova_text_brown_primary"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:id="@+id/tvCustomColorHex"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="#202534"
+                            android:textColor="#6D3B68"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Inline Transparency slider inside Colors (matching Nova) -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="6dp">
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="Truncate label after one line"
-                            android:textColor="@color/nova_text_brown_secondary"
-                            android:textSize="13sp" />
+                            android:text="Transparency"
+                            android:textColor="@color/nova_text_brown_primary"
+                            android:textSize="14sp" />
 
+                        <SeekBar
+                            android:id="@+id/sbWindowTransparency"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="8dp"
+                            android:layout_marginEnd="8dp"
+                            android:max="100"
+                            android:progressDrawable="@drawable/seekbar_track_nova"
+                            android:thumb="@drawable/seekbar_thumb_nova" />
+
+                        <TextView
+                            android:id="@+id/tvWindowTransparencyValue"
+                            android:layout_width="40dp"
+                            android:layout_height="wrap_content"
+                            android:gravity="end"
+                            android:text="20%"
+                            android:textColor="#6D3B68"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
                     </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
 
-                    <com.google.android.material.switchmaterial.SwitchMaterial
-                        android:id="@+id/swFolderLabelSingleLine"
+            <!-- Mode (Window | Immersive) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Mode"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="16sp" />
+
+                <LinearLayout
+                    android:id="@+id/btnModeDropdown"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_setup_outlined_dropdown"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="10dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp">
+
+                    <TextView
+                        android:id="@+id/tvModeValue"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:checked="true"
-                        app:useMaterialThemeColors="true" />
+                        android:text="Window"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="14sp" />
 
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_marginStart="6dp"
+                        android:src="@drawable/ic_chevron_down"
+                        app:tint="@color/nova_text_brown_primary" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Shadow Switch (WINDOW Mode only) -->
+            <LinearLayout
+                android:id="@+id/rowWindowShadow"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="?attr/selectableItemBackground">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Shadow"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="16sp" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swWindowShadow"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true" />
+            </LinearLayout>
+
+            <!-- Card background Switch (IMMERSIVE Mode only) -->
+            <LinearLayout
+                android:id="@+id/rowCardBackground"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="?attr/selectableItemBackground"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Card background"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="16sp" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swCardBackground"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="false" />
+            </LinearLayout>
+
+            <!-- Align Bottom Switch (IMMERSIVE Mode only) -->
+            <LinearLayout
+                android:id="@+id/rowAlignBottom"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="?attr/selectableItemBackground"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Align Bottom"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="16sp" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swAlignBottom"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="false" />
+            </LinearLayout>
+
+            <!-- Grid Row (AUTO locked in Window, 3x4 interactive picker in Immersive) -->
+            <LinearLayout
+                android:id="@+id/rowFolderGrid"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="?attr/selectableItemBackground">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Grid"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/tvFolderGridSubtitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="3 × 4"
+                        android:textColor="@color/nova_text_brown_secondary"
+                        android:textSize="13sp" />
                 </LinearLayout>
 
+                <TextView
+                    android:id="@+id/tvGridAutoBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="AUTO"
+                    android:textColor="@color/nova_text_brown_secondary"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp"
+                    android:background="@drawable/bg_setup_outlined_dropdown" />
+
+                <com.example.launcherai.ui.FolderGridBlockPreviewView
+                    android:id="@+id/miniGridPreview"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:visibility="gone" />
             </LinearLayout>
+
+            <!-- Corner radius Slider -->
+            <LinearLayout
+                android:id="@+id/rowCornerRadius"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Corner radius"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="16sp" />
+
+                <SeekBar
+                    android:id="@+id/sbCornerRadius"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="10dp"
+                    android:layout_marginEnd="10dp"
+                    android:max="32"
+                    android:progressDrawable="@drawable/seekbar_track_nova"
+                    android:thumb="@drawable/seekbar_thumb_nova" />
+
+                <TextView
+                    android:id="@+id/tvCornerRadiusValue"
+                    android:layout_width="42dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="end"
+                    android:text="16dp"
+                    android:textColor="#6D3B68"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:padding="4dp" />
+            </LinearLayout>
+
+            <!-- Show folder name Switch -->
+            <LinearLayout
+                android:id="@+id/rowShowFolderName"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="?attr/selectableItemBackground">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Show folder name"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="16sp" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swShowFolderName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true" />
+            </LinearLayout>
+
+            <!-- Scroll direction Dropdown -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Scroll direction"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="16sp" />
+
+                <LinearLayout
+                    android:id="@+id/btnScrollDirectionDropdown"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_setup_outlined_dropdown"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="10dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp">
+
+                    <TextView
+                        android:id="@+id/tvScrollDirectionValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Vertical"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="14sp" />
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_marginStart="6dp"
+                        android:src="@drawable/ic_chevron_down"
+                        app:tint="@color/nova_text_brown_primary" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="12dp"
+                android:background="@color/nova_divider" />
 
             <!-- SECTION: GESTURES & BEHAVIOR -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="28dp"
+                android:layout_marginTop="18dp"
                 android:layout_marginBottom="8dp"
-                android:text="GESTURES &amp; BEHAVIOR"
-                android:textColor="@color/nova_orange"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.05" />
+                android:text="Gestures &amp; Behavior"
+                android:textColor="#6D3B68"
+                android:textSize="13sp"
+                android:textStyle="bold" />
 
-            <!-- Row 22: Tap Action -->
+            <!-- Tap action -->
             <LinearLayout
-                android:id="@+id/rowFolderTapAction"
+                android:id="@+id/rowTapAction"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:paddingTop="14dp"
-                android:paddingBottom="14dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
                 android:background="?attr/selectableItemBackground">
 
                 <TextView
@@ -1085,66 +1101,40 @@
                     android:textSize="16sp" />
 
                 <TextView
-                    android:id="@+id/tvFolderTapActionSubtitle"
+                    android:id="@+id/tvTapActionSummary"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
-                    android:text="Open folder"
+                    android:text="Open folder (swipe opens 1st app)"
                     android:textColor="@color/nova_text_brown_secondary"
                     android:textSize="13sp" />
-
             </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/nova_divider" />
-
-            <!-- Row 23: Auto-Close -->
+            <!-- Auto close -->
             <LinearLayout
-                android:id="@+id/rowFolderAutoClose"
+                android:id="@+id/rowAutoClose"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="52dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:paddingTop="12dp"
-                android:paddingBottom="12dp"
                 android:background="?attr/selectableItemBackground">
 
-                <LinearLayout
+                <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:text="Auto close"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="16sp" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Auto-close"
-                        android:textColor="@color/nova_text_brown_primary"
-                        android:textSize="16sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="Close folder automatically when an app is launched"
-                        android:textColor="@color/nova_text_brown_secondary"
-                        android:textSize="13sp" />
-
-                </LinearLayout>
-
-                <com.google.android.material.switchmaterial.SwitchMaterial
-                    android:id="@+id/swFolderAutoClose"
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swAutoClose"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:checked="true"
-                    app:useMaterialThemeColors="true" />
-
+                    android:checked="true" />
             </LinearLayout>
 
         </LinearLayout>
-
     </ScrollView>
 
 </LinearLayout>

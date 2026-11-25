@@ -336,6 +336,8 @@ class LauncherSettingsActivity : AppCompatActivity() {
         val folderPreview = prefs.getString("key_folder_icon_preview", "GRID") ?: "GRID"
         val folderPreviewName = when (folderPreview.uppercase()) {
             "GRID_9" -> "Grid (3x3)"
+            "RADIAL_5" -> "Radial"
+            "RADIAL_9" -> "Radial (Clustered)"
             "STACK" -> "Stack"
             "FAN" -> "Fan"
             "LINE" -> "Line"

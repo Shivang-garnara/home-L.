@@ -298,6 +298,18 @@ class WorkspaceViewModel(
         }
     }
 
+    fun sortFolderAppsAlphabetically(folderId: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.sortFolderAppsAlphabetically(folderId)
+        }
+    }
+
+    fun addAppsToFolder(folderId: Long, apps: List<com.example.launcherai.data.model.AppInfo>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.addAppsToFolder(folderId, apps)
+        }
+    }
+
     fun setGridConfig(cols: Int, rows: Int, onResult: (com.example.launcherai.data.repository.GridChangeResult) -> Unit) {
         viewModelScope.launch {
             val result = repository.setGridConfig(cols, rows)
