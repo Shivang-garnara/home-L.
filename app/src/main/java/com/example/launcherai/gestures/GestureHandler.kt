@@ -38,6 +38,10 @@ class GestureHandler(
     var twoFingerSwipeDownAction: GestureAction = GestureAction.EXPAND_QUICK_SETTINGS
 
     private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+        override fun onDown(e: MotionEvent): Boolean {
+            return true
+        }
+
         override fun onDoubleTap(e: MotionEvent): Boolean {
             onExecuteAction(doubleTapAction)
             return true
@@ -54,8 +58,11 @@ class GestureHandler(
             val dx = e2.x - e1.x
             val pointerCount = e2.pointerCount
 
-            if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 120) {
-                if (dy < 0) {
+            val isVerticalSwipe = Math.abs(dy) > Math.abs(dx)
+            val isSufficientDistanceOrVelocity = Math.abs(dy) > 50 || Math.abs(velocityY) > 200f
+
+            if (isVerticalSwipe && isSufficientDistanceOrVelocity) {
+                if (dy < 0 || velocityY < -200f) {
                     // Swipe Up
                     if (pointerCount >= 2) {
                         onExecuteAction(twoFingerSwipeUpAction)
@@ -86,6 +93,10 @@ class GestureHandler(
             return false
         }
     })
+
+    fun triggerSwipeUp() {
+        onExecuteAction(swipeUpAction)
+    }
 
     fun onTouchEvent(event: MotionEvent): Boolean {
         var handled = scaleDetector.onTouchEvent(event)

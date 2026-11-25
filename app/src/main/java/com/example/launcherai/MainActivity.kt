@@ -199,10 +199,51 @@ class MainActivity : AppCompatActivity() {
         appWidgetHost = LauncherAppWidgetHost(this)
 
         initViews()
+        setupSystemWindowInsets()
         setupListeners()
         setupGestureHandler()
         setupBackHandler()
         observeViewModel()
+    }
+
+    private fun setupSystemWindowInsets() {
+        val barHomeSearch = findViewById<View>(R.id.barHomeSearch)
+        val barDrawerSearchContainer = findViewById<View>(R.id.barDrawerSearchContainer)
+
+        ViewCompat.setOnApplyWindowInsetsListener(dragLayer) { _, insets ->
+            val navInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            val statusInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout())
+
+            barHomeSearch?.let { bar ->
+                val params = bar.layoutParams as? ViewGroup.MarginLayoutParams
+                if (params != null) {
+                    val density = resources.displayMetrics.density
+                    val baseMarginBottom = (16 * density).toInt()
+                    params.bottomMargin = baseMarginBottom + navInsets.bottom
+                    bar.layoutParams = params
+                }
+            }
+
+            barDrawerSearchContainer?.let { drawerTop ->
+                val density = resources.displayMetrics.density
+                drawerTop.setPadding(
+                    drawerTop.paddingLeft,
+                    (24 * density).toInt() + statusInsets.top,
+                    drawerTop.paddingRight,
+                    drawerTop.paddingBottom
+                )
+            }
+
+            layoutAppDrawerOverlay.setPadding(
+                layoutAppDrawerOverlay.paddingLeft,
+                layoutAppDrawerOverlay.paddingTop,
+                layoutAppDrawerOverlay.paddingRight,
+                navInsets.bottom
+            )
+
+            insets
+        }
+        ViewCompat.requestApplyInsets(dragLayer)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -372,20 +413,34 @@ class MainActivity : AppCompatActivity() {
                 GestureAction.APP_DRAWER
             )
         } else {
-            GestureAction.NONE
+            GestureAction.APP_DRAWER
         }
         gestureHandler.swipeDownAction = GestureAction.fromName(
             prefs.getString("key_gesture_swipe_down", "") ?: "",
             GestureAction.EXPAND_NOTIFICATIONS
         )
+
+        dragLayer.gestureHandler = gestureHandler
+        dragLayer.isAppDrawerOpen = {
+            ::layoutAppDrawerOverlay.isInitialized && layoutAppDrawerOverlay.visibility == View.VISIBLE
+        }
+        dragLayer.isDrawerAtTop = {
+            isDrawerTopScrolled()
+        }
+        dragLayer.onDrawerTranslationUpdate = { transY ->
+            setDrawerTranslationY(transY)
+        }
+        dragLayer.onDrawerDragFinish = { open, velocityY ->
+            finishDrawerDrag(open, velocityY)
+        }
     }
 
     private fun executeGestureAction(action: GestureAction) {
         when (action) {
-            GestureAction.APP_DRAWER -> openAppDrawer()
+            GestureAction.APP_DRAWER -> openAppDrawer(slowAnimation = true)
             GestureAction.SETTINGS -> startActivity(Intent(this, LauncherSettingsActivity::class.java))
             GestureAction.SEARCH -> {
-                openAppDrawer()
+                openAppDrawer(slowAnimation = true)
                 etDrawerSearch.requestFocus()
             }
             else -> GestureHandler.executeSystemAction(this, action)
@@ -402,7 +457,7 @@ class MainActivity : AppCompatActivity() {
         tvFastScrollBubble = findViewById(R.id.tvFastScrollBubble)
         ivDrawerSwipeIndicator = findViewById(R.id.ivDrawerSwipeIndicator)
         ivDrawerSwipeIndicator?.setOnClickListener {
-            openAppDrawer()
+            openAppDrawer(slowAnimation = true)
         }
 
         folderOverlay = findViewById(R.id.folderOverlay)
@@ -790,7 +845,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupListeners() {
         // Bottom pale peach search bar listeners (Ref 10)
         findViewById<View>(R.id.btnHomeSearchGrid)?.setOnClickListener {
-            openAppDrawer()
+            openAppDrawer(slowAnimation = true)
         }
 
         findViewById<View>(R.id.btnHomeSearchMic)?.setOnClickListener {
@@ -818,10 +873,10 @@ class MainActivity : AppCompatActivity() {
                         val intent = Intent(Intent.ACTION_WEB_SEARCH)
                         startActivity(intent)
                     } catch (e: Exception) {
-                        openAppDrawer()
+                        openAppDrawer(slowAnimation = true)
                     }
                 } else {
-                    openAppDrawer()
+                    openAppDrawer(slowAnimation = true)
                 }
             }
             setOnLongClickListener {
@@ -1430,10 +1485,106 @@ class MainActivity : AppCompatActivity() {
         }.start()
     }
 
-    private fun openAppDrawer() {
+    fun isDrawerTopScrolled(): Boolean {
+        if (!::rvDrawerApps.isInitialized) return true
+        val lm = rvDrawerApps.layoutManager as? GridLayoutManager ?: (rvDrawerApps.layoutManager as? LinearLayoutManager) ?: return true
+        val firstVisible = lm.findFirstVisibleItemPosition()
+        if (firstVisible <= 0) {
+            val firstView = lm.findViewByPosition(0)
+            return (firstView?.top ?: 0) >= 0
+        }
+        return false
+    }
+
+    fun setDrawerTranslationY(transY: Float) {
+        val height = resources.displayMetrics.heightPixels.toFloat().coerceAtLeast(1f)
+        val clampedY = transY.coerceIn(0f, height)
+        val progress = (1f - (clampedY / height)).coerceIn(0f, 1f)
+
+        if (layoutAppDrawerOverlay.visibility != View.VISIBLE) {
+            layoutAppDrawerOverlay.visibility = View.VISIBLE
+            ivDrawerSwipeIndicator?.visibility = View.GONE
+        }
+
+        layoutAppDrawerOverlay.translationY = clampedY
+        layoutAppDrawerOverlay.scaleX = 1f
+        layoutAppDrawerOverlay.scaleY = 1f
+        layoutAppDrawerOverlay.alpha = 1f
+
+        workspace.scaleX = 1f - 0.15f * progress
+        workspace.scaleY = 1f - 0.15f * progress
+        workspace.alpha = 1f - progress
+
+        dockHotseat.alpha = 1f - progress
+    }
+
+    fun finishDrawerDrag(open: Boolean, velocityY: Float = 0f) {
+        val height = resources.displayMetrics.heightPixels.toFloat().coerceAtLeast(1f)
+        val currentY = layoutAppDrawerOverlay.translationY
+
+        if (open) {
+            val remainingDist = currentY
+            val duration = if (kotlin.math.abs(velocityY) > 1000f) {
+                ((remainingDist / kotlin.math.abs(velocityY)) * 1000f).toLong().coerceIn(120L, 400L)
+            } else {
+                ((remainingDist / height) * 450L).toLong().coerceIn(180L, 450L)
+            }
+
+            layoutAppDrawerOverlay.animate()
+                .translationY(0f)
+                .setDuration(duration)
+                .setInterpolator(android.view.animation.DecelerateInterpolator(2.0f))
+                .start()
+            workspace.animate().scaleX(0.85f).scaleY(0.85f).alpha(0f).setDuration(duration).start()
+            dockHotseat.animate().alpha(0f).setDuration(duration).start()
+
+            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+            applyDrawerPlacementAndSettings()
+            val showKeyboard = prefs.getBoolean("key_drawer_show_keyboard", true)
+            if (showKeyboard) {
+                etDrawerSearch.post {
+                    etDrawerSearch.requestFocus()
+                    val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+                    imm?.showSoftInput(etDrawerSearch, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                }
+            }
+        } else {
+            val remainingDist = height - currentY
+            val duration = if (kotlin.math.abs(velocityY) > 1000f) {
+                ((remainingDist / kotlin.math.abs(velocityY)) * 1000f).toLong().coerceIn(120L, 400L)
+            } else {
+                ((remainingDist / height) * 400L).toLong().coerceIn(150L, 400L)
+            }
+
+            layoutAppDrawerOverlay.animate()
+                .translationY(height)
+                .setDuration(duration)
+                .setInterpolator(android.view.animation.AccelerateInterpolator(1.5f))
+                .withEndAction {
+                    layoutAppDrawerOverlay.visibility = View.GONE
+                    layoutAppDrawerOverlay.translationY = 0f
+                    etDrawerSearch.setText("")
+                    applyDrawerPlacementAndSettings()
+                }
+                .start()
+            workspace.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(duration).start()
+            dockHotseat.animate().alpha(1f).setDuration(duration).start()
+        }
+    }
+
+    private fun openAppDrawer(slowAnimation: Boolean = true) {
+        if (::layoutAppDrawerOverlay.isInitialized && layoutAppDrawerOverlay.visibility == View.VISIBLE) {
+            return
+        }
+
         val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
         val animMode = prefs.getString("key_drawer_animation", "SLIDE") ?: "SLIDE"
         ivDrawerSwipeIndicator?.visibility = View.GONE
+
+        val durationOverlay = if (slowAnimation) 750L else 450L
+        val durationWorkspace = if (slowAnimation) 650L else 380L
+        val durationDock = if (slowAnimation) 600L else 350L
+        val slideInterpolator = android.view.animation.DecelerateInterpolator(2.5f)
 
         when (animMode.uppercase()) {
             "ZOOM" -> {
@@ -1442,9 +1593,13 @@ class MainActivity : AppCompatActivity() {
                 layoutAppDrawerOverlay.scaleX = 1.25f
                 layoutAppDrawerOverlay.scaleY = 1.25f
                 layoutAppDrawerOverlay.alpha = 0f
-                layoutAppDrawerOverlay.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(260).setInterpolator(android.view.animation.DecelerateInterpolator()).start()
-                workspace.animate().scaleX(0.7f).scaleY(0.7f).alpha(0f).setDuration(240).start()
-                dockHotseat.animate().alpha(0f).setDuration(200).start()
+                layoutAppDrawerOverlay.animate()
+                    .scaleX(1f).scaleY(1f).alpha(1f)
+                    .setDuration(durationOverlay)
+                    .setInterpolator(slideInterpolator)
+                    .start()
+                workspace.animate().scaleX(0.7f).scaleY(0.7f).alpha(0f).setDuration(durationWorkspace).start()
+                dockHotseat.animate().alpha(0f).setDuration(durationDock).start()
             }
             "FADE" -> {
                 layoutAppDrawerOverlay.visibility = View.VISIBLE
@@ -1452,9 +1607,13 @@ class MainActivity : AppCompatActivity() {
                 layoutAppDrawerOverlay.scaleX = 1f
                 layoutAppDrawerOverlay.scaleY = 1f
                 layoutAppDrawerOverlay.alpha = 0f
-                layoutAppDrawerOverlay.animate().alpha(1f).setDuration(220).start()
-                workspace.animate().alpha(0f).setDuration(200).start()
-                dockHotseat.animate().alpha(0f).setDuration(200).start()
+                layoutAppDrawerOverlay.animate()
+                    .alpha(1f)
+                    .setDuration(durationOverlay)
+                    .setInterpolator(slideInterpolator)
+                    .start()
+                workspace.animate().alpha(0f).setDuration(durationWorkspace).start()
+                dockHotseat.animate().alpha(0f).setDuration(durationDock).start()
             }
             else -> { // "SLIDE"
                 layoutAppDrawerOverlay.visibility = View.VISIBLE
@@ -1463,9 +1622,13 @@ class MainActivity : AppCompatActivity() {
                 layoutAppDrawerOverlay.alpha = 1f
                 val height = resources.displayMetrics.heightPixels.toFloat()
                 layoutAppDrawerOverlay.translationY = height
-                layoutAppDrawerOverlay.animate().translationY(0f).setDuration(280).setInterpolator(android.view.animation.DecelerateInterpolator(1.5f)).start()
-                workspace.animate().scaleX(0.85f).scaleY(0.85f).alpha(0f).setDuration(240).start()
-                dockHotseat.animate().alpha(0f).setDuration(200).start()
+                layoutAppDrawerOverlay.animate()
+                    .translationY(0f)
+                    .setDuration(durationOverlay)
+                    .setInterpolator(slideInterpolator)
+                    .start()
+                workspace.animate().scaleX(0.85f).scaleY(0.85f).alpha(0f).setDuration(durationWorkspace).start()
+                dockHotseat.animate().alpha(0f).setDuration(durationDock).start()
             }
         }
 

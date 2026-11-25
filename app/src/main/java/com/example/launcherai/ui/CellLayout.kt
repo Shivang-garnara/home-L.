@@ -67,10 +67,6 @@ class CellLayout @JvmOverloads constructor(
         if (ev.actionMasked == MotionEvent.ACTION_DOWN) {
             lastTouchX = ev.x
             lastTouchY = ev.y
-            val child = findChildUnder(ev.x, ev.y)
-            if (child == null) {
-                parent?.requestDisallowInterceptTouchEvent(true)
-            }
         }
         gestureDetector.onTouchEvent(ev)
         return super.onInterceptTouchEvent(ev)
@@ -80,20 +76,6 @@ class CellLayout @JvmOverloads constructor(
         if (ev.actionMasked == MotionEvent.ACTION_DOWN) {
             lastTouchX = ev.x
             lastTouchY = ev.y
-            val child = findChildUnder(ev.x, ev.y)
-            if (child == null) {
-                parent?.requestDisallowInterceptTouchEvent(true)
-            }
-        } else if (ev.actionMasked == MotionEvent.ACTION_MOVE) {
-            val dx = Math.abs(ev.x - lastTouchX)
-            val dy = Math.abs(ev.y - lastTouchY)
-            val touchSlop = android.view.ViewConfiguration.get(context).scaledTouchSlop
-            if (dx < touchSlop && dy < touchSlop) {
-                val child = findChildUnder(lastTouchX, lastTouchY)
-                if (child == null) {
-                    parent?.requestDisallowInterceptTouchEvent(true)
-                }
-            }
         }
         gestureDetector.onTouchEvent(ev)
         return true
