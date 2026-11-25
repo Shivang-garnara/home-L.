@@ -14,12 +14,35 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 class WorkspaceRepository(
     private val context: Context,
     private val workspaceDao: WorkspaceDao = LauncherDatabase.getInstance(context).workspaceDao()
 ) {
+
+    companion object {
+        private val seedMutex = Mutex()
+
+        /**
+         * Identifies redundant duplicate APP items sharing the exact same slot and component,
+         * keeping the earliest inserted row (lowest id).
+         */
+        fun findDuplicateWorkspaceItemIds(items: List<WorkspaceItemEntity>): List<Long> {
+            val seen = HashSet<String>()
+            val dupIds = mutableListOf<Long>()
+            for (item in items.sortedBy { it.id }) {
+                if (item.itemType != WorkspaceItemEntity.ITEM_TYPE_APP) continue
+                val key = "${item.container}|${item.screenId}|${item.cellX}|${item.cellY}|${item.packageName ?: ""}|${item.className ?: ""}"
+                if (!seen.add(key)) {
+                    dupIds.add(item.id)
+                }
+            }
+            return dupIds
+        }
+    }
 
     private val prefs = context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
     private val repositoryScope = CoroutineScope(Dispatchers.IO)
@@ -42,6 +65,7 @@ class WorkspaceRepository(
         repositoryScope.launch {
             refreshInstalledApps()
             initializeDefaultWorkspaceIfEmpty()
+            deduplicateOverlappingItems()
             ensurePagesExist()
         }
     }
@@ -528,51 +552,29 @@ class WorkspaceRepository(
      * Never resets or overwrites an existing user's workspace.
      */
     suspend fun initializeDefaultWorkspaceIfEmpty() = withContext(Dispatchers.IO) {
-        val existingCount = workspaceDao.getItemCount()
-        if (existingCount > 0) {
-            // User workspace already exists; preserve it.
-            return@withContext
-        }
+        seedMutex.withLock {
+            val existingCount = workspaceDao.getItemCount()
+            if (existingCount > 0) {
+                // User workspace already exists; preserve it.
+                return@withContext
+            }
 
-        // Initialize default page 0 and page 1
-        workspaceDao.insertPages(
-            listOf(
-                WorkspacePageEntity(screenId = 0, pageOrder = 0),
-                WorkspacePageEntity(screenId = 1, pageOrder = 1)
-            )
-        )
-
-        val installedApps = AppManager.getInstalledApps(context)
-        if (installedApps.isEmpty()) return@withContext
-
-        val itemsToInsert = mutableListOf<WorkspaceItemEntity>()
-
-        // Page 0 Desktop Apps (up to 8 items in 4x2 grid)
-        val page0Apps = installedApps.take(8)
-        page0Apps.forEachIndexed { index, app ->
-            val cellX = index % 4
-            val cellY = index / 4
-            itemsToInsert.add(
-                WorkspaceItemEntity(
-                    itemType = WorkspaceItemEntity.ITEM_TYPE_APP,
-                    packageName = app.packageName,
-                    className = app.activityName,
-                    container = WorkspaceItemEntity.CONTAINER_DESKTOP,
-                    screenId = 0,
-                    cellX = cellX,
-                    cellY = cellY,
-                    spanX = 1,
-                    spanY = 1,
-                    rank = index,
-                    title = app.label
+            // Initialize default page 0 and page 1
+            workspaceDao.insertPages(
+                listOf(
+                    WorkspacePageEntity(screenId = 0, pageOrder = 0),
+                    WorkspacePageEntity(screenId = 1, pageOrder = 1)
                 )
             )
-        }
 
-        // Page 1 Desktop Apps (up to 8 additional items in 4x2 grid if available)
-        if (installedApps.size > 8) {
-            val page1Apps = installedApps.drop(8).take(8)
-            page1Apps.forEachIndexed { index, app ->
+            val installedApps = AppManager.getInstalledApps(context)
+            if (installedApps.isEmpty()) return@withContext
+
+            val itemsToInsert = mutableListOf<WorkspaceItemEntity>()
+
+            // Page 0 Desktop Apps (up to 8 items in 4x2 grid)
+            val page0Apps = installedApps.take(8)
+            page0Apps.forEachIndexed { index, app ->
                 val cellX = index % 4
                 val cellY = index / 4
                 itemsToInsert.add(
@@ -581,7 +583,7 @@ class WorkspaceRepository(
                         packageName = app.packageName,
                         className = app.activityName,
                         container = WorkspaceItemEntity.CONTAINER_DESKTOP,
-                        screenId = 1,
+                        screenId = 0,
                         cellX = cellX,
                         cellY = cellY,
                         spanX = 1,
@@ -591,29 +593,63 @@ class WorkspaceRepository(
                     )
                 )
             }
-        }
 
-        // Default Dock Apps (up to 4 items in container = CONTAINER_DOCK)
-        val dockApps = installedApps.take(4)
-        dockApps.forEachIndexed { index, app ->
-            itemsToInsert.add(
-                WorkspaceItemEntity(
-                    itemType = WorkspaceItemEntity.ITEM_TYPE_APP,
-                    packageName = app.packageName,
-                    className = app.activityName,
-                    container = WorkspaceItemEntity.CONTAINER_DOCK,
-                    screenId = 0,
-                    cellX = index,
-                    cellY = 0,
-                    spanX = 1,
-                    spanY = 1,
-                    rank = index,
-                    title = app.label
+            // Page 1 Desktop Apps (up to 8 additional items in 4x2 grid if available)
+            if (installedApps.size > 8) {
+                val page1Apps = installedApps.drop(8).take(8)
+                page1Apps.forEachIndexed { index, app ->
+                    val cellX = index % 4
+                    val cellY = index / 4
+                    itemsToInsert.add(
+                        WorkspaceItemEntity(
+                            itemType = WorkspaceItemEntity.ITEM_TYPE_APP,
+                            packageName = app.packageName,
+                            className = app.activityName,
+                            container = WorkspaceItemEntity.CONTAINER_DESKTOP,
+                            screenId = 1,
+                            cellX = cellX,
+                            cellY = cellY,
+                            spanX = 1,
+                            spanY = 1,
+                            rank = index,
+                            title = app.label
+                        )
+                    )
+                }
+            }
+
+            // Default Dock Apps (up to 4 items in container = CONTAINER_DOCK)
+            val dockApps = installedApps.take(4)
+            dockApps.forEachIndexed { index, app ->
+                itemsToInsert.add(
+                    WorkspaceItemEntity(
+                        itemType = WorkspaceItemEntity.ITEM_TYPE_APP,
+                        packageName = app.packageName,
+                        className = app.activityName,
+                        container = WorkspaceItemEntity.CONTAINER_DOCK,
+                        screenId = 0,
+                        cellX = index,
+                        cellY = 0,
+                        spanX = 1,
+                        spanY = 1,
+                        rank = index,
+                        title = app.label
+                    )
                 )
-            )
-        }
+            }
 
-        workspaceDao.insertWorkspaceItems(itemsToInsert)
+            workspaceDao.insertWorkspaceItems(itemsToInsert)
+        }
+    }
+
+    suspend fun deduplicateOverlappingItems() = withContext(Dispatchers.IO) {
+        seedMutex.withLock {
+            val allItems = workspaceDao.getAllWorkspaceItemsSync()
+            val duplicateIds = findDuplicateWorkspaceItemIds(allItems)
+            for (dupId in duplicateIds) {
+                workspaceDao.deleteWorkspaceItemById(dupId)
+            }
+        }
     }
 
     // --- Package Monitoring Hooks ---

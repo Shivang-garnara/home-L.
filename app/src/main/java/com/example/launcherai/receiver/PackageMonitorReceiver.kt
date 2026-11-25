@@ -23,7 +23,9 @@ class PackageMonitorReceiver(
         val pendingResult = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val repository = repositoryProvider?.invoke(context) ?: WorkspaceRepository(context)
+                val repository = repositoryProvider?.invoke(context)
+                    ?: (context.applicationContext as? com.example.launcherai.LauncherApplication)?.repository
+                    ?: WorkspaceRepository(context)
 
                 when (action) {
                     Intent.ACTION_PACKAGE_ADDED -> {

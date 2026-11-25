@@ -98,6 +98,19 @@ class WorkspaceRepositoryTest {
         assertEquals(2, folder.cellY)
     }
 
+    @Test
+    fun testFindDuplicateWorkspaceItemIdsRemovesRaceSeededDuplicates() {
+        val items = listOf(
+            WorkspaceItemEntity(id = 1, itemType = WorkspaceItemEntity.ITEM_TYPE_APP, packageName = "com.a", className = "Main", container = WorkspaceItemEntity.CONTAINER_DESKTOP, screenId = 0, cellX = 0, cellY = 0, title = "Albums"),
+            WorkspaceItemEntity(id = 21, itemType = WorkspaceItemEntity.ITEM_TYPE_APP, packageName = "com.a", className = "Main", container = WorkspaceItemEntity.CONTAINER_DESKTOP, screenId = 0, cellX = 0, cellY = 0, title = "Albums"),
+            WorkspaceItemEntity(id = 17, itemType = WorkspaceItemEntity.ITEM_TYPE_APP, packageName = "com.a", className = "Main", container = WorkspaceItemEntity.CONTAINER_DOCK, screenId = 0, cellX = 0, cellY = 0, title = "Albums"),
+            WorkspaceItemEntity(id = 37, itemType = WorkspaceItemEntity.ITEM_TYPE_APP, packageName = "com.a", className = "Main", container = WorkspaceItemEntity.CONTAINER_DOCK, screenId = 0, cellX = 0, cellY = 0, title = "Albums"),
+            WorkspaceItemEntity(id = 5, itemType = WorkspaceItemEntity.ITEM_TYPE_APP, packageName = "com.b", className = "Main", container = WorkspaceItemEntity.CONTAINER_DESKTOP, screenId = 0, cellX = 1, cellY = 0, title = "Camera")
+        )
+        val duplicateIds = com.example.launcherai.data.repository.WorkspaceRepository.findDuplicateWorkspaceItemIds(items)
+        assertEquals(listOf(21L, 37L), duplicateIds)
+    }
+
     /**
      * Fake DAO for fast unit testing off-device.
      */

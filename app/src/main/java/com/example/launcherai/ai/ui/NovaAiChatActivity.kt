@@ -36,7 +36,8 @@ class NovaAiChatActivity : AppCompatActivity() {
         setContentView(R.layout.activity_ai_chat)
 
         aiRepository = AiRepository(this)
-        workspaceRepository = WorkspaceRepository(this)
+        workspaceRepository = (applicationContext as? com.example.launcherai.LauncherApplication)?.repository
+            ?: WorkspaceRepository(this)
 
         rvChat = findViewById(R.id.rvChatMessages)
         etMessage = findViewById(R.id.etMessage)
