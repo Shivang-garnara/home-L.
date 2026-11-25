@@ -114,6 +114,14 @@
             android:parentActivityName=".ui.LauncherSettingsActivity"
             android:theme="@style/Theme.NovaLight" />
 
+        <!-- Dedicated Desktop / Drawer / Nova Now Search Bar Customization Activity -->
+        <activity
+            android:name=".ui.SearchBarSettingsActivity"
+            android:exported="true"
+            android:label="Search bar"
+            android:parentActivityName=".ui.SearchSettingsActivity"
+            android:theme="@style/Theme.NovaLight" />
+
         <!-- Dedicated Popup Menu Settings Activity -->
         <activity
             android:name=".ui.PopupMenuSettingsActivity"

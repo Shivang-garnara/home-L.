@@ -117,6 +117,14 @@
                 android:src="@drawable/ic_mic"
                 app:tint="@color/nova_icon_tint_brown" />
 
+            <LinearLayout
+                android:id="@+id/containerHomeBarActions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:visibility="gone" />
+
         </LinearLayout>
 
     </LinearLayout>
@@ -155,16 +163,18 @@
                 android:paddingEnd="14dp">
 
                 <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:id="@+id/ivDrawerSearchLogo"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_apps_drawer"
+                    android:src="@drawable/ic_bar_logo_nova_dots"
                     app:tint="@color/nova_icon_tint_brown" />
 
                 <EditText
                     android:id="@+id/etDrawerSearch"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="match_parent"
+                    android:layout_weight="1"
                     android:layout_marginStart="10dp"
                     android:background="@null"
                     android:hint="Search apps"
@@ -175,6 +185,13 @@
                     android:textColor="@color/nova_text_brown_primary"
                     android:textColorHint="@color/nova_text_brown_secondary"
                     android:textSize="14sp" />
+
+                <LinearLayout
+                    android:id="@+id/containerDrawerBarActions"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical" />
             </LinearLayout>
         </LinearLayout>
 

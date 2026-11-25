@@ -1,10 +1,13 @@
 package com.example.launcherai
 
 import com.example.launcherai.search.MicroresultsEngine
+import com.example.launcherai.ui.SearchBarConfig
 import com.example.launcherai.ui.SearchSettingsActivity
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -57,5 +60,23 @@ class SearchSettingsTest {
         val r3 = MicroresultsEngine.evaluate("2gb to mb")
         assertNotNull(r3)
         assertEquals("2,048 MB", r3!!.title)
+    }
+
+    @Test
+    fun testSearchBarConfigActionsAndDateFormat() {
+        assertEquals(8, SearchBarConfig.DEFAULT_DESKTOP_ACTIONS.size)
+        assertEquals(7, SearchBarConfig.DEFAULT_DRAWER_ACTIONS.size)
+        assertTrue(SearchBarConfig.DEFAULT_DESKTOP_ACTIONS.contains(SearchBarConfig.ACTION_APP_DRAWER))
+        assertFalse(SearchBarConfig.DEFAULT_DRAWER_ACTIONS.contains(SearchBarConfig.ACTION_APP_DRAWER))
+
+        assertEquals(12, SearchBarConfig.SYSTEM_PALETTE_COLORS.size)
+        assertEquals(36, SearchBarConfig.FIXED_PALETTE_COLORS.size)
+
+        val d1 = SearchBarConfig.formatDate("January 31")
+        val d2 = SearchBarConfig.formatDate("Jan 31")
+        val d3 = SearchBarConfig.formatDate("1/31")
+        assertTrue(d1.isNotBlank())
+        assertTrue(d2.isNotBlank())
+        assertTrue(d3.contains("/"))
     }
 }

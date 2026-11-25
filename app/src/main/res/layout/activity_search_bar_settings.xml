@@ -1,0 +1,801 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/nova_light_surface"
+    android:fitsSystemWindows="true">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="10dp">
+
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_arrow_back"
+            app:tint="@color/nova_text_brown_primary"
+            android:contentDescription="Back" />
+
+        <TextView
+            android:id="@+id/tvBarTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:text="Desktop search bar"
+            android:textColor="@color/nova_text_brown_title"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Top Wallpaper Live Preview Banner -->
+    <FrameLayout
+        android:id="@+id/previewBackdrop"
+        android:layout_width="match_parent"
+        android:layout_height="88dp"
+        android:background="#1E1822"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp">
+
+        <LinearLayout
+            android:id="@+id/liveSearchBarPreview"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_gravity="center"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="12dp"
+            android:elevation="4dp">
+
+            <ImageView
+                android:id="@+id/ivPreviewLeftLogo"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_bar_logo_nova_dots" />
+
+            <TextView
+                android:id="@+id/tvPreviewHint"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="12dp"
+                android:text=""
+                android:textSize="14sp"
+                android:singleLine="true" />
+
+            <LinearLayout
+                android:id="@+id/containerPreviewActions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="36dp">
+
+            <!-- Placement Row (Desktop & Drawer modes) -->
+            <LinearLayout
+                android:id="@+id/rowPlacement"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="16dp"
+                android:paddingBottom="14dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Placement"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="16sp" />
+
+                <LinearLayout
+                    android:id="@+id/btnPlacementDropdown"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_setup_outlined_dropdown"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="10dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp">
+
+                    <TextView
+                        android:id="@+id/tvPlacementValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Dock (Below icons)"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="14sp" />
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_marginStart="6dp"
+                        android:src="@drawable/ic_chevron_down"
+                        app:tint="@color/nova_text_brown_primary" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Enable Switch (Nova Now mode) -->
+            <LinearLayout
+                android:id="@+id/rowNovaNowEnable"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="14dp"
+                android:paddingBottom="14dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Enable"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="16sp" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/swNovaNowEnable"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true" />
+            </LinearLayout>
+
+            <!-- Colors Expandable Accordion Card -->
+            <LinearLayout
+                android:id="@+id/cardColorsAccordion"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#EFE9E7"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="6dp">
+
+                <LinearLayout
+                    android:id="@+id/rowColorsHeader"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:background="?attr/selectableItemBackground">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Colors"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp" />
+
+                    <ImageView
+                        android:id="@+id/ivColorsChevron"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginEnd="12dp"
+                        android:src="@drawable/ic_chevron_down"
+                        app:tint="@color/nova_text_brown_primary" />
+
+                    <!-- Dual Color Preview Badge -->
+                    <FrameLayout
+                        android:id="@+id/badgeColorPreview"
+                        android:layout_width="34dp"
+                        android:layout_height="34dp"
+                        android:background="@drawable/bg_color_swatch_circle">
+
+                        <TextView
+                            android:id="@+id/tvBadgeTt"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:text="Tᴛ"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <View
+                            android:id="@+id/viewBadgeAccentDot"
+                            android:layout_width="10dp"
+                            android:layout_height="10dp"
+                            android:layout_gravity="bottom|end"
+                            android:background="@drawable/bg_color_swatch_circle" />
+                    </FrameLayout>
+                </LinearLayout>
+
+                <!-- Expandable Color Swatches & Tabs -->
+                <LinearLayout
+                    android:id="@+id/containerColorsExpanded"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="8dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="System palette"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="13sp"
+                        android:layout_marginTop="6dp"
+                        android:layout_marginBottom="8dp" />
+
+                    <GridLayout
+                        android:id="@+id/gridSystemPalette"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:columnCount="6" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Fixed colors"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="13sp"
+                        android:layout_marginTop="12dp"
+                        android:layout_marginBottom="8dp" />
+
+                    <GridLayout
+                        android:id="@+id/gridFixedPalette"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:columnCount="6" />
+
+                    <!-- Custom color button -->
+                    <LinearLayout
+                        android:id="@+id/rowCustomColor"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingTop="10dp"
+                        android:paddingBottom="10dp"
+                        android:background="?attr/selectableItemBackground">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Custom color"
+                            android:textColor="@color/nova_text_brown_primary"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:id="@+id/tvCustomColorHex"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="#F9E7F1"
+                            android:textColor="#6D3B68"
+                            android:textSize="13sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- 3-Tab Switcher: Surface | Text | Accent -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="4dp"
+                        android:background="#E4DCDA"
+                        android:padding="4dp">
+
+                        <TextView
+                            android:id="@+id/tabColorSurface"
+                            android:layout_width="0dp"
+                            android:layout_height="36dp"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="Surface"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            android:textColor="#6D3B68" />
+
+                        <TextView
+                            android:id="@+id/tabColorText"
+                            android:layout_width="0dp"
+                            android:layout_height="36dp"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="Text"
+                            android:textSize="13sp"
+                            android:textColor="@color/nova_text_brown_secondary" />
+
+                        <TextView
+                            android:id="@+id/tabColorAccent"
+                            android:layout_width="0dp"
+                            android:layout_height="36dp"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="Accent"
+                            android:textSize="13sp"
+                            android:textColor="@color/nova_text_brown_secondary" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Transparency Row -->
+            <LinearLayout
+                android:id="@+id/rowTransparency"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Transparency"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/tvTransparencyValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:padding="6dp"
+                        android:text="0%"
+                        android:textColor="#6D3B68"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="4dp">
+
+                    <ImageButton
+                        android:id="@+id/btnTransparencyDec"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:background="@drawable/bg_stepper_button"
+                        android:src="@drawable/ic_minus"
+                        app:tint="@color/nova_text_brown_primary" />
+
+                    <SeekBar
+                        android:id="@+id/sbTransparency"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:max="100"
+                        android:progressDrawable="@drawable/bg_checkerboard_track"
+                        android:thumb="@drawable/seekbar_thumb_nova" />
+
+                    <ImageButton
+                        android:id="@+id/btnTransparencyInc"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:background="@drawable/bg_stepper_button"
+                        android:src="@drawable/ic_plus"
+                        app:tint="@color/nova_text_brown_primary" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Side-by-Side Wireframe & Shadow Checkboxes -->
+            <LinearLayout
+                android:id="@+id/rowWireframeShadow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp">
+
+                <LinearLayout
+                    android:id="@+id/boxWireframe"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Wireframe"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp" />
+
+                    <com.google.android.material.checkbox.MaterialCheckBox
+                        android:id="@+id/cbWireframe"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:buttonTint="#6D3B68"
+                        app:buttonIconTint="@android:color/white" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/boxShadow"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="16dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Shadow"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp" />
+
+                    <com.google.android.material.checkbox.MaterialCheckBox
+                        android:id="@+id/cbShadow"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        app:buttonTint="#6D3B68"
+                        app:buttonIconTint="@android:color/white" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Corner Radius Slider -->
+            <LinearLayout
+                android:id="@+id/rowCornerRadius"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Corner radius"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp" />
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="8dp"
+                        android:src="@drawable/ic_corner_radius" />
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1" />
+
+                    <TextView
+                        android:id="@+id/tvCornerRadiusValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:padding="6dp"
+                        android:text="20dp"
+                        android:textColor="#6D3B68"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="4dp">
+
+                    <ImageButton
+                        android:id="@+id/btnRadiusDec"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:background="@drawable/bg_stepper_button"
+                        android:src="@drawable/ic_minus"
+                        app:tint="@color/nova_text_brown_primary" />
+
+                    <SeekBar
+                        android:id="@+id/sbCornerRadius"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:max="22"
+                        android:progressDrawable="@drawable/seekbar_track_nova"
+                        android:thumb="@drawable/seekbar_thumb_nova" />
+
+                    <ImageButton
+                        android:id="@+id/btnRadiusInc"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:background="@drawable/bg_stepper_button"
+                        android:src="@drawable/ic_plus"
+                        app:tint="@color/nova_text_brown_primary" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Logo Selector + Monochrome -->
+            <LinearLayout
+                android:id="@+id/sectionLogo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="8dp"
+                android:paddingBottom="10dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Logo"
+                    android:textColor="@color/nova_orange"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="8dp">
+
+                    <LinearLayout
+                        android:id="@+id/btnLogo0"
+                        android:layout_width="42dp"
+                        android:layout_height="44dp"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:background="?attr/selectableItemBackground">
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_bar_logo_nova_dots" />
+                        <View
+                            android:id="@+id/indLogo0"
+                            android:layout_width="24dp"
+                            android:layout_height="3dp"
+                            android:layout_marginTop="4dp"
+                            android:background="#6D3B68" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/btnLogo1"
+                        android:layout_width="42dp"
+                        android:layout_height="44dp"
+                        android:layout_marginStart="6dp"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:background="?attr/selectableItemBackground">
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_bar_logo_calendar_search" />
+                        <View
+                            android:id="@+id/indLogo1"
+                            android:layout_width="24dp"
+                            android:layout_height="3dp"
+                            android:layout_marginTop="4dp"
+                            android:background="#6D3B68"
+                            android:visibility="invisible" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/btnLogo2"
+                        android:layout_width="42dp"
+                        android:layout_height="44dp"
+                        android:layout_marginStart="6dp"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:background="?attr/selectableItemBackground">
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_search"
+                            app:tint="@color/nova_text_brown_primary" />
+                        <View
+                            android:id="@+id/indLogo2"
+                            android:layout_width="24dp"
+                            android:layout_height="3dp"
+                            android:layout_marginTop="4dp"
+                            android:background="#6D3B68"
+                            android:visibility="invisible" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/btnLogo3"
+                        android:layout_width="42dp"
+                        android:layout_height="44dp"
+                        android:layout_marginStart="6dp"
+                        android:orientation="vertical"
+                        android:gravity="center"
+                        android:background="?attr/selectableItemBackground">
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_bar_logo_google_g" />
+                        <View
+                            android:id="@+id/indLogo3"
+                            android:layout_width="24dp"
+                            android:layout_height="3dp"
+                            android:layout_marginTop="4dp"
+                            android:background="#6D3B68"
+                            android:visibility="invisible" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Monochrome"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="14sp" />
+
+                    <com.google.android.material.checkbox.MaterialCheckBox
+                        android:id="@+id/cbMonochrome"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        app:buttonTint="#6D3B68"
+                        app:buttonIconTint="@android:color/white" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Additional Actions -->
+            <LinearLayout
+                android:id="@+id/sectionAdditionalActions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Additional Actions"
+                    android:textColor="@color/nova_orange"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="4dp" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvAdditionalActions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false" />
+            </LinearLayout>
+
+            <!-- Search Interface Section -->
+            <LinearLayout
+                android:id="@+id/sectionSearchInterface"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Search interface"
+                    android:textColor="@color/nova_orange"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/rowNovaSearchInterface"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="12dp"
+                    android:background="?attr/selectableItemBackground">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Launcher Search"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Customize LauncherAI's search window and providers"
+                        android:textColor="@color/nova_text_brown_secondary"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/rowDirectlyUseGoogleApp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:background="?attr/selectableItemBackground">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:paddingEnd="12dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Directly use Google App"
+                            android:textColor="@color/nova_text_brown_primary"
+                            android:textSize="16sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Launch Google App instead of the Launcher Search window. You can still access Launcher Search from the app drawer search bar."
+                            android:textColor="@color/nova_text_brown_secondary"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                    <com.google.android.material.checkbox.MaterialCheckBox
+                        android:id="@+id/cbDirectlyUseGoogle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:buttonTint="#6D3B68"
+                        app:buttonIconTint="@android:color/white" />
+                </LinearLayout>
+            </LinearLayout>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+</LinearLayout>

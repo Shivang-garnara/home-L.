@@ -356,22 +356,19 @@ class MainActivity : AppCompatActivity() {
         val dockHotseat = findViewById<View>(R.id.dockHotseat)
 
         val density = resources.displayMetrics.density
-        val homeRadiusDp = prefs.getInt(com.example.launcherai.ui.SearchSettingsActivity.KEY_HOME_BAR_RADIUS, 22)
-        val homeShadow = prefs.getBoolean(com.example.launcherai.ui.SearchSettingsActivity.KEY_HOME_BAR_SHADOW, true)
-        val homeWireframe = prefs.getBoolean(com.example.launcherai.ui.SearchSettingsActivity.KEY_HOME_BAR_WIREFRAME, false)
-        searchBar.elevation = if (homeShadow) 4f * density else 0f
-        if (homeWireframe) {
-            searchBar.background = android.graphics.drawable.GradientDrawable().apply {
-                cornerRadius = homeRadiusDp * density
-                setColor(android.graphics.Color.TRANSPARENT)
-                setStroke((1.5f * density).toInt(), android.graphics.Color.WHITE)
-            }
-        } else if (homeRadiusDp != 22) {
-            searchBar.background = android.graphics.drawable.GradientDrawable().apply {
-                cornerRadius = homeRadiusDp * density
-                setColor(android.graphics.Color.parseColor("#E6FFFFFF"))
-            }
-        }
+        val homeConfig = com.example.launcherai.ui.SearchBarConfig.load(prefs, com.example.launcherai.ui.SearchBarConfig.MODE_DESKTOP)
+        val homeLogoView = findViewById<ImageView>(R.id.btnHomeSearchGrid)
+        val legacyMicView = findViewById<View>(R.id.btnHomeSearchMic)
+        val homeActionsContainer = findViewById<LinearLayout>(R.id.containerHomeBarActions)
+        legacyMicView?.visibility = View.GONE
+        homeActionsContainer?.visibility = View.VISIBLE
+        applySearchBarConfigToViews(
+            barView = searchBar,
+            logoView = homeLogoView,
+            textView = null,
+            actionsContainer = homeActionsContainer,
+            config = homeConfig
+        )
 
         val lp = searchBar.layoutParams as? LinearLayout.LayoutParams ?: LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -414,6 +411,138 @@ class MainActivity : AppCompatActivity() {
                 desktopLayout.removeView(searchBar)
                 desktopLayout.addView(searchBar)
             }
+        }
+    }
+
+    private fun applySearchBarConfigToViews(
+        barView: View,
+        logoView: ImageView?,
+        textView: TextView?,
+        actionsContainer: LinearLayout?,
+        config: com.example.launcherai.ui.SearchBarConfig
+    ) {
+        val density = resources.displayMetrics.density
+        barView.background = com.example.launcherai.ui.SearchBarConfig.buildBarBackground(config, density)
+        barView.elevation = if (config.hasShadow) 4f * density else 0f
+
+        textView?.apply {
+            setTextColor(config.textColor)
+            setHintTextColor(ColorUtils.setAlphaComponent(config.textColor, 160))
+        }
+
+        logoView?.apply {
+            val logoRes = when (config.logoStyle) {
+                com.example.launcherai.ui.SearchBarConfig.LOGO_CALENDAR_SEARCH -> R.drawable.ic_bar_logo_calendar_search
+                com.example.launcherai.ui.SearchBarConfig.LOGO_MAGNIFIER -> R.drawable.ic_search
+                com.example.launcherai.ui.SearchBarConfig.LOGO_GOOGLE_G -> R.drawable.ic_bar_logo_google_g
+                else -> R.drawable.ic_bar_logo_nova_dots
+            }
+            setImageResource(logoRes)
+            if (config.isMonochrome || config.logoStyle == com.example.launcherai.ui.SearchBarConfig.LOGO_MAGNIFIER) {
+                setColorFilter(config.accentColor)
+            } else {
+                clearColorFilter()
+            }
+        }
+
+        actionsContainer?.let { container ->
+            container.removeAllViews()
+            val btnSize = (38 * density).toInt()
+            val pad = (8 * density).toInt()
+
+            for (action in config.orderedActions) {
+                if (!config.enabledActions.contains(action)) continue
+                if (action == com.example.launcherai.ui.SearchBarConfig.ACTION_DATE) {
+                    val tv = TextView(this).apply {
+                        text = com.example.launcherai.ui.SearchBarConfig.formatDate(config.dateFormat)
+                        textSize = 12f
+                        setTextColor(config.textColor)
+                        setPadding(pad, pad, pad, pad)
+                        setOnClickListener { executeSearchBarAction(action, config) }
+                    }
+                    container.addView(tv)
+                } else {
+                    val iconRes = when (action) {
+                        com.example.launcherai.ui.SearchBarConfig.ACTION_WEATHER -> R.drawable.ic_bar_weather
+                        com.example.launcherai.ui.SearchBarConfig.ACTION_VOICE_SEARCH -> R.drawable.ic_bar_voice_search
+                        com.example.launcherai.ui.SearchBarConfig.ACTION_ASSISTANT -> if (config.assistantIcon == "Gemini") R.drawable.ic_sparkle_ai else R.drawable.ic_bar_assistant
+                        com.example.launcherai.ui.SearchBarConfig.ACTION_PLAY_STORE -> R.drawable.ic_bar_play_store
+                        com.example.launcherai.ui.SearchBarConfig.ACTION_GOOGLE_APP -> R.drawable.ic_bar_logo_google_g
+                        com.example.launcherai.ui.SearchBarConfig.ACTION_NOVA_SEARCH -> R.drawable.ic_bar_logo_nova_dots
+                        com.example.launcherai.ui.SearchBarConfig.ACTION_APP_DRAWER -> R.drawable.ic_bar_app_drawer
+                        com.example.launcherai.ui.SearchBarConfig.ACTION_GOOGLE_LENS -> R.drawable.ic_bar_lens
+                        else -> R.drawable.ic_search
+                    }
+                    val iv = ImageView(this).apply {
+                        layoutParams = LinearLayout.LayoutParams(btnSize, btnSize)
+                        setPadding(pad, pad, pad, pad)
+                        setImageResource(iconRes)
+                        if (config.isMonochrome) {
+                            setColorFilter(config.accentColor)
+                        } else {
+                            clearColorFilter()
+                        }
+                        val outValue = android.util.TypedValue()
+                        theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, outValue, true)
+                        setBackgroundResource(outValue.resourceId)
+                        isClickable = true
+                        isFocusable = true
+                        setOnClickListener { executeSearchBarAction(action, config) }
+                    }
+                    container.addView(iv)
+                }
+            }
+        }
+    }
+
+    private fun executeSearchBarAction(action: String, config: com.example.launcherai.ui.SearchBarConfig) {
+        try {
+            when (action) {
+                com.example.launcherai.ui.SearchBarConfig.ACTION_WEATHER -> {
+                    startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://accuweather.com")))
+                }
+                com.example.launcherai.ui.SearchBarConfig.ACTION_VOICE_SEARCH -> {
+                    try {
+                        startActivity(Intent(android.speech.RecognizerIntent.ACTION_WEB_SEARCH))
+                    } catch (_: Exception) {
+                        startActivity(Intent(Intent.ACTION_VOICE_COMMAND))
+                    }
+                }
+                com.example.launcherai.ui.SearchBarConfig.ACTION_ASSISTANT -> {
+                    if (config.assistantIcon == "Gemini") {
+                        startActivity(Intent(this, NovaAiChatActivity::class.java))
+                    } else {
+                        try {
+                            startActivity(Intent(Intent.ACTION_VOICE_COMMAND))
+                        } catch (_: Exception) {
+                            startActivity(Intent(this, NovaAiChatActivity::class.java))
+                        }
+                    }
+                }
+                com.example.launcherai.ui.SearchBarConfig.ACTION_PLAY_STORE -> {
+                    val ps = packageManager.getLaunchIntentForPackage("com.android.vending")
+                        ?: Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://play.google.com/store"))
+                    startActivity(ps)
+                }
+                com.example.launcherai.ui.SearchBarConfig.ACTION_GOOGLE_APP -> {
+                    startActivity(Intent(Intent.ACTION_WEB_SEARCH))
+                }
+                com.example.launcherai.ui.SearchBarConfig.ACTION_NOVA_SEARCH,
+                com.example.launcherai.ui.SearchBarConfig.ACTION_APP_DRAWER -> {
+                    openAppDrawer(slowAnimation = true)
+                }
+                com.example.launcherai.ui.SearchBarConfig.ACTION_DATE -> {
+                    val calIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_CALENDAR)
+                    startActivity(calIntent)
+                }
+                com.example.launcherai.ui.SearchBarConfig.ACTION_GOOGLE_LENS -> {
+                    val lens = packageManager.getLaunchIntentForPackage("com.google.ar.lens")
+                        ?: Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
+                    startActivity(lens)
+                }
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Unable to launch $action", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -1751,6 +1880,20 @@ class MainActivity : AppCompatActivity() {
                 drawerLayout.removeView(searchContainer)
                 drawerLayout.addView(searchContainer, 0)
             }
+        }
+
+        val drawerBarView = findViewById<View>(R.id.barDrawerSearch)
+        val drawerLogoView = findViewById<ImageView>(R.id.ivDrawerSearchLogo)
+        val drawerActionsContainer = findViewById<LinearLayout>(R.id.containerDrawerBarActions)
+        if (drawerBarView != null) {
+            val drawerConfig = com.example.launcherai.ui.SearchBarConfig.load(prefs, com.example.launcherai.ui.SearchBarConfig.MODE_DRAWER)
+            applySearchBarConfigToViews(
+                barView = drawerBarView,
+                logoView = drawerLogoView,
+                textView = findViewById<EditText>(R.id.etDrawerSearch),
+                actionsContainer = drawerActionsContainer,
+                config = drawerConfig
+            )
         }
 
         // Apply App Drawer Style (Vertical, List, Horizontal) matching Nova Launcher (d0)

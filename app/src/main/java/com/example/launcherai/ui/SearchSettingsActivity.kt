@@ -222,20 +222,31 @@ class SearchSettingsActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        refreshUi()
+    }
+
     // =========================================================================
     // 4. SEARCH BARS
     // =========================================================================
     private fun setupSearchBars() {
         binding.rowDesktopSearchBar.setOnClickListener {
-            showDesktopSearchBarDialog()
+            startActivity(android.content.Intent(this, SearchBarSettingsActivity::class.java).apply {
+                putExtra(SearchBarSettingsActivity.EXTRA_MODE, SearchBarConfig.MODE_DESKTOP)
+            })
         }
 
         binding.rowDrawerSearchBar.setOnClickListener {
-            showDrawerSearchBarDialog()
+            startActivity(android.content.Intent(this, SearchBarSettingsActivity::class.java).apply {
+                putExtra(SearchBarSettingsActivity.EXTRA_MODE, SearchBarConfig.MODE_DRAWER)
+            })
         }
 
         binding.rowNovaNowSearchBar.setOnClickListener {
-            showNovaNowSearchBarDialog()
+            startActivity(android.content.Intent(this, SearchBarSettingsActivity::class.java).apply {
+                putExtra(SearchBarSettingsActivity.EXTRA_MODE, SearchBarConfig.MODE_NOVA_NOW)
+            })
         }
     }
 
@@ -391,33 +402,35 @@ class SearchSettingsActivity : AppCompatActivity() {
             "DOCK_ABOVE" to "Dock (Above icons)", "DOCK_BELOW" to "Dock (Below icons)",
             "PERSISTENT" to "Persistent"
         )
-        val homePlace = placementMap[prefs.getString(KEY_SEARCH_BAR_PLACEMENT_HOME, "DOCK_BELOW")] ?: "Dock (Below icons)"
-        val homeRad = prefs.getInt(KEY_HOME_BAR_RADIUS, 22)
-        val homeShadow = prefs.getBoolean(KEY_HOME_BAR_SHADOW, true)
-        val homeWireframe = prefs.getBoolean(KEY_HOME_BAR_WIREFRAME, false)
-        binding.tvDesktopSearchBarSubtitle.text = "$homePlace • ${homeRad}dp radius"
+        val homeCfg = SearchBarConfig.load(prefs, SearchBarConfig.MODE_DESKTOP)
+        val drawerCfg = SearchBarConfig.load(prefs, SearchBarConfig.MODE_DRAWER)
+        val novaNowCfg = SearchBarConfig.load(prefs, SearchBarConfig.MODE_NOVA_NOW)
 
-        val drawerPlace = prefs.getString(KEY_SEARCH_BAR_PLACEMENT_DRAWER, "Top") ?: "Top"
-        val drawerVoice = prefs.getBoolean(KEY_DRAWER_BAR_VOICE, true)
-        binding.tvDrawerSearchBarSubtitle.text = "$drawerPlace" + if (drawerVoice) " • Voice search" else ""
+        val homePlace = placementMap[homeCfg.placement] ?: "Dock (Below icons)"
+        binding.tvDesktopSearchBarSubtitle.text = "$homePlace • ${homeCfg.cornerRadius}dp radius"
 
-        val novaNowEnabled = prefs.getBoolean(KEY_NOVA_NOW_BAR_ENABLED, true)
-        val novaNowRad = prefs.getInt(KEY_NOVA_NOW_BAR_RADIUS, 25)
-        binding.tvNovaNowSearchBarSubtitle.text = if (novaNowEnabled) "Enabled • $novaNowRad% corner radius" else "Disabled"
+        val drawerActionsCount = drawerCfg.enabledActions.size
+        binding.tvDrawerSearchBarSubtitle.text = "${drawerCfg.placement} • ${drawerCfg.cornerRadius}dp radius • $drawerActionsCount action(s)"
 
-        // Update Top Live Search Bar Preview
+        binding.tvNovaNowSearchBarSubtitle.text = if (novaNowCfg.enabled) "Enabled • ${novaNowCfg.cornerRadius}% corner radius" else "Disabled"
+
+        // Update Top Live Search Bar Preview from full Desktop Search Bar Config
         val density = resources.displayMetrics.density
-        val bg = GradientDrawable().apply {
-            cornerRadius = homeRad * density
-            if (homeWireframe) {
-                setColor(android.graphics.Color.TRANSPARENT)
-                setStroke((1.5f * density).toInt(), android.graphics.Color.parseColor("#6D5D55"))
-            } else {
-                setColor(android.graphics.Color.WHITE)
-            }
+        binding.previewSearchBar.background = SearchBarConfig.buildBarBackground(homeCfg, density)
+        binding.previewSearchBar.elevation = if (homeCfg.hasShadow) 4f * density else 0f
+        binding.tvPreviewSearchHint.setTextColor(homeCfg.textColor)
+        val logoRes = when (homeCfg.logoStyle) {
+            SearchBarConfig.LOGO_CALENDAR_SEARCH -> com.example.launcherai.R.drawable.ic_bar_logo_calendar_search
+            SearchBarConfig.LOGO_MAGNIFIER -> com.example.launcherai.R.drawable.ic_search
+            SearchBarConfig.LOGO_GOOGLE_G -> com.example.launcherai.R.drawable.ic_bar_logo_google_g
+            else -> com.example.launcherai.R.drawable.ic_bar_logo_nova_dots
         }
-        binding.previewSearchBar.background = bg
-        binding.previewSearchBar.elevation = if (homeShadow) 4f * density else 0f
+        binding.ivPreviewLogo.setImageResource(logoRes)
+        if (homeCfg.isMonochrome || homeCfg.logoStyle == SearchBarConfig.LOGO_MAGNIFIER) {
+            binding.ivPreviewLogo.setColorFilter(homeCfg.accentColor)
+        } else {
+            binding.ivPreviewLogo.clearColorFilter()
+        }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
