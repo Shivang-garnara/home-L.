@@ -16,6 +16,7 @@ import com.example.launcherai.data.model.AppInfo
 import com.example.launcherai.data.model.SmartCategoryHelper
 import com.example.launcherai.data.model.SmartCategorySuggestion
 import com.example.launcherai.data.model.SmartFolderCategory
+import com.example.launcherai.data.model.WorkspaceResolvedItem
 import com.example.launcherai.data.repository.WorkspaceRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,11 +29,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
-
-data class WorkspaceResolvedItem(
-    val entity: WorkspaceItemEntity,
-    val appInfo: AppInfo
-)
 
 data class WorkspaceFolderResolvedItem(
     val entity: WorkspaceItemEntity,
