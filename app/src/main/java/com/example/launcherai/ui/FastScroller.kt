@@ -86,14 +86,20 @@ class FastScroller(
             0
         } else {
             val targetChar = letter.firstOrNull() ?: return
+            val firstNonFolder = currentApps.indexOfFirst { !it.isFolder }
+            val hasFoldersGroupedAtTop = firstNonFolder > 0 && currentApps.take(firstNonFolder).all { it.isFolder }
             currentApps.indexOfFirst { app ->
-                val firstChar = app.label.firstOrNull()?.uppercaseChar() ?: '#'
-                if (targetChar.isLetter()) {
-                    firstChar >= targetChar
+                if (hasFoldersGroupedAtTop && app.isFolder) {
+                    false
                 } else {
-                    true
+                    val firstChar = app.label.firstOrNull()?.uppercaseChar() ?: '#'
+                    if (targetChar.isLetter()) {
+                        firstChar >= targetChar
+                    } else {
+                        true
+                    }
                 }
-            }
+            }.let { idx -> if (idx >= 0) idx else 0 }
         }
 
         if (targetIndex >= 0 && targetIndex < currentApps.size) {

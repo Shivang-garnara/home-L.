@@ -49,6 +49,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.launcherai.ai.ui.NovaAiChatActivity
 import com.example.launcherai.data.db.WorkspaceItemEntity
 import com.example.launcherai.data.model.AppInfo
+import com.example.launcherai.data.model.DrawerFolderHelper
 import com.example.launcherai.dragndrop.DragController
 import com.example.launcherai.gestures.GestureAction
 import com.example.launcherai.gestures.GestureHandler
@@ -56,8 +57,11 @@ import com.example.launcherai.ui.AppsAdapter
 import com.example.launcherai.ui.CellLayout
 import com.example.launcherai.ui.DockLayout
 import com.example.launcherai.ui.DragLayer
+import com.example.launcherai.ui.DrawerFolderDialogHelper
+import com.example.launcherai.ui.DrawerGroupsActivity
 import com.example.launcherai.ui.FastScrollRailView
 import com.example.launcherai.ui.FastScroller
+import com.example.launcherai.ui.FolderAppsPickerDialogFragment
 import com.example.launcherai.ui.FolderSettingsActivity
 import com.example.launcherai.ui.HiddenAppsDialogFragment
 import com.example.launcherai.ui.LauncherSettingsActivity
@@ -123,7 +127,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var folderAppsAdapter: AppsAdapter
     private var folderSnapHelper: PagerSnapHelper? = null
     private var activeFolderId: Long? = null
+    private var activeFolderIsDrawer: Boolean = false
+    private var activeFolderIsHorizontal: Boolean = false
+    private var activeFolderRows: Int = 3
+    private var activeFolderCols: Int = 4
     private var activeFolderApps: MutableList<AppInfo> = mutableListOf()
+
+    companion object {
+        private const val FIXED_DRAWER_CHIP_COUNT = 2
+    }
 
     private lateinit var drawerAdapter: AppsAdapter
     private lateinit var fastScroller: FastScroller
@@ -340,6 +352,9 @@ class MainActivity : AppCompatActivity() {
 
         applySearchBarPlacement()
         applyDrawerPlacementAndSettings()
+        if (::drawerAdapter.isInitialized) {
+            applyDrawerAppFilter()
+        }
         applyScrollAndTransitionSettings()
         applyAdvancedSettings()
         applyLookFeelSettings()
@@ -742,34 +757,43 @@ class MainActivity : AppCompatActivity() {
         drawerAdapter = AppsAdapter(
             apps = emptyList(),
             onAppClick = { app, view ->
-                AppManager.launchApp(this, app, view)
-                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                val autoClose = prefs.getBoolean("key_drawer_autoclose", true)
-                if (autoClose) {
-                    closeAppDrawer()
+                if (app.isFolder && app.folderId != null) {
+                    openDrawerFolderById(app.folderId)
+                } else {
+                    AppManager.launchApp(this, app, view)
+                    val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                    val autoClose = prefs.getBoolean("key_drawer_autoclose", true)
+                    if (autoClose) {
+                        closeAppDrawer()
+                    }
                 }
             },
             onAppLongClick = { view, app, touchX, touchY ->
-                closeAppDrawer()
-                val curPage = workspace.getCurrentPage()
-                val cellLayout = workspace.getActiveCellLayout()
-                val vacant = cellLayout?.findVacantCell(1, 1) ?: intArrayOf(0, 0)
+                if (app.isFolder && app.folderId != null) {
+                    showDrawerFolderPopupMenu(view, app)
+                    true
+                } else {
+                    closeAppDrawer()
+                    val curPage = workspace.getCurrentPage()
+                    val cellLayout = workspace.getActiveCellLayout()
+                    val vacant = cellLayout?.findVacantCell(1, 1) ?: intArrayOf(0, 0)
 
-                val item = WorkspaceResolvedItem(
-                    entity = WorkspaceItemEntity(
-                        itemType = WorkspaceItemEntity.ITEM_TYPE_APP,
-                        packageName = app.packageName,
-                        className = app.activityName,
-                        container = WorkspaceItemEntity.CONTAINER_DESKTOP,
-                        screenId = curPage,
-                        cellX = vacant[0],
-                        cellY = vacant[1],
-                        title = app.label
-                    ),
-                    appInfo = app
-                )
-                dragController.startDrag(view, item, touchX, touchY)
-                true
+                    val item = WorkspaceResolvedItem(
+                        entity = WorkspaceItemEntity(
+                            itemType = WorkspaceItemEntity.ITEM_TYPE_APP,
+                            packageName = app.packageName,
+                            className = app.activityName,
+                            container = WorkspaceItemEntity.CONTAINER_DESKTOP,
+                            screenId = curPage,
+                            cellX = vacant[0],
+                            cellY = vacant[1],
+                            title = app.label
+                        ),
+                        appInfo = app
+                    )
+                    dragController.startDrag(view, item, touchX, touchY)
+                    true
+                }
             }
         )
         rvDrawerApps.adapter = drawerAdapter
@@ -1054,6 +1078,26 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, LauncherSettingsActivity::class.java))
         }
 
+        findViewById<View>(R.id.chipNewDrawerFolder)?.setOnClickListener { anchor ->
+            val popup = PopupMenu(this, anchor)
+            popup.menu.add(0, 1, 0, "New drawer folder")
+            popup.menu.add(0, 2, 1, "Manage drawer groups")
+            popup.setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    1 -> {
+                        showCreateDrawerFolderFlow()
+                        true
+                    }
+                    2 -> {
+                        startActivity(Intent(this, DrawerGroupsActivity::class.java))
+                        true
+                    }
+                    else -> false
+                }
+            }
+            popup.show()
+        }
+
         // Drawer Controls
         etDrawerSearch.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -1224,6 +1268,30 @@ class MainActivity : AppCompatActivity() {
                     viewModel.drawerApps.collect { drawerApps ->
                         fullDrawerAppsList = drawerApps
                         applyDrawerAppFilter()
+                    }
+                }
+
+                // Live sync for open App Drawer folder overlay
+                launch {
+                    viewModel.drawerFolders.collect { folders ->
+                        if (::folderOverlay.isInitialized &&
+                            folderOverlay.visibility == View.VISIBLE &&
+                            activeFolderIsDrawer
+                        ) {
+                            val match = folders.find { it.entity.id == activeFolderId }
+                            if (match == null) {
+                                closeFolderOverlay()
+                            } else {
+                                if (!etFolderTitle.hasFocus() && etFolderTitle.text.toString() != match.title) {
+                                    etFolderTitle.setText(match.title)
+                                }
+                                activeFolderApps = match.children.map { it.appInfo }.toMutableList()
+                                if (::folderAppsAdapter.isInitialized) {
+                                    folderAppsAdapter.updateApps(activeFolderApps)
+                                    updateFolderEmptyAndPaginationUi()
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1498,6 +1566,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun openFolderOverlay(folderResolved: WorkspaceFolderResolvedItem) {
         activeFolderId = folderResolved.entity.id
+        activeFolderIsDrawer = (folderResolved.entity.container == WorkspaceItemEntity.CONTAINER_DRAWER)
         etFolderTitle.setText(folderResolved.title)
 
         val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
@@ -1604,66 +1673,107 @@ class MainActivity : AppCompatActivity() {
 
         // Configure Grid Dimensions & Scroll Direction
         activeFolderApps = folderResolved.children.map { it.appInfo }.toMutableList()
+        val isHorizontalScroll = scrollDir == FolderSettingsActivity.SCROLL_DIR_HORIZONTAL
+        activeFolderIsHorizontal = isHorizontalScroll
+        activeFolderRows = rows
+        activeFolderCols = cols
+
         folderAppsAdapter = AppsAdapter(
             apps = activeFolderApps,
             onAppClick = { appInfo, view ->
                 AppManager.launchApp(this, appInfo, view)
-                val autoClose = prefs.getBoolean(FolderSettingsActivity.KEY_FOLDER_AUTO_CLOSE, true)
-                if (autoClose) {
+                val autoCloseFolder = prefs.getBoolean(FolderSettingsActivity.KEY_FOLDER_AUTO_CLOSE, true)
+                if (autoCloseFolder) {
                     closeFolderOverlay()
+                    if (activeFolderIsDrawer && prefs.getBoolean("key_drawer_autoclose", true)) {
+                        closeAppDrawer()
+                    }
                 }
             },
+            onAppLongClick = if (activeFolderIsDrawer) {
+                { view, appInfo, _, _ ->
+                    val folderId = activeFolderId
+                    if (folderId != null) {
+                        showDrawerFolderChildMenu(view, folderId, appInfo)
+                        true
+                    } else {
+                        false
+                    }
+                }
+            } else null,
+            displayMode = if (isHorizontalScroll) AppsAdapter.DisplayMode.HORIZONTAL else AppsAdapter.DisplayMode.GRID,
             isFolder = true
         )
 
         folderSnapHelper?.attachToRecyclerView(null)
         folderSnapHelper = null
 
-        if (scrollDir == FolderSettingsActivity.SCROLL_DIR_HORIZONTAL) {
+        if (isHorizontalScroll) {
             val layoutManager = GridLayoutManager(this, rows, RecyclerView.HORIZONTAL, false)
             rvFolderApps.layoutManager = layoutManager
             rvFolderApps.adapter = folderAppsAdapter
-
-            val itemsPerPage = rows * cols
-            val pageCount = if (itemsPerPage > 0) Math.ceil(activeFolderApps.size.toDouble() / itemsPerPage).toInt().coerceAtLeast(1) else 1
-
-            if (pageCount > 1) {
-                folderPageIndicator.visibility = View.VISIBLE
-                folderPageIndicator.setPageCount(pageCount)
-                folderPageIndicator.onPageSelected(0)
-
-                val snapHelper = PagerSnapHelper()
-                snapHelper.attachToRecyclerView(rvFolderApps)
-                folderSnapHelper = snapHelper
-
-                rvFolderApps.clearOnScrollListeners()
-                rvFolderApps.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-                    override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-                        super.onScrollStateChanged(recyclerView, newState)
-                        if (newState == RecyclerView.SCROLL_STATE_IDLE) {
-                            val snapView = snapHelper.findSnapView(layoutManager)
-                            if (snapView != null) {
-                                val pos = layoutManager.getPosition(snapView)
-                                val pageIndex = if (itemsPerPage > 0) (pos / itemsPerPage).coerceIn(0, pageCount - 1) else 0
-                                folderPageIndicator.onPageSelected(pageIndex)
-                            }
-                        }
-                    }
-                })
-            } else {
-                folderPageIndicator.visibility = View.GONE
-                rvFolderApps.clearOnScrollListeners()
+            rvFolderApps.post {
+                if (rvFolderApps.width > 0) {
+                    folderAppsAdapter.updateHorizontalContainerWidth(rvFolderApps.width)
+                }
             }
         } else {
             rvFolderApps.layoutManager = GridLayoutManager(this, cols, RecyclerView.VERTICAL, false)
             rvFolderApps.adapter = folderAppsAdapter
-            folderPageIndicator.visibility = View.GONE
-            rvFolderApps.clearOnScrollListeners()
         }
+        updateFolderEmptyAndPaginationUi()
 
         folderOverlay.visibility = View.VISIBLE
         folderOverlay.alpha = 0f
         folderOverlay.animate().alpha(1f).setDuration(200).start()
+    }
+
+    private fun updateFolderEmptyAndPaginationUi() {
+        findViewById<View>(R.id.tvFolderEmptyHint)?.visibility =
+            if (activeFolderApps.isEmpty()) View.VISIBLE else View.GONE
+
+        if (!activeFolderIsHorizontal) {
+            folderPageIndicator.visibility = View.GONE
+            rvFolderApps.clearOnScrollListeners()
+            folderSnapHelper?.attachToRecyclerView(null)
+            folderSnapHelper = null
+            return
+        }
+
+        val itemsPerPage = activeFolderRows * activeFolderCols
+        val pageCount = if (itemsPerPage > 0) {
+            Math.ceil(activeFolderApps.size.toDouble() / itemsPerPage).toInt().coerceAtLeast(1)
+        } else 1
+
+        if (pageCount > 1) {
+            folderPageIndicator.visibility = View.VISIBLE
+            folderPageIndicator.setPageCount(pageCount)
+            folderPageIndicator.onPageSelected(0)
+
+            val snapHelper = folderSnapHelper ?: PagerSnapHelper().also {
+                it.attachToRecyclerView(rvFolderApps)
+                folderSnapHelper = it
+            }
+
+            rvFolderApps.clearOnScrollListeners()
+            rvFolderApps.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                    super.onScrollStateChanged(recyclerView, newState)
+                    if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                        val lm = recyclerView.layoutManager as? GridLayoutManager ?: return
+                        val snapView = snapHelper.findSnapView(lm)
+                        if (snapView != null) {
+                            val pos = lm.getPosition(snapView)
+                            val pageIndex = if (itemsPerPage > 0) (pos / itemsPerPage).coerceIn(0, pageCount - 1) else 0
+                            folderPageIndicator.onPageSelected(pageIndex)
+                        }
+                    }
+                }
+            })
+        } else {
+            folderPageIndicator.visibility = View.GONE
+            rvFolderApps.clearOnScrollListeners()
+        }
     }
 
     private fun showActiveFolderMenu(anchor: View) {
@@ -1673,10 +1783,22 @@ class MainActivity : AppCompatActivity() {
         popup.menu.add(0, 2, 1, "Sort alphabetically")
         popup.menu.add(0, 3, 2, "Rename folder")
         popup.menu.add(0, 4, 3, "Folder settings")
+        if (activeFolderIsDrawer) {
+            popup.menu.add(0, 5, 4, "Edit folder")
+            popup.menu.add(0, 6, 5, "Delete folder")
+        }
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 1 -> {
-                    showSelectAppsForFolderDialog(folderId)
+                    if (activeFolderIsDrawer) {
+                        showSelectAppsForDrawerFolder(
+                            folderId = folderId,
+                            folderTitle = etFolderTitle.text.toString().ifBlank { "Folder" },
+                            currentApps = activeFolderApps
+                        )
+                    } else {
+                        showSelectAppsForFolderDialog(folderId)
+                    }
                     true
                 }
                 2 -> {
@@ -1696,6 +1818,14 @@ class MainActivity : AppCompatActivity() {
                 4 -> {
                     closeFolderOverlay()
                     startActivity(Intent(this, FolderSettingsActivity::class.java))
+                    true
+                }
+                5 -> {
+                    showEditDrawerFolderDialog(folderId)
+                    true
+                }
+                6 -> {
+                    confirmDeleteDrawerFolder(folderId, etFolderTitle.text.toString().ifBlank { "Folder" })
                     true
                 }
                 else -> false
@@ -1746,9 +1876,174 @@ class MainActivity : AppCompatActivity() {
         folderOverlay.animate().alpha(0f).setDuration(150).withEndAction {
             folderOverlay.visibility = View.GONE
             activeFolderId = null
+            activeFolderIsDrawer = false
             folderSnapHelper?.attachToRecyclerView(null)
             folderSnapHelper = null
         }.start()
+    }
+
+    private fun openDrawerFolderById(folderId: Long) {
+        val resolved = viewModel.drawerFolders.value.find { it.entity.id == folderId } ?: return
+        openFolderOverlay(resolved)
+    }
+
+    private fun showCreateDrawerFolderFlow() {
+        DrawerFolderDialogHelper.showFolderEditorDialog(
+            context = this,
+            initialTitle = "",
+            initialKeepInMainDrawer = false,
+            isEditing = false,
+            onSave = { title, keepInMain ->
+                viewModel.createDrawerFolder(title, keepInMain) { newFolderId ->
+                    runOnUiThread {
+                        showSelectAppsForDrawerFolder(
+                            folderId = newFolderId,
+                            folderTitle = title,
+                            currentApps = emptyList()
+                        )
+                    }
+                }
+            }
+        )
+    }
+
+    private fun showEditDrawerFolderDialog(folderId: Long) {
+        val resolved = viewModel.drawerFolders.value.find { it.entity.id == folderId } ?: return
+        val keepInMain = resolved.entity.cellX == 1
+        DrawerFolderDialogHelper.showFolderEditorDialog(
+            context = this,
+            initialTitle = resolved.title,
+            initialKeepInMainDrawer = keepInMain,
+            isEditing = true,
+            onSave = { newTitle, newKeepInMain ->
+                viewModel.updateDrawerFolder(folderId, newTitle, newKeepInMain)
+                if (activeFolderId == folderId && activeFolderIsDrawer) {
+                    etFolderTitle.setText(newTitle)
+                }
+            },
+            onDelete = {
+                confirmDeleteDrawerFolder(folderId, resolved.title)
+            }
+        )
+    }
+
+    private fun showSelectAppsForDrawerFolder(
+        folderId: Long,
+        folderTitle: String,
+        currentApps: List<AppInfo>
+    ) {
+        val preselected = currentApps.map {
+            DrawerFolderHelper.componentKey(it.packageName, it.activityName)
+        }.toSet()
+        val dialog = FolderAppsPickerDialogFragment.newInstance(
+            title = folderTitle,
+            preselectedKeys = preselected,
+            apps = viewModel.installedApps.value
+        ) { chosen ->
+            viewModel.setDrawerFolderApps(folderId, chosen)
+            if (activeFolderId == folderId && activeFolderIsDrawer) {
+                activeFolderApps = chosen.toMutableList()
+                if (::folderAppsAdapter.isInitialized) {
+                    folderAppsAdapter.updateApps(activeFolderApps)
+                    updateFolderEmptyAndPaginationUi()
+                }
+            }
+        }
+        dialog.show(supportFragmentManager, FolderAppsPickerDialogFragment.TAG)
+    }
+
+    private fun confirmDeleteDrawerFolder(folderId: Long, folderTitle: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Delete \"$folderTitle\"?")
+            .setMessage("Apps inside this folder will remain installed and appear back in your app drawer.")
+            .setPositiveButton("Delete") { _, _ ->
+                viewModel.deleteDrawerFolder(folderId)
+                if (activeFolderId == folderId && folderOverlay.visibility == View.VISIBLE) {
+                    closeFolderOverlay()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showDrawerFolderPopupMenu(anchor: View, folderApp: AppInfo) {
+        val folderId = folderApp.folderId ?: return
+        val popup = PopupMenu(this, anchor)
+        popup.menu.add(0, 1, 0, "Open folder")
+        popup.menu.add(0, 2, 1, "Select apps")
+        popup.menu.add(0, 3, 2, "Edit folder")
+        popup.menu.add(0, 4, 3, "Add to Home screen")
+        popup.menu.add(0, 5, 4, "Delete folder")
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                1 -> {
+                    openDrawerFolderById(folderId)
+                    true
+                }
+                2 -> {
+                    showSelectAppsForDrawerFolder(folderId, folderApp.label, folderApp.folderChildren)
+                    true
+                }
+                3 -> {
+                    showEditDrawerFolderDialog(folderId)
+                    true
+                }
+                4 -> {
+                    val targetScreenId = workspace.getCurrentPageScreenId()
+                    viewModel.copyDrawerFolderToDesktop(folderId, targetScreenId) { desktopId ->
+                        runOnUiThread {
+                            if (desktopId != null) {
+                                Toast.makeText(
+                                    this,
+                                    "Added \"${folderApp.label}\" to Home screen",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    }
+                    true
+                }
+                5 -> {
+                    confirmDeleteDrawerFolder(folderId, folderApp.label)
+                    true
+                }
+                else -> false
+            }
+        }
+        popup.show()
+    }
+
+    private fun showDrawerFolderChildMenu(anchor: View, folderId: Long, app: AppInfo) {
+        val popup = PopupMenu(this, anchor)
+        popup.menu.add(0, 1, 0, "Remove from folder")
+        popup.menu.add(0, 2, 1, "App info")
+        popup.menu.add(0, 3, 2, "Uninstall")
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                1 -> {
+                    val folderResolved = viewModel.drawerFolders.value.find { it.entity.id == folderId }
+                    val targetKey = DrawerFolderHelper.componentKey(app.packageName, app.activityName)
+                    val childEntity = folderResolved?.children?.find {
+                        DrawerFolderHelper.componentKey(it.appInfo.packageName, it.appInfo.activityName) == targetKey ||
+                            it.entity.packageName == app.packageName
+                    }?.entity
+                    if (childEntity != null) {
+                        viewModel.removeAppFromDrawerFolder(folderId, childEntity.id)
+                    }
+                    true
+                }
+                2 -> {
+                    AppManager.openAppDetails(this, app.packageName)
+                    true
+                }
+                3 -> {
+                    AppManager.uninstallApp(this, app.packageName)
+                    true
+                }
+                else -> false
+            }
+        }
+        popup.show()
     }
 
     fun isDrawerTopScrolled(): Boolean {
@@ -2048,8 +2343,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupSmartFolderChips(container: LinearLayout, isEnabled: Boolean) {
         val childCount = container.childCount
-        if (childCount > 1) {
-            container.removeViews(1, childCount - 1)
+        if (childCount > FIXED_DRAWER_CHIP_COUNT) {
+            container.removeViews(FIXED_DRAWER_CHIP_COUNT, childCount - FIXED_DRAWER_CHIP_COUNT)
         }
 
         if (!isEnabled) {
@@ -2089,43 +2384,51 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun filterAppsByCategory(apps: List<AppInfo>, category: String): List<AppInfo> {
-        if (category == "All") return apps
-        return apps.filter { app ->
-            val pkg = app.packageName.lowercase()
-            val label = app.label.lowercase()
-            when (category) {
-                "Social" -> {
-                    pkg.contains("whatsapp") || pkg.contains("telegram") || pkg.contains("facebook") ||
+    private fun matchesAppCategory(app: AppInfo, category: String): Boolean {
+        val pkg = app.packageName.lowercase()
+        val label = app.label.lowercase()
+        return when (category) {
+            "Social" -> {
+                pkg.contains("whatsapp") || pkg.contains("telegram") || pkg.contains("facebook") ||
                     pkg.contains("instagram") || pkg.contains("twitter") || pkg.contains("messenger") ||
                     pkg.contains("snapchat") || pkg.contains("discord") || pkg.contains("viber") ||
                     pkg.contains("message") || pkg.contains("dialer") || pkg.contains("contact") ||
                     label.contains("message") || label.contains("chat") || label.contains("phone")
-                }
-                "Tools" -> {
-                    pkg.contains("calculator") || pkg.contains("calendar") || pkg.contains("clock") ||
+            }
+            "Tools" -> {
+                pkg.contains("calculator") || pkg.contains("calendar") || pkg.contains("clock") ||
                     pkg.contains("settings") || pkg.contains("file") || pkg.contains("camera") ||
                     pkg.contains("chrome") || pkg.contains("browser") || pkg.contains("note") ||
                     pkg.contains("keep") || pkg.contains("deskclock") || label.contains("tool") ||
                     label.contains("calc") || label.contains("clock") || label.contains("setting")
-                }
-                "Media" -> {
-                    pkg.contains("youtube") || pkg.contains("music") || pkg.contains("video") ||
+            }
+            "Media" -> {
+                pkg.contains("youtube") || pkg.contains("music") || pkg.contains("video") ||
                     pkg.contains("gallery") || pkg.contains("photo") || pkg.contains("spotify") ||
                     pkg.contains("player") || pkg.contains("netflix") || label.contains("music") ||
                     label.contains("video") || label.contains("media") || label.contains("gallery")
-                }
-                "Games" -> {
-                    pkg.contains("game") || pkg.contains("play.games") || label.contains("game")
-                }
-                "Work" -> {
-                    pkg.contains("mail") || pkg.contains("gmail") || pkg.contains("outlook") ||
+            }
+            "Games" -> {
+                pkg.contains("game") || pkg.contains("play.games") || label.contains("game")
+            }
+            "Work" -> {
+                pkg.contains("mail") || pkg.contains("gmail") || pkg.contains("outlook") ||
                     pkg.contains("docs") || pkg.contains("sheets") || pkg.contains("slides") ||
                     pkg.contains("office") || pkg.contains("pdf") || pkg.contains("drive") ||
                     pkg.contains("meet") || pkg.contains("zoom") || pkg.contains("teams") ||
                     label.contains("mail") || label.contains("drive") || label.contains("doc")
-                }
-                else -> true
+            }
+            else -> true
+        }
+    }
+
+    private fun filterAppsByCategory(apps: List<AppInfo>, category: String): List<AppInfo> {
+        if (category == "All") return apps
+        return apps.filter { app ->
+            if (app.isFolder) {
+                app.folderChildren.any { matchesAppCategory(it, category) }
+            } else {
+                matchesAppCategory(app, category)
             }
         }
     }
@@ -2134,11 +2437,7 @@ class MainActivity : AppCompatActivity() {
         val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
         val filtered = filterAppsByCategory(fullDrawerAppsList, selectedCategory)
         val foldersFirst = prefs.getBoolean("key_drawer_folders_first", false)
-        val sorted = if (foldersFirst) {
-            filtered.sortedWith(compareBy({ !it.isFolder }, { it.label.lowercase(Locale.ROOT) }))
-        } else {
-            filtered.sortedBy { it.label.lowercase(Locale.ROOT) }
-        }
+        val sorted = DrawerFolderHelper.sortDrawerItems(filtered, foldersFirst)
         drawerAdapter.updateApps(sorted)
         fastScroller.updateApps(sorted)
         val query = viewModel.searchQuery.value
@@ -2162,8 +2461,8 @@ class MainActivity : AppCompatActivity() {
             val contactSearch = prefs.getBoolean("key_contact_search", false) && hasContactPerm
 
             val childCount = chipsContainer.childCount
-            if (childCount > 1) {
-                chipsContainer.removeViews(1, childCount - 1)
+            if (childCount > FIXED_DRAWER_CHIP_COUNT) {
+                chipsContainer.removeViews(FIXED_DRAWER_CHIP_COUNT, childCount - FIXED_DRAWER_CHIP_COUNT)
             }
 
             val density = resources.displayMetrics.density

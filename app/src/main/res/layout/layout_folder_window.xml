@@ -77,6 +77,18 @@
             android:maxHeight="420dp"
             android:overScrollMode="never" />
 
+        <TextView
+            android:id="@+id/tvFolderEmptyHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:paddingTop="18dp"
+            android:paddingBottom="18dp"
+            android:text="Empty folder — tap ⋮ to select apps"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
         <!-- Page Indicator for Horizontal Paged Scroll -->
         <com.example.launcherai.ui.PageIndicatorView
             android:id="@+id/folderPageIndicator"

@@ -239,6 +239,36 @@
                         android:textColor="@color/nova_text_brown_primary"
                         android:textSize="13sp" />
                 </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/chipNewDrawerFolder"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/bg_nova_search_pill_drawer"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="14dp">
+
+                    <ImageView
+                        android:layout_width="15dp"
+                        android:layout_height="15dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_plus"
+                        app:tint="@color/nova_icon_tint_brown" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="Folder"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="13sp" />
+                </LinearLayout>
             </LinearLayout>
         </HorizontalScrollView>
 

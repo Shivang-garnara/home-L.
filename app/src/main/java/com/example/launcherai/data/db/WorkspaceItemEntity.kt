@@ -32,6 +32,7 @@ data class WorkspaceItemEntity(
     companion object {
         const val CONTAINER_DESKTOP = -100
         const val CONTAINER_DOCK = -101
+        const val CONTAINER_DRAWER = -102
 
         const val ITEM_TYPE_APP = "APP"
         const val ITEM_TYPE_FOLDER = "FOLDER"

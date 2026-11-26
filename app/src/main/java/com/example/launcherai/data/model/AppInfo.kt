@@ -10,7 +10,9 @@ data class AppInfo(
     val isSystem: Boolean = false,
     val category: String = CATEGORY_OTHER,
     val isFolder: Boolean = false,
-    val folderId: Long? = null
+    val folderId: Long? = null,
+    val folderChildren: List<AppInfo> = emptyList(),
+    val keepAppsInMainDrawer: Boolean = false
 ) {
     companion object {
         const val CATEGORY_ALL = "All"

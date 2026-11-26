@@ -1,6 +1,7 @@
 package com.example.launcherai.ui
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -9,8 +10,13 @@ import android.widget.SeekBar
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.ColorUtils
+import androidx.lifecycle.lifecycleScope
+import com.example.launcherai.LauncherApplication
 import com.example.launcherai.R
 import com.example.launcherai.databinding.ActivityAppDrawerSettingsBinding
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Dedicated App Drawer Settings activity matching Nova Launcher 8.9.9 (SettingsDrawer / drawer_* preferences).
@@ -77,6 +83,11 @@ class AppDrawerSettingsActivity : AppCompatActivity() {
         setupUI()
         setupListeners()
         updatePreview()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateDrawerGroupsSubtitle()
     }
 
     private fun loadPreferences() {
@@ -374,6 +385,10 @@ class AppDrawerSettingsActivity : AppCompatActivity() {
             prefs.edit().putBoolean("key_drawer_folders_first", isChecked).apply()
         }
 
+        binding.rowDrawerGroups.setOnClickListener {
+            startActivity(Intent(this, DrawerGroupsActivity::class.java))
+        }
+
         binding.rowDrawerHideApps.setOnClickListener {
             showHideAppsDialog()
         }
@@ -565,6 +580,20 @@ class AppDrawerSettingsActivity : AppCompatActivity() {
             setStroke(strokePx, 0x44000000.toInt())
         }
         binding.viewDrawerFastScrollColorSwatch.background = drawable
+    }
+
+    private fun updateDrawerGroupsSubtitle() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val folders = (application as? LauncherApplication)?.repository?.getDrawerFoldersWithChildrenSync()
+                ?: emptyList()
+            withContext(Dispatchers.Main) {
+                binding.tvDrawerGroupsSubtitle.text = when (folders.size) {
+                    0 -> "Customize folders in the drawer"
+                    1 -> "1 drawer folder configured"
+                    else -> "${folders.size} drawer folders configured"
+                }
+            }
+        }
     }
 
     private fun updateHideAppsSubtitle() {

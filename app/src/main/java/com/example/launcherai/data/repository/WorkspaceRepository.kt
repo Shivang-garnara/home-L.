@@ -775,25 +775,26 @@ class WorkspaceRepository(
             workspaceDao.insertWorkspaceItem(draggedItem)
         } else draggedItem.id
 
-        val folderId = workspaceDao.insertFolder(
-            com.example.launcherai.data.db.FolderEntity(
+        val folderId = workspaceDao.insertWorkspaceItem(
+            WorkspaceItemEntity(
+                itemType = WorkspaceItemEntity.ITEM_TYPE_FOLDER,
                 title = folderTitle,
+                container = existingItem.container,
                 screenId = existingItem.screenId,
                 cellX = existingItem.cellX,
                 cellY = existingItem.cellY
             )
         )
 
-        val folderWorkspaceItem = WorkspaceItemEntity(
-            id = folderId,
-            itemType = WorkspaceItemEntity.ITEM_TYPE_FOLDER,
-            title = folderTitle,
-            container = existingItem.container,
-            screenId = existingItem.screenId,
-            cellX = existingItem.cellX,
-            cellY = existingItem.cellY
+        workspaceDao.insertFolder(
+            com.example.launcherai.data.db.FolderEntity(
+                folderId = folderId,
+                title = folderTitle,
+                screenId = existingItem.screenId,
+                cellX = existingItem.cellX,
+                cellY = existingItem.cellY
+            )
         )
-        workspaceDao.insertWorkspaceItem(folderWorkspaceItem)
 
         val targetExisting = workspaceDao.getWorkspaceItemById(existingId) ?: existingItem
         workspaceDao.updateWorkspaceItem(
@@ -861,8 +862,12 @@ class WorkspaceRepository(
     }
 
     suspend fun evaluateAndCleanupFolder(folderId: Long) = withContext(Dispatchers.IO) {
-        val remainingChildren = workspaceDao.getWorkspaceItemsByContainerSync(folderId.toInt())
         val folderWorkspaceItem = workspaceDao.getWorkspaceItemById(folderId) ?: return@withContext
+        // Nova keeps App Drawer folders alive even when empty or down to 1 app until explicitly deleted.
+        if (folderWorkspaceItem.container == WorkspaceItemEntity.CONTAINER_DRAWER) {
+            return@withContext
+        }
+        val remainingChildren = workspaceDao.getWorkspaceItemsByContainerSync(folderId.toInt())
 
         if (remainingChildren.size == 1) {
             val singleChild = remainingChildren.first()
@@ -909,10 +914,12 @@ class WorkspaceRepository(
         apps: List<com.example.launcherai.data.model.AppInfo>
     ) = withContext(Dispatchers.IO) {
         val existing = workspaceDao.getWorkspaceItemsByContainerSync(folderId.toInt())
-        val existingKeys = existing.map { "${it.packageName}/${it.className ?: ""}" }.toHashSet()
+        val existingKeys = existing.map {
+            com.example.launcherai.data.model.DrawerFolderHelper.componentKey(it.packageName.orEmpty(), it.className)
+        }.toHashSet()
         var nextRank = (existing.maxOfOrNull { it.rank } ?: -1) + 1
         for (app in apps) {
-            val key = "${app.packageName}/${app.activityName}"
+            val key = com.example.launcherai.data.model.DrawerFolderHelper.componentKey(app.packageName, app.activityName)
             if (key !in existingKeys) {
                 existingKeys.add(key)
                 workspaceDao.insertWorkspaceItem(
@@ -933,6 +940,212 @@ class WorkspaceRepository(
             }
         }
     }
+
+    // --- App Drawer Folder Operations (Nova Drawer Groups / TAB_FOLDER parity) ---
+
+    suspend fun createDrawerFolder(
+        title: String,
+        keepAppsInMainDrawer: Boolean = false,
+        initialApps: List<AppInfo> = emptyList()
+    ): Long = withContext(Dispatchers.IO) {
+        val safeTitle = title.trim().ifEmpty { "Folder" }
+        val keepFlag = if (keepAppsInMainDrawer) 1 else 0
+        val folderId = workspaceDao.insertWorkspaceItem(
+            WorkspaceItemEntity(
+                itemType = WorkspaceItemEntity.ITEM_TYPE_FOLDER,
+                title = safeTitle,
+                container = WorkspaceItemEntity.CONTAINER_DRAWER,
+                screenId = 0,
+                cellX = keepFlag,
+                cellY = 0
+            )
+        )
+        workspaceDao.insertFolder(
+            com.example.launcherai.data.db.FolderEntity(
+                folderId = folderId,
+                title = safeTitle,
+                screenId = 0,
+                cellX = keepFlag,
+                cellY = 0
+            )
+        )
+        if (initialApps.isNotEmpty()) {
+            addAppsToFolder(folderId, initialApps)
+        }
+        folderId
+    }
+
+    suspend fun updateDrawerFolder(
+        folderId: Long,
+        title: String,
+        keepAppsInMainDrawer: Boolean
+    ) = withContext(Dispatchers.IO) {
+        val safeTitle = title.trim().ifEmpty { "Folder" }
+        val keepFlag = if (keepAppsInMainDrawer) 1 else 0
+        val folderRecord = workspaceDao.getFolderById(folderId)
+        if (folderRecord != null) {
+            workspaceDao.updateFolder(folderRecord.copy(title = safeTitle, cellX = keepFlag))
+        }
+        val folderItem = workspaceDao.getWorkspaceItemById(folderId)
+        if (folderItem != null) {
+            workspaceDao.updateWorkspaceItem(folderItem.copy(title = safeTitle, cellX = keepFlag))
+        }
+    }
+
+    suspend fun setDrawerFolderApps(
+        folderId: Long,
+        selectedApps: List<AppInfo>
+    ) = withContext(Dispatchers.IO) {
+        val existing = workspaceDao.getWorkspaceItemsByContainerSync(folderId.toInt())
+        val selectedByKey = selectedApps.associateBy {
+            com.example.launcherai.data.model.DrawerFolderHelper.componentKey(it.packageName, it.activityName)
+        }
+
+        val kept = mutableListOf<WorkspaceItemEntity>()
+        val keptKeys = HashSet<String>()
+        for (item in existing.sortedWith(compareBy({ it.rank }, { it.id }))) {
+            val pkg = item.packageName.orEmpty()
+            val key = com.example.launcherai.data.model.DrawerFolderHelper.componentKey(pkg, item.className)
+            if (key in selectedByKey) {
+                kept.add(item)
+                keptKeys.add(key)
+            } else {
+                workspaceDao.deleteWorkspaceItemById(item.id)
+            }
+        }
+
+        kept.forEachIndexed { idx, item ->
+            if (item.rank != idx) {
+                workspaceDao.updateWorkspaceItem(item.copy(rank = idx))
+            }
+        }
+
+        var nextRank = kept.size
+        for (app in selectedApps) {
+            val key = com.example.launcherai.data.model.DrawerFolderHelper.componentKey(app.packageName, app.activityName)
+            if (key !in keptKeys) {
+                keptKeys.add(key)
+                workspaceDao.insertWorkspaceItem(
+                    WorkspaceItemEntity(
+                        itemType = WorkspaceItemEntity.ITEM_TYPE_APP,
+                        packageName = app.packageName,
+                        className = app.activityName,
+                        container = folderId.toInt(),
+                        screenId = 0,
+                        cellX = 0,
+                        cellY = 0,
+                        spanX = 1,
+                        spanY = 1,
+                        rank = nextRank++,
+                        title = app.label
+                    )
+                )
+            }
+        }
+    }
+
+    suspend fun removeAppFromDrawerFolder(folderId: Long, itemId: Long) = withContext(Dispatchers.IO) {
+        workspaceDao.deleteWorkspaceItemById(itemId)
+        val remaining = workspaceDao.getWorkspaceItemsByContainerSync(folderId.toInt())
+            .sortedWith(compareBy({ it.rank }, { it.id }))
+        remaining.forEachIndexed { idx, item ->
+            if (item.rank != idx) {
+                workspaceDao.updateWorkspaceItem(item.copy(rank = idx))
+            }
+        }
+    }
+
+    suspend fun deleteDrawerFolder(folderId: Long) = withContext(Dispatchers.IO) {
+        val children = workspaceDao.getWorkspaceItemsByContainerSync(folderId.toInt())
+        for (child in children) {
+            workspaceDao.deleteWorkspaceItemById(child.id)
+        }
+        workspaceDao.deleteWorkspaceItemById(folderId)
+        workspaceDao.deleteFolder(folderId)
+    }
+
+    suspend fun copyDrawerFolderToDesktop(
+        drawerFolderId: Long,
+        preferredScreenId: Int = 0
+    ): Long? = withContext(Dispatchers.IO) {
+        val folderItem = workspaceDao.getWorkspaceItemById(drawerFolderId) ?: return@withContext null
+        val children = workspaceDao.getWorkspaceItemsByContainerSync(drawerFolderId.toInt())
+            .sortedWith(compareBy({ it.rank }, { it.id }))
+        ensurePagesExist()
+        val pages = workspaceDao.getAllPagesSync()
+        val orderedPages = buildList {
+            pages.find { it.screenId == preferredScreenId }?.let { add(it) }
+            addAll(pages.filter { it.screenId != preferredScreenId })
+        }
+        var targetScreenId = preferredScreenId
+        var targetCell: IntArray? = null
+        for (page in orderedPages) {
+            val spot = findVacantCellOnPage(page.screenId, 1, 1)
+            if (spot != null) {
+                targetScreenId = page.screenId
+                targetCell = spot
+                break
+            }
+        }
+        if (targetCell == null) {
+            val newScreenId = (pages.maxOfOrNull { it.screenId } ?: 0) + 1
+            val newOrder = (pages.maxOfOrNull { it.pageOrder } ?: 0) + 1
+            workspaceDao.insertPage(WorkspacePageEntity(screenId = newScreenId, pageOrder = newOrder))
+            targetScreenId = newScreenId
+            targetCell = intArrayOf(0, 0)
+        }
+
+        val safeTitle = folderItem.title ?: "Folder"
+        val desktopFolderId = workspaceDao.insertWorkspaceItem(
+            WorkspaceItemEntity(
+                itemType = WorkspaceItemEntity.ITEM_TYPE_FOLDER,
+                title = safeTitle,
+                container = WorkspaceItemEntity.CONTAINER_DESKTOP,
+                screenId = targetScreenId,
+                cellX = targetCell[0],
+                cellY = targetCell[1]
+            )
+        )
+        workspaceDao.insertFolder(
+            com.example.launcherai.data.db.FolderEntity(
+                folderId = desktopFolderId,
+                title = safeTitle,
+                screenId = targetScreenId,
+                cellX = targetCell[0],
+                cellY = targetCell[1]
+            )
+        )
+        children.forEachIndexed { idx, child ->
+            workspaceDao.insertWorkspaceItem(
+                WorkspaceItemEntity(
+                    itemType = WorkspaceItemEntity.ITEM_TYPE_APP,
+                    packageName = child.packageName,
+                    className = child.className,
+                    container = desktopFolderId.toInt(),
+                    screenId = 0,
+                    cellX = 0,
+                    cellY = 0,
+                    spanX = 1,
+                    spanY = 1,
+                    rank = idx,
+                    title = child.title
+                )
+            )
+        }
+        desktopFolderId
+    }
+
+    suspend fun getDrawerFoldersWithChildrenSync(): List<Pair<WorkspaceItemEntity, List<WorkspaceItemEntity>>> =
+        withContext(Dispatchers.IO) {
+            val drawerFolders = workspaceDao.getWorkspaceItemsByContainerSync(WorkspaceItemEntity.CONTAINER_DRAWER)
+                .filter { it.itemType == WorkspaceItemEntity.ITEM_TYPE_FOLDER }
+                .sortedBy { (it.title ?: "").lowercase() }
+            drawerFolders.map { folder ->
+                val children = workspaceDao.getWorkspaceItemsByContainerSync(folder.id.toInt())
+                    .sortedWith(compareBy({ it.rank }, { it.id }))
+                folder to children
+            }
+        }
 
     suspend fun getWorkspaceItemById(id: Long): WorkspaceItemEntity? = withContext(Dispatchers.IO) {
         workspaceDao.getWorkspaceItemById(id)

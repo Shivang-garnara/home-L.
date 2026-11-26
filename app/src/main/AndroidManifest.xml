@@ -83,6 +83,14 @@
             android:label="App drawer"
             android:theme="@style/Theme.NovaLight" />
 
+        <!-- Drawer Groups (App Drawer Folders) Activity -->
+        <activity
+            android:name=".ui.DrawerGroupsActivity"
+            android:exported="true"
+            android:label="Drawer groups"
+            android:parentActivityName=".ui.AppDrawerSettingsActivity"
+            android:theme="@style/Theme.NovaLight" />
+
         <!-- Dock Settings Hub Activity -->
         <activity
             android:name=".ui.DockSettingsActivity"

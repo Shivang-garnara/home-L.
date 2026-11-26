@@ -20,6 +20,17 @@ class AppsAdapter(
     private val isFolder: Boolean = false
 ) : RecyclerView.Adapter<AppsAdapter.AppViewHolder>() {
 
+    private var horizontalContainerWidthPx: Int = 0
+
+    fun updateHorizontalContainerWidth(widthPx: Int) {
+        if (widthPx > 0 && horizontalContainerWidthPx != widthPx) {
+            horizontalContainerWidthPx = widthPx
+            if (displayMode == DisplayMode.HORIZONTAL) {
+                notifyDataSetChanged()
+            }
+        }
+    }
+
     enum class DisplayMode {
         GRID,
         LIST,
@@ -43,6 +54,9 @@ class AppsAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AppViewHolder {
+        if (parent.width > 0) {
+            horizontalContainerWidthPx = parent.width
+        }
         val layoutRes = if (viewType == 1) R.layout.item_app_list else R.layout.item_app_grid
         val view = LayoutInflater.from(parent.context).inflate(layoutRes, parent, false)
         return AppViewHolder(view)
@@ -53,8 +67,17 @@ class AppsAdapter(
         if (displayMode == DisplayMode.HORIZONTAL) {
             val dm = holder.itemView.resources.displayMetrics
             val prefs = holder.itemView.context.getSharedPreferences("workspace_prefs", android.content.Context.MODE_PRIVATE)
-            val cols = prefs.getInt("key_drawer_grid_cols", 5).coerceAtLeast(1)
-            val itemWidth = (dm.widthPixels - (16 * dm.density).toInt()) / cols
+            val cols = if (isFolder) {
+                prefs.getInt("key_folder_grid_cols", 4).coerceAtLeast(1)
+            } else {
+                prefs.getInt("key_drawer_grid_cols", 5).coerceAtLeast(1)
+            }
+            val availW = if (horizontalContainerWidthPx > 0) {
+                horizontalContainerWidthPx
+            } else {
+                dm.widthPixels - (if (isFolder) (72 * dm.density).toInt() else (16 * dm.density).toInt())
+            }
+            val itemWidth = (availW / cols).coerceAtLeast((56 * dm.density).toInt())
             if (lp != null && lp.width != itemWidth) {
                 lp.width = itemWidth
                 holder.itemView.layoutParams = lp
@@ -123,20 +146,30 @@ class AppsAdapter(
                 DeviceIconMetrics.getDrawerIconSizePx(itemView.context, cols, iconSizePercent)
             }
 
-            val maskedIcon = IconShapeMasker.createMaskedIcon(
-                itemView.context,
-                app.icon ?: androidx.core.content.ContextCompat.getDrawable(itemView.context, R.mipmap.ic_launcher),
-                shape,
-                iconSizePercent,
-                targetSizePx = sizePx
-            )
-
-            if (maskedIcon != null) {
-                ivIcon.setImageDrawable(maskedIcon)
-            } else if (app.icon != null) {
-                ivIcon.setImageDrawable(app.icon)
+            if (app.isFolder) {
+                val childDrawables = app.folderChildren.mapNotNull { it.icon }
+                val folderIcon = com.example.launcherai.icons.FolderIconRenderer.renderFolderIconFromPrefs(
+                    itemView.context,
+                    childDrawables,
+                    targetSizePx = sizePx
+                )
+                ivIcon.setImageDrawable(folderIcon)
             } else {
-                ivIcon.setImageResource(R.mipmap.ic_launcher)
+                val maskedIcon = IconShapeMasker.createMaskedIcon(
+                    itemView.context,
+                    app.icon ?: androidx.core.content.ContextCompat.getDrawable(itemView.context, R.mipmap.ic_launcher),
+                    shape,
+                    iconSizePercent,
+                    targetSizePx = sizePx
+                )
+
+                if (maskedIcon != null) {
+                    ivIcon.setImageDrawable(maskedIcon)
+                } else if (app.icon != null) {
+                    ivIcon.setImageDrawable(app.icon)
+                } else {
+                    ivIcon.setImageResource(R.mipmap.ic_launcher)
+                }
             }
 
             val iconShadow = prefs.getBoolean("key_icon_shadow", true)

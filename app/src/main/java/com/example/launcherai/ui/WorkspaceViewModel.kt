@@ -151,25 +151,57 @@ class WorkspaceViewModel(
         _selectedCategory.value = category
     }
 
-    // Filtered apps for drawer based on search query, category, and hidden apps
+    // Resolved App Drawer folders (CONTAINER_DRAWER = -102)
+    val drawerFolders: StateFlow<List<WorkspaceFolderResolvedItem>> = combine(
+        repository.allWorkspaceItemsFlow,
+        installedApps,
+        _hiddenPackages
+    ) { items, _, hidden ->
+        withContext(Dispatchers.IO) {
+            val pm = getApplication<Application>().packageManager
+            val folderItems = items.filter {
+                it.container == WorkspaceItemEntity.CONTAINER_DRAWER &&
+                    it.itemType == WorkspaceItemEntity.ITEM_TYPE_FOLDER
+            }
+            val childrenMap = items
+                .filter { it.container > 0 && it.itemType == WorkspaceItemEntity.ITEM_TYPE_APP }
+                .groupBy { it.container }
+            folderItems.map { folderEntity ->
+                val childrenEntities = childrenMap[folderEntity.id.toInt()]
+                    ?.sortedWith(compareBy({ it.rank }, { it.id }))
+                    .orEmpty()
+                val resolvedChildren = childrenEntities
+                    .filter { it.packageName != null && it.packageName !in hidden }
+                    .mapNotNull { resolveSingleAppItem(pm, it) }
+                WorkspaceFolderResolvedItem(
+                    entity = folderEntity,
+                    title = folderEntity.title ?: "Folder",
+                    children = resolvedChildren
+                )
+            }.sortedBy { it.title.lowercase(Locale.ROOT) }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    // Filtered apps and drawer folders for App Drawer based on search query, category, and hidden apps
     val drawerApps: StateFlow<List<AppInfo>> = combine(
         installedApps,
+        repository.allWorkspaceItemsFlow,
         _searchQuery,
         _selectedCategory,
         _hiddenPackages
-    ) { apps, query, category, hidden ->
-        var result = apps.filter { it.packageName !in hidden }
-
-        if (category != AppInfo.CATEGORY_ALL) {
-            result = result.filter { it.category == category }
-        }
-
-        if (query.isNotBlank()) {
-            val lower = query.lowercase(Locale.ROOT)
-            result = result.filter { it.label.lowercase(Locale.ROOT).contains(lower) }
-        }
-
-        result
+    ) { apps, allItems, query, category, hidden ->
+        com.example.launcherai.data.model.DrawerFolderHelper.buildDrawerItems(
+            installedApps = apps,
+            allWorkspaceItems = allItems,
+            searchQuery = query,
+            selectedCategory = category,
+            hiddenPackages = hidden,
+            foldersFirst = prefs.getBoolean("key_drawer_folders_first", false)
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -307,6 +339,53 @@ class WorkspaceViewModel(
     fun addAppsToFolder(folderId: Long, apps: List<com.example.launcherai.data.model.AppInfo>) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.addAppsToFolder(folderId, apps)
+        }
+    }
+
+    fun createDrawerFolder(
+        title: String,
+        keepAppsInMainDrawer: Boolean,
+        initialApps: List<AppInfo> = emptyList(),
+        onCreated: ((Long) -> Unit)? = null
+    ) {
+        viewModelScope.launch {
+            val id = repository.createDrawerFolder(title, keepAppsInMainDrawer, initialApps)
+            onCreated?.invoke(id)
+        }
+    }
+
+    fun updateDrawerFolder(folderId: Long, title: String, keepAppsInMainDrawer: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateDrawerFolder(folderId, title, keepAppsInMainDrawer)
+        }
+    }
+
+    fun setDrawerFolderApps(folderId: Long, selectedApps: List<AppInfo>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.setDrawerFolderApps(folderId, selectedApps)
+        }
+    }
+
+    fun removeAppFromDrawerFolder(folderId: Long, itemId: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.removeAppFromDrawerFolder(folderId, itemId)
+        }
+    }
+
+    fun deleteDrawerFolder(folderId: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.deleteDrawerFolder(folderId)
+        }
+    }
+
+    fun copyDrawerFolderToDesktop(
+        drawerFolderId: Long,
+        targetScreenId: Int = 0,
+        onComplete: ((Long?) -> Unit)? = null
+    ) {
+        viewModelScope.launch {
+            val desktopId = repository.copyDrawerFolderToDesktop(drawerFolderId, targetScreenId)
+            onComplete?.invoke(desktopId)
         }
     }
 
