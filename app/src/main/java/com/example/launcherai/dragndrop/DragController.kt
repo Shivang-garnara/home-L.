@@ -49,6 +49,7 @@ class DragController(
 
     var onItemRemovedListener: ((WorkspaceResolvedItem) -> Unit)? = null
     var onItemClickedInPlaceListener: ((View, WorkspaceResolvedItem) -> Unit)? = null
+    var onDragStartedMovingListener: (() -> Unit)? = null
     private var lastHoverTarget: DropTargetType? = null
 
     private var initialMoveX: Float = -1f
@@ -215,10 +216,11 @@ class DragController(
         }
         val dx = touchX - initialMoveX
         val dy = touchY - initialMoveY
-        val touchSlop = 30f * context.resources.displayMetrics.density
+        val touchSlop = 20f * context.resources.displayMetrics.density
         val dist = Math.hypot(dx.toDouble(), dy.toDouble())
         if (!hasMovedBeyondSlop && dist > touchSlop) {
             hasMovedBeyondSlop = true
+            onDragStartedMovingListener?.invoke()
             android.util.Log.d("DragController", "Moved beyond slop! dist=$dist touchSlop=$touchSlop")
         }
 
