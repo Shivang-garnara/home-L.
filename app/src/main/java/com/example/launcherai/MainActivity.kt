@@ -721,12 +721,6 @@ class MainActivity : AppCompatActivity() {
             val isDrawer = (item.entity.id == 0L)
             showAppItemPopupMenu(anchorView, item, isDrawer = isDrawer)
         }
-        dragController.onDragStartedMovingListener = {
-            dismissDrawerPopup()
-            if (::layoutAppDrawerOverlay.isInitialized && layoutAppDrawerOverlay.visibility == View.VISIBLE) {
-                closeAppDrawer()
-            }
-        }
 
         workspace.setOnLongClickListener {
             val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
@@ -783,7 +777,8 @@ class MainActivity : AppCompatActivity() {
                     showDrawerFolderPopupMenu(view, app)
                     true
                 } else {
-                    val curPage = workspace.getCurrentPageScreenId()
+                    closeAppDrawer()
+                    val curPage = workspace.getCurrentPage()
                     val cellLayout = workspace.getActiveCellLayout()
                     val vacant = cellLayout?.findVacantCell(1, 1) ?: intArrayOf(0, 0)
 
@@ -800,7 +795,6 @@ class MainActivity : AppCompatActivity() {
                         ),
                         appInfo = app
                     )
-                    showAppItemPopupMenu(view, item, isDrawer = true)
                     dragController.startDrag(view, item, touchX, touchY)
                     true
                 }
@@ -825,7 +819,8 @@ class MainActivity : AppCompatActivity() {
                 }
             },
             onAppLongClick = { view, app, touchX, touchY ->
-                val curPage = workspace.getCurrentPageScreenId()
+                closeAppDrawer()
+                val curPage = workspace.getCurrentPage()
                 val cellLayout = workspace.getActiveCellLayout()
                 val vacant = cellLayout?.findVacantCell(1, 1) ?: intArrayOf(0, 0)
                 val item = WorkspaceResolvedItem(
@@ -841,7 +836,6 @@ class MainActivity : AppCompatActivity() {
                     ),
                     appInfo = app
                 )
-                showAppItemPopupMenu(view, item, isDrawer = true)
                 dragController.startDrag(view, item, touchX, touchY)
                 true
             }
@@ -2766,11 +2760,8 @@ class MainActivity : AppCompatActivity() {
         snackbar.show()
     }
 
-    private var activeDrawerPopup: AppItemPopupMenu? = null
-
-    fun showAppItemPopupMenu(anchorView: View, item: WorkspaceResolvedItem, isDrawer: Boolean = false): AppItemPopupMenu {
-        activeDrawerPopup?.dismiss()
-        val popup = AppItemPopupMenu(
+    fun showAppItemPopupMenu(anchorView: View, item: WorkspaceResolvedItem, isDrawer: Boolean = false) {
+        AppItemPopupMenu(
             context = this,
             anchorView = anchorView,
             appInfo = item.appInfo,
@@ -2788,17 +2779,7 @@ class MainActivity : AppCompatActivity() {
             onWidgetsClick = {
                 showWidgetPicker()
             }
-        )
-        popup.show()
-        if (isDrawer) {
-            activeDrawerPopup = popup
-        }
-        return popup
-    }
-
-    fun dismissDrawerPopup() {
-        activeDrawerPopup?.dismiss()
-        activeDrawerPopup = null
+        ).show()
     }
 
     private fun showRenameAppDialog(item: WorkspaceResolvedItem) {

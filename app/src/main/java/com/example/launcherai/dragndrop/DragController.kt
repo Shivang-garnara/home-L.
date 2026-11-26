@@ -713,7 +713,7 @@ class DragController(
         val installed = viewModel?.installedApps?.value.orEmpty()
         val firstApp = installed.find {
             it.packageName == targetEntity.packageName &&
-                (targetEntity.className.isNullOrEmpty() || it.activityName == targetEntity.className)
+                    (targetEntity.className.isNullOrEmpty() || it.activityName == targetEntity.className)
         } ?: targetEntity.packageName?.let { pkg ->
             AppInfo(
                 label = targetEntity.title ?: pkg,
@@ -723,7 +723,7 @@ class DragController(
         }
         val secondApp = installed.find {
             it.packageName == draggedItem.appInfo.packageName &&
-                (draggedItem.appInfo.activityName.isEmpty() || it.activityName == draggedItem.appInfo.activityName)
+                    (draggedItem.appInfo.activityName.isEmpty() || it.activityName == draggedItem.appInfo.activityName)
         } ?: draggedItem.appInfo
         return SmartCategoryHelper.inferFolderTitleForApps(firstApp, secondApp)
     }

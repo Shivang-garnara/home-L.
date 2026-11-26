@@ -3,9 +3,7 @@ package com.example.launcherai.ui
 import android.content.Context
 import android.util.AttributeSet
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
-import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -13,8 +11,10 @@ import android.widget.TextView
 import com.example.launcherai.R
 import com.example.launcherai.data.db.WorkspaceItemEntity
 import com.example.launcherai.data.model.AppInfo
+import com.example.launcherai.gestures.IconSwipeDetector
+import com.example.launcherai.gestures.NamedAction
+import com.example.launcherai.gestures.NovaAction
 import com.example.launcherai.util.AppManager
-import kotlin.math.abs
 
 /**
  * Data-driven, responsive Dock (Hotseat) layout view supporting dynamic capacities (3, 5, 7 slots),
@@ -40,6 +40,7 @@ class DockLayout @JvmOverloads constructor(
     private var onAppClickListener: ((AppInfo, View?) -> Unit)? = null
     private var onFolderClickListener: ((WorkspaceFolderResolvedItem) -> Unit)? = null
     private var onAppDrawerClickListener: (() -> Unit)? = null
+    private var onItemSwipeActionListener: ((View, WorkspaceItemEntity, NamedAction) -> Unit)? = null
     private var onAppLongClickListener: ((View, WorkspaceResolvedItem, Float, Float) -> Boolean)? = null
     private var onFolderLongClickListener: ((View, WorkspaceFolderResolvedItem, Float, Float) -> Boolean)? = null
 
@@ -52,13 +53,15 @@ class DockLayout @JvmOverloads constructor(
         onFolderClick: (WorkspaceFolderResolvedItem) -> Unit,
         onAppDrawerClick: () -> Unit,
         onAppLongClick: (View, WorkspaceResolvedItem, Float, Float) -> Boolean,
-        onFolderLongClick: (View, WorkspaceFolderResolvedItem, Float, Float) -> Boolean
+        onFolderLongClick: (View, WorkspaceFolderResolvedItem, Float, Float) -> Boolean,
+        onItemSwipeAction: ((View, WorkspaceItemEntity, NamedAction) -> Unit)? = null
     ) {
         this.onAppClickListener = onAppClick
         this.onFolderClickListener = onFolderClick
         this.onAppDrawerClickListener = onAppDrawerClick
         this.onAppLongClickListener = onAppLongClick
         this.onFolderLongClickListener = onFolderLongClick
+        this.onItemSwipeActionListener = onItemSwipeAction
     }
 
     fun updateDockItems(items: List<WorkspaceItemDisplay>, newCapacity: Int = capacity) {
@@ -222,25 +225,30 @@ class DockLayout @JvmOverloads constructor(
                                 tvAppLabel.setTextColor(labelColor)
                             }
 
-                            var lastTouchX = 0f
-                            var lastTouchY = 0f
+                            val swipeUp = NamedAction.deserialize(entity.swipeUpAction)
+                            val swipeDown = NamedAction.deserialize(entity.swipeDownAction)
+                            val swipeDetector = IconSwipeDetector(
+                                context = context,
+                                canSwipeUp = { !swipeUp.isNone },
+                                canSwipeDown = { !swipeDown.isNone },
+                                findDragLayer = { IconSwipeDetector.findDragLayerUpwards(it) },
+                                onSwipeUp = { v -> onItemSwipeActionListener?.invoke(v, entity, swipeUp) },
+                                onSwipeDown = { v -> onItemSwipeActionListener?.invoke(v, entity, swipeDown) }
+                            )
 
-                            iconView.setOnTouchListener { _, event ->
-                                if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-                                    val loc = IntArray(2)
-                                    iconView.getLocationOnScreen(loc)
-                                    lastTouchX = loc[0] + event.x
-                                    lastTouchY = loc[1] + event.y
-                                }
-                                false
-                            }
+                            iconView.setOnTouchListener(swipeDetector)
 
                             iconView.setOnClickListener {
                                 onAppClickListener?.invoke(appInfo, iconView)
                             }
 
                             iconView.setOnLongClickListener { v ->
-                                onAppLongClickListener?.invoke(v, resolvedApp, lastTouchX, lastTouchY) ?: false
+                                onAppLongClickListener?.invoke(
+                                    v,
+                                    resolvedApp,
+                                    swipeDetector.lastRawTouchX,
+                                    swipeDetector.lastRawTouchY
+                                ) ?: false
                             }
 
                             addView(iconView)
@@ -311,77 +319,48 @@ class DockLayout @JvmOverloads constructor(
                                 }
                             }
 
-                            var lastTouchX = 0f
-                            var lastTouchY = 0f
-                            var startTouchX = 0f
-                            var startTouchY = 0f
-                            var isSwipingUp = false
-                            val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
-
-                            folderView.setOnTouchListener { v, event ->
-                                when (event.actionMasked) {
-                                    MotionEvent.ACTION_DOWN -> {
-                                        val loc = IntArray(2)
-                                        v.getLocationOnScreen(loc)
-                                        lastTouchX = loc[0] + event.x
-                                        lastTouchY = loc[1] + event.y
-                                        startTouchX = event.x
-                                        startTouchY = event.y
-                                        isSwipingUp = false
-                                        false
-                                    }
-                                    MotionEvent.ACTION_MOVE -> {
-                                        val diffY = startTouchY - event.y
-                                        val diffX = abs(startTouchX - event.x)
-                                        if (diffY > touchSlop * 1.8f && diffY > diffX * 1.3f) {
-                                            isSwipingUp = true
-                                            v.parent?.requestDisallowInterceptTouchEvent(true)
-                                        }
-                                        false
-                                    }
-                                    MotionEvent.ACTION_UP -> {
-                                        if (isSwipingUp) {
-                                            isSwipingUp = false
-                                            v.cancelLongPress()
-                                            // Tactile bounce animation matching Nova Launcher p1
-                                            v.animate()
-                                                .translationY(-24f)
-                                                .setDuration(120)
-                                                .withEndAction {
-                                                    v.animate().translationY(0f).setDuration(100).start()
-                                                }
-                                                .start()
-
-                                            val prefs = v.context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                                            val tapAction = prefs.getString(
-                                                FolderSettingsActivity.KEY_FOLDER_TAP_ACTION,
-                                                FolderSettingsActivity.TAP_ACTION_OPEN_FOLDER
-                                            )
-
-                                            if (tapAction == FolderSettingsActivity.TAP_ACTION_FIRST_APP) {
-                                                // Swipe up opens folder overlay
-                                                onFolderClickListener?.invoke(folderResolved)
-                                            } else {
-                                                // Swipe up launches first app in folder
-                                                val firstApp = folderResolved.children.firstOrNull()?.appInfo
-                                                if (firstApp != null) {
-                                                    onAppClickListener?.invoke(firstApp, folderView)
-                                                } else {
-                                                    onFolderClickListener?.invoke(folderResolved)
-                                                }
-                                            }
-                                            true
+                            val customSwipeUp = NamedAction.deserialize(entity.swipeUpAction)
+                            val customSwipeDown = NamedAction.deserialize(entity.swipeDownAction)
+                            val swipeDetector = IconSwipeDetector(
+                                context = context,
+                                canSwipeUp = { true },
+                                canSwipeDown = { !customSwipeDown.isNone },
+                                findDragLayer = { IconSwipeDetector.findDragLayerUpwards(it) },
+                                onSwipeUp = { v ->
+                                    if (!customSwipeUp.isNone &&
+                                        customSwipeUp.novaAction != NovaAction.FIRST_ITEM_IN_FOLDER &&
+                                        customSwipeUp.novaAction != NovaAction.OPEN_FOLDER
+                                    ) {
+                                        onItemSwipeActionListener?.invoke(v, entity, customSwipeUp)
+                                    } else if (customSwipeUp.novaAction == NovaAction.OPEN_FOLDER) {
+                                        onFolderClickListener?.invoke(folderResolved)
+                                    } else if (customSwipeUp.novaAction == NovaAction.FIRST_ITEM_IN_FOLDER) {
+                                        val firstApp = folderResolved.children.firstOrNull()?.appInfo
+                                        if (firstApp != null) onAppClickListener?.invoke(firstApp, folderView)
+                                        else onFolderClickListener?.invoke(folderResolved)
+                                    } else {
+                                        val prefs = v.context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                                        val tapAction = prefs.getString(
+                                            FolderSettingsActivity.KEY_FOLDER_TAP_ACTION,
+                                            FolderSettingsActivity.TAP_ACTION_OPEN_FOLDER
+                                        )
+                                        if (tapAction == FolderSettingsActivity.TAP_ACTION_FIRST_APP) {
+                                            onFolderClickListener?.invoke(folderResolved)
                                         } else {
-                                            false
+                                            val firstApp = folderResolved.children.firstOrNull()?.appInfo
+                                            if (firstApp != null) onAppClickListener?.invoke(firstApp, folderView)
+                                            else onFolderClickListener?.invoke(folderResolved)
                                         }
                                     }
-                                    MotionEvent.ACTION_CANCEL -> {
-                                        isSwipingUp = false
-                                        false
+                                },
+                                onSwipeDown = { v ->
+                                    if (!customSwipeDown.isNone) {
+                                        onItemSwipeActionListener?.invoke(v, entity, customSwipeDown)
                                     }
-                                    else -> false
                                 }
-                            }
+                            )
+
+                            folderView.setOnTouchListener(swipeDetector)
 
                             folderView.setOnClickListener { v ->
                                 val prefs = v.context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
@@ -405,7 +384,12 @@ class DockLayout @JvmOverloads constructor(
                             }
 
                             folderView.setOnLongClickListener { v ->
-                                onFolderLongClickListener?.invoke(v, folderResolved, lastTouchX, lastTouchY) ?: false
+                                onFolderLongClickListener?.invoke(
+                                    v,
+                                    folderResolved,
+                                    swipeDetector.lastRawTouchX,
+                                    swipeDetector.lastRawTouchY
+                                ) ?: false
                             }
 
                             addView(folderView)

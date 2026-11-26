@@ -27,7 +27,9 @@ data class WorkspaceItemEntity(
     val rank: Int = 0,
     val title: String? = null,
     val appWidgetId: Int = -1,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val swipeUpAction: String? = null,
+    val swipeDownAction: String? = null
 ) {
     companion object {
         const val CONTAINER_DESKTOP = -100

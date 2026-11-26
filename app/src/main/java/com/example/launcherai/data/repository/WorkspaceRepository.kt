@@ -1412,6 +1412,28 @@ class WorkspaceRepository(
         workspaceDao.updateWorkspaceItem(item)
     }
 
+    suspend fun updateWorkspaceItemEditDetails(
+        id: Long,
+        newTitle: String?,
+        swipeUpAction: String?,
+        swipeDownAction: String?
+    ) = withContext(Dispatchers.IO) {
+        val existing = workspaceDao.getWorkspaceItemById(id) ?: return@withContext
+        val cleanTitle = newTitle?.trim()?.takeIf { it.isNotEmpty() }
+        val updated = existing.copy(
+            title = cleanTitle ?: existing.title,
+            swipeUpAction = swipeUpAction?.takeIf { it.isNotBlank() },
+            swipeDownAction = swipeDownAction?.takeIf { it.isNotBlank() }
+        )
+        workspaceDao.updateWorkspaceItem(updated)
+        if (existing.itemType == WorkspaceItemEntity.ITEM_TYPE_FOLDER && cleanTitle != null) {
+            val folder = workspaceDao.getFolderById(id)
+            if (folder != null) {
+                workspaceDao.updateFolder(folder.copy(title = cleanTitle))
+            }
+        }
+    }
+
     suspend fun updateWorkspaceItemPosition(id: Long, screenId: Int, cellX: Int, cellY: Int) = withContext(Dispatchers.IO) {
         val existing = workspaceDao.getWorkspaceItemById(id) ?: return@withContext
         val updated = existing.copy(

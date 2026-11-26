@@ -368,6 +368,17 @@ class WorkspaceViewModel(
         }
     }
 
+    fun updateItemEditDetails(
+        itemId: Long,
+        newTitle: String?,
+        swipeUpAction: String?,
+        swipeDownAction: String?
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateWorkspaceItemEditDetails(itemId, newTitle, swipeUpAction, swipeDownAction)
+        }
+    }
+
     fun sortFolderAppsAlphabetically(folderId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.sortFolderAppsAlphabetically(folderId)
