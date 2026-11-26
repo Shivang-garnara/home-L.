@@ -20,4 +20,5 @@
     <string name="suggestion_nova">What data sources does Nova use?</string>
     <string name="suggestion_organize">Organize home screen</string>
     <string name="suggestion_prime">Verify Prime License</string>
+    <string name="accessibility_service_description">Used only to lock the screen, open Recents, or expand notifications when triggered by LauncherAI gestures. Receives no window events or screen content.</string>
 </resources>

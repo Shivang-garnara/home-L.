@@ -22,7 +22,6 @@ import com.example.launcherai.R
 import com.example.launcherai.ai.ui.NovaAiSettingsActivity
 import com.example.launcherai.data.repository.GridChangeResult
 import com.example.launcherai.databinding.ActivityLauncherSettingsBinding
-import com.example.launcherai.gestures.GestureAction
 import com.example.launcherai.icons.IconPackManager
 import kotlinx.coroutines.launch
 
@@ -77,7 +76,7 @@ class LauncherSettingsActivity : AppCompatActivity() {
             Pair(binding.rowSearch, "Search LauncherAI search window and bar configuration"),
             Pair(binding.rowCards, "Cards Build cards to show in LauncherAI Search or set conditions for them to appear in your app drawer or feed"),
             Pair(binding.rowLookFeel, "Look & feel Icon preferences, popup menu, and notification bar options"),
-            Pair(binding.rowGesturesInputs, "Gestures & inputs Define secondary home button action, along with swipe, tap, and pinch gestures on home screen"),
+            Pair(binding.rowGesturesInputs, "Gestures & inputs Home button long press menu swipe up down left right double tap pinch in out rotate two finger screen lock"),
             Pair(binding.rowFeedPage, "Feed page Control and customize the feed pages at the edge of your home screen"),
             Pair(binding.rowIntegrations, "Integrations Connect other Apps to LauncherAI, for example to enhance shortcut search content"),
             Pair(binding.rowNotificationBadges, "Notification badges Choose from dynamic badges, notification dots, or numeric dots"),
@@ -250,7 +249,7 @@ class LauncherSettingsActivity : AppCompatActivity() {
 
         // Row 8: Gestures & inputs
         binding.rowGesturesInputs.setOnClickListener {
-            showGesturesDialog()
+            startActivity(Intent(this, GesturesSettingsActivity::class.java))
         }
 
         // Row 9: Feed page
@@ -539,21 +538,6 @@ class LauncherSettingsActivity : AppCompatActivity() {
                 }
             }
             .setNegativeButton("Close", null)
-            .show()
-    }
-
-    private fun showGesturesDialog() {
-        val gestureActions = GestureAction.values().map { it.label }.toTypedArray()
-
-        AlertDialog.Builder(this)
-            .setTitle("Configure Swipe Up Gesture")
-            .setSingleChoiceItems(gestureActions, 1) { dialog, which ->
-                val selectedAction = GestureAction.values()[which]
-                getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                    .edit().putString("key_gesture_swipe_up", selectedAction.name).apply()
-                dialog.dismiss()
-            }
-            .setNegativeButton("Cancel", null)
             .show()
     }
 

@@ -1,4 +1,3 @@
-
 package com.example.launcherai
 
 import android.app.WallpaperManager
@@ -11,11 +10,10 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -38,7 +36,6 @@ import androidx.core.graphics.ColorUtils
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.ImageViewCompat
-import com.example.launcherai.icons.FolderGeometry
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -56,8 +53,17 @@ import com.example.launcherai.data.model.SmartFolderCategory
 import com.example.launcherai.dragndrop.DragController
 import com.example.launcherai.gestures.GestureAction
 import com.example.launcherai.gestures.GestureHandler
+import com.example.launcherai.gestures.GesturePreferences
+import com.example.launcherai.gestures.GestureSlot
+import com.example.launcherai.gestures.NamedAction
+import com.example.launcherai.gestures.NovaAccessibilityService
+import com.example.launcherai.gestures.NovaAction
+import com.example.launcherai.gestures.ScreenLockHelper
+import com.example.launcherai.icons.FolderGeometry
+import com.example.launcherai.ui.AppItemPopupMenu
 import com.example.launcherai.ui.AppsAdapter
 import com.example.launcherai.ui.CellLayout
+import com.example.launcherai.ui.ChooseActionActivity
 import com.example.launcherai.ui.DockLayout
 import com.example.launcherai.ui.DragLayer
 import com.example.launcherai.ui.DrawerFolderDialogHelper
@@ -69,28 +75,22 @@ import com.example.launcherai.ui.FolderSettingsActivity
 import com.example.launcherai.ui.HiddenAppsDialogFragment
 import com.example.launcherai.ui.LauncherSettingsActivity
 import com.example.launcherai.ui.LookFeelSettingsActivity
-import com.example.launcherai.ui.AppItemPopupMenu
 import com.example.launcherai.ui.PageIndicatorView
 import com.example.launcherai.ui.Workspace
 import com.example.launcherai.ui.WorkspaceFolderResolvedItem
 import com.example.launcherai.ui.WorkspacePageTransformer
 import com.example.launcherai.ui.WorkspaceResolvedItem
-import com.example.launcherai.ui.WorkspaceWidgetResolvedItem
 import com.example.launcherai.ui.WorkspaceViewModel
+import com.example.launcherai.ui.WorkspaceWidgetResolvedItem
 import com.example.launcherai.util.AppManager
 import com.example.launcherai.widgets.AppWidgetResizeFrame
 import com.example.launcherai.widgets.LauncherAppWidgetHost
 import com.example.launcherai.widgets.LauncherAppWidgetHostView
 import com.example.launcherai.widgets.WidgetActionPopup
 import com.example.launcherai.widgets.WidgetPickerDialog
-import com.google.android.material.chip.Chip
-import com.google.android.material.chip.ChipGroup
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
@@ -101,7 +101,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var appWidgetManager: AppWidgetManager
     private lateinit var appWidgetHost: LauncherAppWidgetHost
     private lateinit var gestureHandler: GestureHandler
-
     private var pendingWidgetIdToBind: Int = -1
     private var pendingWidgetInfo: AppWidgetProviderInfo? = null
     private var pendingWidgetSpanX: Int = 1
@@ -152,72 +151,99 @@ class MainActivity : AppCompatActivity() {
     private var savedDrawerPosition: Int = 0
     private var savedDrawerOffset: Int = 0
 
-    private val bindWidgetLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == RESULT_OK) {
-            onWidgetBoundSuccess()
-        } else {
-            if (pendingWidgetIdToBind != -1) {
-                appWidgetHost.deleteAppWidgetId(pendingWidgetIdToBind)
+    private val bindWidgetLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                onWidgetBoundSuccess()
+            } else {
+                if (pendingWidgetIdToBind != -1) {
+                    appWidgetHost.deleteAppWidgetId(pendingWidgetIdToBind)
+                }
+                resetPendingWidgetState()
+            }
+        }
+
+    private val configureWidgetLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val info = pendingWidgetInfo
+                if (info != null && pendingWidgetIdToBind != -1) {
+                    val screenId =
+                        if (pendingWidgetScreenId >= 0) pendingWidgetScreenId else workspace.getCurrentPage()
+                    val cellLayout = workspace.getActiveCellLayout()
+                    val vacant =
+                        if (targetWidgetAddCellX >= 0 && targetWidgetAddCellY >= 0 && cellLayout?.isCellEmpty(
+                                targetWidgetAddCellX,
+                                targetWidgetAddCellY,
+                                pendingWidgetSpanX,
+                                pendingWidgetSpanY
+                            ) == true
+                        ) {
+                            intArrayOf(targetWidgetAddCellX, targetWidgetAddCellY)
+                        } else {
+                            cellLayout?.findVacantCell(pendingWidgetSpanX, pendingWidgetSpanY)
+                        }
+                    targetWidgetAddCellX = -1
+                    targetWidgetAddCellY = -1
+
+                    if (vacant == null) {
+                        Toast.makeText(
+                            this,
+                            "Not enough space on this screen for this widget",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        appWidgetHost.deleteAppWidgetId(pendingWidgetIdToBind)
+                    } else {
+                        pendingAutoResizeWidgetId = pendingWidgetIdToBind
+                        viewModel.addAppWidgetToWorkspace(
+                            appWidgetId = pendingWidgetIdToBind,
+                            providerInfo = info,
+                            screenId = screenId,
+                            cellX = vacant[0],
+                            cellY = vacant[1],
+                            spanX = pendingWidgetSpanX,
+                            spanY = pendingWidgetSpanY
+                        )
+                    }
+                }
+            } else {
+                if (pendingWidgetIdToBind != -1) {
+                    appWidgetHost.deleteAppWidgetId(pendingWidgetIdToBind)
+                }
             }
             resetPendingWidgetState()
         }
-    }
-
-    private val configureWidgetLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == RESULT_OK) {
-            val info = pendingWidgetInfo
-            if (info != null && pendingWidgetIdToBind != -1) {
-                val screenId = if (pendingWidgetScreenId >= 0) pendingWidgetScreenId else workspace.getCurrentPage()
-                val cellLayout = workspace.getActiveCellLayout()
-                val vacant = if (targetWidgetAddCellX >= 0 && targetWidgetAddCellY >= 0 &&
-                    cellLayout?.isCellEmpty(targetWidgetAddCellX, targetWidgetAddCellY, pendingWidgetSpanX, pendingWidgetSpanY) == true
-                ) {
-                    intArrayOf(targetWidgetAddCellX, targetWidgetAddCellY)
-                } else {
-                    cellLayout?.findVacantCell(pendingWidgetSpanX, pendingWidgetSpanY)
-                }
-                targetWidgetAddCellX = -1
-                targetWidgetAddCellY = -1
-
-                if (vacant == null) {
-                    Toast.makeText(this, "Not enough space on this screen for this widget", Toast.LENGTH_SHORT).show()
-                    appWidgetHost.deleteAppWidgetId(pendingWidgetIdToBind)
-                } else {
-                    pendingAutoResizeWidgetId = pendingWidgetIdToBind
-                    viewModel.addAppWidgetToWorkspace(
-                        appWidgetId = pendingWidgetIdToBind,
-                        providerInfo = info,
-                        screenId = screenId,
-                        cellX = vacant[0],
-                        cellY = vacant[1],
-                        spanX = pendingWidgetSpanX,
-                        spanY = pendingWidgetSpanY
-                    )
-                }
-            }
-        } else {
-            if (pendingWidgetIdToBind != -1) {
-                appWidgetHost.deleteAppWidgetId(pendingWidgetIdToBind)
-            }
-        }
-        resetPendingWidgetState()
-    }
 
     private var activeResizeFrame: AppWidgetResizeFrame? = null
     private var activeTestDialog: android.app.Dialog? = null
+    private var longPressMenuHandled = false
+    private var itemEditSwipeCallback: ((NamedAction) -> Unit)? = null
 
-    private val reconfigureWidgetLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == RESULT_OK) {
-            workspace.notifyDataChanged()
+    private val itemSwipePickerLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val callback = itemEditSwipeCallback
+            itemEditSwipeCallback = null
+            if (result.resultCode == RESULT_OK && result.data != null && callback != null) {
+                val raw = result.data?.getStringExtra(ChooseActionActivity.EXTRA_SELECTED_ACTION)
+                callback.invoke(NamedAction.deserialize(raw))
+            }
         }
-    }
+
+    private val reconfigureWidgetLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                workspace.notifyDataChanged()
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         if (checkFirstRunWizard()) return
 
-        com.example.launcherai.ui.SystemBarHelper.applySystemBars(this, isLightTheme = false, transparentBars = true)
+        com.example.launcherai.ui.SystemBarHelper.applySystemBars(
+            this, isLightTheme = false, transparentBars = true
+        )
         setContentView(R.layout.activity_main)
 
         appWidgetManager = AppWidgetManager.getInstance(this)
@@ -237,7 +263,11 @@ class MainActivity : AppCompatActivity() {
 
         ViewCompat.setOnApplyWindowInsetsListener(dragLayer) { _, insets ->
             val navInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
-            val statusInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout())
+            val statusInsets =
+                insets.getInsets(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout())
+            dragLayer.updateMandatorySystemGestureInsets(
+                insets.getInsets(WindowInsetsCompat.Type.mandatorySystemGestures())
+            )
 
             barHomeSearch?.let { bar ->
                 val params = bar.layoutParams as? ViewGroup.MarginLayoutParams
@@ -276,10 +306,72 @@ class MainActivity : AppCompatActivity() {
         setIntent(intent)
         checkFirstRunWizard()
         if (intent.hasCategory(Intent.CATEGORY_HOME) || intent.action == Intent.ACTION_MAIN) {
-            val defaultScreenId = viewModel.getValidDefaultPage()
-            workspace.navigateToScreenId(defaultScreenId, smoothScroll = true)
+            handleHomeButtonPressed()
         }
         handleTestCommand(intent)
+    }
+
+    private fun handleHomeButtonPressed() {
+        val wasOverlayOpen =
+            activeResizeFrame != null || (::folderOverlay.isInitialized && folderOverlay.visibility == View.VISIBLE) || (::layoutAppDrawerOverlay.isInitialized && layoutAppDrawerOverlay.visibility == View.VISIBLE)
+        dismissActiveResizeFrame()
+        if (::folderOverlay.isInitialized && folderOverlay.visibility == View.VISIBLE) {
+            closeFolderOverlay()
+        }
+        if (::layoutAppDrawerOverlay.isInitialized && layoutAppDrawerOverlay.visibility == View.VISIBLE) {
+            closeAppDrawer()
+        }
+
+        val prefs = getSharedPreferences(GesturePreferences.PREFS_NAME, Context.MODE_PRIVATE)
+        val onlyOnDefault = GesturePreferences.isHomeButtonOnlyOnDefault(prefs)
+        val defaultScreenId = viewModel.getValidDefaultPage()
+        val isOnDefault = workspace.getCurrentPageScreenId() == defaultScreenId
+        val homeAction = GesturePreferences.getAction(prefs, GestureSlot.HOME_BUTTON)
+
+        if (!isOnDefault) {
+            workspace.navigateToScreenId(defaultScreenId, smoothScroll = true)
+            if (!onlyOnDefault && !wasOverlayOpen && !homeAction.isNone) {
+                executeNamedAction(homeAction)
+            }
+        } else if (!wasOverlayOpen && !homeAction.isNone) {
+            executeNamedAction(homeAction)
+        }
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_MENU && event != null && event.repeatCount == 0) {
+            longPressMenuHandled = false
+            event.startTracking()
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyLongPress(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_MENU) {
+            val prefs = getSharedPreferences(GesturePreferences.PREFS_NAME, Context.MODE_PRIVATE)
+            val action = GesturePreferences.getAction(prefs, GestureSlot.LONG_PRESS_MENU)
+            if (!action.isNone) {
+                longPressMenuHandled = true
+                executeNamedAction(action)
+                return true
+            }
+        }
+        return super.onKeyLongPress(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_MENU) {
+            if (longPressMenuHandled) {
+                longPressMenuHandled = false
+                return true
+            }
+            if (event?.isCanceled != true) {
+                showHomeScreenOptions()
+                return true
+            }
+        }
+        return super.onKeyUp(keyCode, event)
     }
 
     override fun onResume() {
@@ -297,7 +389,10 @@ class MainActivity : AppCompatActivity() {
         }
         val skipWizard = intent.getBooleanExtra("skip_wizard", false)
         val forceSetup = intent.getBooleanExtra("force_setup", false)
-        if (forceSetup || com.example.launcherai.ui.SetupFlowUtils.shouldLaunchSetup(this, skipWizard)) {
+        if (forceSetup || com.example.launcherai.ui.SetupFlowUtils.shouldLaunchSetup(
+                this, skipWizard
+            )
+        ) {
             startActivity(Intent(this, com.example.launcherai.ui.SetupActivity::class.java))
             finish()
             return true
@@ -322,10 +417,8 @@ class MainActivity : AppCompatActivity() {
                         savedDrawerPosition = pos
                         val firstView = lm.findViewByPosition(pos)
                         savedDrawerOffset = firstView?.top ?: 0
-                        prefs.edit()
-                            .putInt("key_drawer_saved_pos", savedDrawerPosition)
-                            .putInt("key_drawer_saved_offset", savedDrawerOffset)
-                            .apply()
+                        prefs.edit().putInt("key_drawer_saved_pos", savedDrawerPosition)
+                            .putInt("key_drawer_saved_offset", savedDrawerOffset).apply()
                     }
                 }
             }
@@ -362,6 +455,7 @@ class MainActivity : AppCompatActivity() {
         applyScrollAndTransitionSettings()
         applyAdvancedSettings()
         applyLookFeelSettings()
+        reloadGestureHandlerFromPrefs()
         if (::dockHotseat.isInitialized) {
             val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
             val dockEnabled = prefs.getBoolean("key_dock_enabled", true)
@@ -378,13 +472,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun applySearchBarPlacement() {
         val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-        val placement = prefs.getString("key_search_bar_placement_home", "DOCK_BELOW") ?: "DOCK_BELOW"
+        val placement =
+            prefs.getString("key_search_bar_placement_home", "DOCK_BELOW") ?: "DOCK_BELOW"
         val searchBar = findViewById<View>(R.id.barHomeSearch) ?: return
         val desktopLayout = findViewById<LinearLayout>(R.id.layoutDesktop) ?: return
         val dockHotseat = findViewById<View>(R.id.dockHotseat)
 
         val density = resources.displayMetrics.density
-        val homeConfig = com.example.launcherai.ui.SearchBarConfig.load(prefs, com.example.launcherai.ui.SearchBarConfig.MODE_DESKTOP)
+        val homeConfig = com.example.launcherai.ui.SearchBarConfig.load(
+            prefs, com.example.launcherai.ui.SearchBarConfig.MODE_DESKTOP
+        )
         val homeLogoView = findViewById<ImageView>(R.id.btnHomeSearchGrid)
         val legacyMicView = findViewById<View>(R.id.btnHomeSearchMic)
         val homeActionsContainer = findViewById<LinearLayout>(R.id.containerHomeBarActions)
@@ -399,8 +496,7 @@ class MainActivity : AppCompatActivity() {
         )
 
         val lp = searchBar.layoutParams as? LinearLayout.LayoutParams ?: LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            (55 * density).toInt()
+            LinearLayout.LayoutParams.MATCH_PARENT, (55 * density).toInt()
         )
         val marginH = (16 * density).toInt()
         lp.marginStart = marginH
@@ -415,6 +511,7 @@ class MainActivity : AppCompatActivity() {
                 desktopLayout.removeView(searchBar)
                 desktopLayout.addView(searchBar, 0)
             }
+
             "DOCK_ABOVE" -> {
                 searchBar.visibility = View.VISIBLE
                 lp.topMargin = (4 * density).toInt()
@@ -428,9 +525,11 @@ class MainActivity : AppCompatActivity() {
                     desktopLayout.addView(searchBar)
                 }
             }
+
             "HIDDEN", "NONE" -> {
                 searchBar.visibility = View.GONE
             }
+
             else -> { // "DOCK_BELOW"
                 searchBar.visibility = View.VISIBLE
                 lp.topMargin = (4 * density).toInt()
@@ -450,7 +549,8 @@ class MainActivity : AppCompatActivity() {
         config: com.example.launcherai.ui.SearchBarConfig
     ) {
         val density = resources.displayMetrics.density
-        barView.background = com.example.launcherai.ui.SearchBarConfig.buildBarBackground(config, density)
+        barView.background =
+            com.example.launcherai.ui.SearchBarConfig.buildBarBackground(config, density)
         barView.elevation = if (config.hasShadow) 4f * density else 0f
 
         textView?.apply {
@@ -482,7 +582,8 @@ class MainActivity : AppCompatActivity() {
                 if (!config.enabledActions.contains(action)) continue
                 if (action == com.example.launcherai.ui.SearchBarConfig.ACTION_DATE) {
                     val tv = TextView(this).apply {
-                        text = com.example.launcherai.ui.SearchBarConfig.formatDate(config.dateFormat)
+                        text =
+                            com.example.launcherai.ui.SearchBarConfig.formatDate(config.dateFormat)
                         textSize = 12f
                         setTextColor(config.textColor)
                         setPadding(pad, pad, pad, pad)
@@ -511,7 +612,9 @@ class MainActivity : AppCompatActivity() {
                             clearColorFilter()
                         }
                         val outValue = android.util.TypedValue()
-                        theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, outValue, true)
+                        theme.resolveAttribute(
+                            android.R.attr.selectableItemBackgroundBorderless, outValue, true
+                        )
                         setBackgroundResource(outValue.resourceId)
                         isClickable = true
                         isFocusable = true
@@ -523,12 +626,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun executeSearchBarAction(action: String, config: com.example.launcherai.ui.SearchBarConfig) {
+    private fun executeSearchBarAction(
+        action: String, config: com.example.launcherai.ui.SearchBarConfig
+    ) {
         try {
             when (action) {
                 com.example.launcherai.ui.SearchBarConfig.ACTION_WEATHER -> {
-                    startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://accuweather.com")))
+                    startActivity(
+                        Intent(
+                            Intent.ACTION_VIEW, android.net.Uri.parse("https://accuweather.com")
+                        )
+                    )
                 }
+
                 com.example.launcherai.ui.SearchBarConfig.ACTION_VOICE_SEARCH -> {
                     try {
                         startActivity(Intent(android.speech.RecognizerIntent.ACTION_WEB_SEARCH))
@@ -536,6 +646,7 @@ class MainActivity : AppCompatActivity() {
                         startActivity(Intent(Intent.ACTION_VOICE_COMMAND))
                     }
                 }
+
                 com.example.launcherai.ui.SearchBarConfig.ACTION_ASSISTANT -> {
                     if (config.assistantIcon == "Gemini") {
                         startActivity(Intent(this, NovaAiChatActivity::class.java))
@@ -547,25 +658,35 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 }
+
                 com.example.launcherai.ui.SearchBarConfig.ACTION_PLAY_STORE -> {
-                    val ps = packageManager.getLaunchIntentForPackage("com.android.vending")
-                        ?: Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://play.google.com/store"))
+                    val ps =
+                        packageManager.getLaunchIntentForPackage("com.android.vending") ?: Intent(
+                            Intent.ACTION_VIEW,
+                            android.net.Uri.parse("https://play.google.com/store")
+                        )
                     startActivity(ps)
                 }
+
                 com.example.launcherai.ui.SearchBarConfig.ACTION_GOOGLE_APP -> {
                     startActivity(Intent(Intent.ACTION_WEB_SEARCH))
                 }
-                com.example.launcherai.ui.SearchBarConfig.ACTION_NOVA_SEARCH,
-                com.example.launcherai.ui.SearchBarConfig.ACTION_APP_DRAWER -> {
+
+                com.example.launcherai.ui.SearchBarConfig.ACTION_NOVA_SEARCH, com.example.launcherai.ui.SearchBarConfig.ACTION_APP_DRAWER -> {
                     openAppDrawer(slowAnimation = true)
                 }
+
                 com.example.launcherai.ui.SearchBarConfig.ACTION_DATE -> {
-                    val calIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_CALENDAR)
+                    val calIntent =
+                        Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_CALENDAR)
                     startActivity(calIntent)
                 }
+
                 com.example.launcherai.ui.SearchBarConfig.ACTION_GOOGLE_LENS -> {
-                    val lens = packageManager.getLaunchIntentForPackage("com.google.ar.lens")
-                        ?: Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
+                    val lens =
+                        packageManager.getLaunchIntentForPackage("com.google.ar.lens") ?: Intent(
+                            android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA
+                        )
                     startActivity(lens)
                 }
             }
@@ -575,28 +696,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupGestureHandler() {
-        gestureHandler = GestureHandler(this) { action ->
-            executeGestureAction(action)
-        }
-
-        val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-        val swipeToOpen = prefs.getBoolean("key_drawer_swipe_to_open", true)
-        gestureHandler.swipeUpAction = if (swipeToOpen) {
-            GestureAction.fromName(
-                prefs.getString("key_gesture_swipe_up", "") ?: "",
-                GestureAction.APP_DRAWER
-            )
-        } else {
-            GestureAction.APP_DRAWER
-        }
-        gestureHandler.swipeDownAction = GestureAction.fromName(
-            prefs.getString("key_gesture_swipe_down", "") ?: "",
-            GestureAction.EXPAND_NOTIFICATIONS
-        )
+        gestureHandler = GestureHandler(
+            context = this,
+            onExecuteAction = { action -> executeGestureAction(action) },
+            onExecuteNamedAction = { named -> executeNamedAction(named) },
+            hostViewProvider = { dragLayer })
+        reloadGestureHandlerFromPrefs()
 
         dragLayer.gestureHandler = gestureHandler
         dragLayer.isAppDrawerOpen = {
             ::layoutAppDrawerOverlay.isInitialized && layoutAppDrawerOverlay.visibility == View.VISIBLE
+        }
+        dragLayer.isFolderOverlayOpen = {
+            ::folderOverlay.isInitialized && folderOverlay.visibility == View.VISIBLE
         }
         dragLayer.isDrawerAtTop = {
             isDrawerTopScrolled()
@@ -609,21 +721,216 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun reloadGestureHandlerFromPrefs() {
+        if (!::gestureHandler.isInitialized) return
+        val prefs = getSharedPreferences(GesturePreferences.PREFS_NAME, Context.MODE_PRIVATE)
+        gestureHandler.reloadFromPreferences(prefs)
+    }
+
     private fun executeGestureAction(action: GestureAction) {
-        when (action) {
-            GestureAction.APP_DRAWER -> openAppDrawer(slowAnimation = true)
-            GestureAction.SETTINGS -> startActivity(Intent(this, LauncherSettingsActivity::class.java))
-            GestureAction.SEARCH -> {
-                openAppDrawer(slowAnimation = true)
-                etDrawerSearch.requestFocus()
+        executeNamedAction(NamedAction.fromLegacyGestureAction(action))
+    }
+
+    private fun handleItemSwipeAction(
+        sourceView: View, itemEntity: WorkspaceItemEntity, action: NamedAction
+    ) {
+        if (action.isNone) return
+        if (action.kind == NamedAction.Kind.NOVA_ACTION) {
+            when (action.novaAction) {
+                NovaAction.OPEN_FOLDER -> {
+                    findWorkspaceFolderResolvedItem(itemEntity.id)?.let { openFolderOverlay(it) }
+                    return
+                }
+
+                NovaAction.FIRST_ITEM_IN_FOLDER -> {
+                    val folder = findWorkspaceFolderResolvedItem(itemEntity.id)
+                    val firstChild = folder?.children?.firstOrNull()
+                    if (firstChild != null) {
+                        AppManager.launchApp(this, firstChild.appInfo, sourceView)
+                    } else if (folder != null) {
+                        openFolderOverlay(folder)
+                    }
+                    return
+                }
+
+                else -> Unit
             }
-            else -> GestureHandler.executeSystemAction(this, action)
+        }
+        executeNamedAction(action, sourceView)
+    }
+
+    private fun findWorkspaceFolderResolvedItem(folderId: Long): WorkspaceFolderResolvedItem? {
+        for (items in viewModel.resolvedDisplayPageItemsMap.value.values) {
+            for (display in items) {
+                if (display is com.example.launcherai.ui.WorkspaceItemDisplay.Folder && display.folder.entity.id == folderId) {
+                    return display.folder
+                }
+            }
+        }
+        for (display in viewModel.resolvedDockItems.value) {
+            if (display is com.example.launcherai.ui.WorkspaceItemDisplay.Folder && display.folder.entity.id == folderId) {
+                return display.folder
+            }
+        }
+        return null
+    }
+
+    private fun executeNamedAction(action: NamedAction, sourceView: View? = null) {
+        if (action.isNone) return
+        when (action.kind) {
+            NamedAction.Kind.NONE -> Unit
+            NamedAction.Kind.NOVA_ACTION -> executeNovaAction(action.novaAction, action.pageIndex)
+            NamedAction.Kind.APP, NamedAction.Kind.INTENT_URI -> {
+                val launchIntent = action.toLaunchIntent(this)
+                if (launchIntent != null) {
+                    try {
+                        startActivity(launchIntent)
+                    } catch (_: Exception) {
+                        Toast.makeText(this, "Unable to launch ${action.label}", Toast.LENGTH_SHORT)
+                            .show()
+                    }
+                } else {
+                    Toast.makeText(this, "Action unavailable: ${action.label}", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            }
+        }
+    }
+
+    private fun executeNovaAction(action: NovaAction, pageIndex: Int = 0) {
+        when (action) {
+            NovaAction.NONE -> Unit
+            NovaAction.APP_DRAWER -> openAppDrawer(slowAnimation = true)
+            NovaAction.DEFAULT_SCREEN -> {
+                workspace.navigateToScreenId(viewModel.getValidDefaultPage(), smoothScroll = true)
+            }
+
+            NovaAction.GOTO_SCREEN -> {
+                val pages = viewModel.pages.value
+                if (pages.isNotEmpty()) {
+                    workspace.setCurrentPage(
+                        pageIndex.coerceIn(0, pages.size - 1), smoothScroll = true
+                    )
+                }
+            }
+
+            NovaAction.EXPAND_STATUS_BAR -> GestureHandler.expandNotifications(this)
+            NovaAction.EXPAND_STATUS_SETTINGS_BAR -> GestureHandler.expandQuickSettings(this)
+            NovaAction.TOGGLE_STATUS_BAR -> {
+                val prefs =
+                    getSharedPreferences(GesturePreferences.PREFS_NAME, Context.MODE_PRIVATE)
+                val current = prefs.getBoolean("key_show_notification_bar", true)
+                prefs.edit().putBoolean("key_show_notification_bar", !current).apply()
+                applyLookFeelSettings()
+            }
+
+            NovaAction.TOGGLE_DOCK -> {
+                val prefs =
+                    getSharedPreferences(GesturePreferences.PREFS_NAME, Context.MODE_PRIVATE)
+                val current = prefs.getBoolean("key_dock_enabled", true)
+                val next = !current
+                prefs.edit().putBoolean("key_dock_enabled", next).apply()
+                if (::dockHotseat.isInitialized) {
+                    dockHotseat.visibility = if (next) View.VISIBLE else View.GONE
+                }
+            }
+
+            NovaAction.SHOW_PREVIEWS -> showPageOverview()
+            NovaAction.RECENT_APPS -> {
+                if (!NovaAccessibilityService.openRecentApps()) {
+                    Toast.makeText(
+                        this,
+                        "Enable LauncherAI Accessibility service to open Recent apps",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+
+            NovaAction.APP_SEARCH -> {
+                openAppDrawer(slowAnimation = true)
+                etDrawerSearch.postDelayed({
+                    etDrawerSearch.requestFocus()
+                    val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+                    imm?.showSoftInput(etDrawerSearch, InputMethodManager.SHOW_IMPLICIT)
+                }, 180L)
+            }
+
+            NovaAction.TEXT_SEARCH -> {
+                try {
+                    startActivity(Intent(Intent.ACTION_WEB_SEARCH))
+                } catch (_: Exception) {
+                    openAppDrawer(slowAnimation = true)
+                }
+            }
+
+            NovaAction.VOICE_SEARCH -> {
+                try {
+                    startActivity(Intent(android.speech.RecognizerIntent.ACTION_WEB_SEARCH))
+                } catch (_: Exception) {
+                    try {
+                        startActivity(Intent(Intent.ACTION_VOICE_COMMAND))
+                    } catch (_: Exception) {
+                        Toast.makeText(this, "Voice search unavailable", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+
+            NovaAction.ASSIST -> {
+                try {
+                    startActivity(Intent(Intent.ACTION_ASSIST))
+                } catch (_: Exception) {
+                    try {
+                        startActivity(Intent(Intent.ACTION_VOICE_COMMAND))
+                    } catch (_: Exception) {
+                        startActivity(Intent(this, NovaAiChatActivity::class.java))
+                    }
+                }
+            }
+
+            NovaAction.GOOGLE_LENS -> {
+                val lens = packageManager.getLaunchIntentForPackage("com.google.ar.lens") ?: Intent(
+                    android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA
+                )
+                try {
+                    startActivity(lens)
+                } catch (_: Exception) {
+                    Toast.makeText(this, "Google Lens unavailable", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            NovaAction.GOOGLE_NOW -> {
+                val googleApp =
+                    packageManager.getLaunchIntentForPackage("com.google.android.googlequicksearchbox")
+                try {
+                    startActivity(googleApp ?: Intent(Intent.ACTION_WEB_SEARCH))
+                } catch (_: Exception) {
+                    Toast.makeText(this, "Google Discover unavailable", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            NovaAction.NOVA_SETTINGS -> startActivity(
+                Intent(
+                    this, LauncherSettingsActivity::class.java
+                )
+            )
+
+            NovaAction.SCREEN_OFF -> ScreenLockHelper.lockScreen(this)
+            NovaAction.FIRST_ITEM_IN_FOLDER, NovaAction.OPEN_FOLDER -> Unit
         }
     }
 
     private fun initViews() {
         dragLayer = findViewById(R.id.rootLauncher)
         workspace = findViewById(R.id.workspace)
+        workspace.onEdgeSwipeListener = { slot ->
+            gestureHandler.triggerSlot(slot)
+        }
+        workspace.isSwipeLeftGestureBound = {
+            ::gestureHandler.isInitialized && !gestureHandler.getResolvedAction(GestureSlot.SWIPE_LEFT).isNone
+        }
+        workspace.isSwipeRightGestureBound = {
+            ::gestureHandler.isInitialized && !gestureHandler.getResolvedAction(GestureSlot.SWIPE_RIGHT).isNone
+        }
         rvDrawerApps = findViewById(R.id.rvDrawerApps)
         layoutAppDrawerOverlay = findViewById(R.id.layoutAppDrawerOverlay)
         etDrawerSearch = findViewById(R.id.etDrawerSearch)
@@ -643,33 +950,26 @@ class MainActivity : AppCompatActivity() {
         folderPageIndicator = findViewById(R.id.folderPageIndicator)
 
         dockHotseat = findViewById(R.id.dockHotseat)
-        dockHotseat.setListeners(
-            onAppClick = { appInfo, view ->
-                AppManager.launchApp(this@MainActivity, appInfo, view)
-            },
-            onFolderClick = { folderResolved ->
-                openFolderOverlay(folderResolved)
-            },
-            onAppDrawerClick = {
-                openAppDrawer()
-            },
-            onAppLongClick = { view, item, touchX, touchY ->
-                dragController.startDrag(view, item, touchX, touchY)
-                true
-            },
-            onFolderLongClick = { view, folderResolved, touchX, touchY ->
-                val item = WorkspaceResolvedItem(
-                    entity = folderResolved.entity,
-                    appInfo = AppInfo(
-                        label = folderResolved.title,
-                        packageName = "",
-                        activityName = ""
-                    )
+        dockHotseat.setListeners(onAppClick = { appInfo, view ->
+            AppManager.launchApp(this@MainActivity, appInfo, view)
+        }, onFolderClick = { folderResolved ->
+            openFolderOverlay(folderResolved)
+        }, onAppDrawerClick = {
+            openAppDrawer()
+        }, onAppLongClick = { view, item, touchX, touchY ->
+            dragController.startDrag(view, item, touchX, touchY)
+            true
+        }, onFolderLongClick = { view, folderResolved, touchX, touchY ->
+            val item = WorkspaceResolvedItem(
+                entity = folderResolved.entity, appInfo = AppInfo(
+                    label = folderResolved.title, packageName = "", activityName = ""
                 )
-                dragController.startDrag(view, item, touchX, touchY)
-                true
-            }
-        )
+            )
+            dragController.startDrag(view, item, touchX, touchY)
+            true
+        }, onItemSwipeAction = { view, itemEntity, action ->
+            handleItemSwipeAction(view, itemEntity, action)
+        })
 
         val dropTargetBarView = findViewById<View>(R.id.dropTargetBar)
         dragController = DragController(
@@ -681,11 +981,12 @@ class MainActivity : AppCompatActivity() {
             viewModel = viewModel,
             appWidgetHost = appWidgetHost
         )
-        dragController.onPendingWidgetDropped = { providerInfo, screenId, cellX, cellY, spanX, spanY ->
-            targetWidgetAddCellX = cellX
-            targetWidgetAddCellY = cellY
-            requestAddWidget(providerInfo, spanX, spanY, targetScreenId = screenId)
-        }
+        dragController.onPendingWidgetDropped =
+            { providerInfo, screenId, cellX, cellY, spanX, spanY ->
+                targetWidgetAddCellX = cellX
+                targetWidgetAddCellY = cellY
+                requestAddWidget(providerInfo, spanX, spanY, targetScreenId = screenId)
+            }
         dragController.onDragEnded = { droppedItem, hitTarget ->
             workspace.clearAllDropTargets()
             if (hitTarget == null && droppedItem?.entity?.itemType == WorkspaceItemEntity.ITEM_TYPE_WIDGET) {
@@ -700,7 +1001,9 @@ class MainActivity : AppCompatActivity() {
                             if (child is LauncherAppWidgetHostView && child.appWidgetId == targetWidgetId) {
                                 val resolved = (child.tag as? WorkspaceWidgetResolvedItem)
                                     ?: (child.tag as? WorkspaceItemEntity)?.let { ent ->
-                                        WorkspaceWidgetResolvedItem(ent, child.appWidgetId, child.appWidgetInfo)
+                                        WorkspaceWidgetResolvedItem(
+                                            ent, child.appWidgetId, child.appWidgetInfo
+                                        )
                                     }
                                 if (resolved != null) {
                                     showWidgetResizeFrame(child, resolved, activeCellLayout)
@@ -720,7 +1023,15 @@ class MainActivity : AppCompatActivity() {
         dragController.onItemClickedInPlaceListener = { anchorView, item ->
             val isDrawer = (item.entity.id == 0L)
             showAppItemPopupMenu(anchorView, item, isDrawer = isDrawer)
+
         }
+        dragController.onDragStartedMovingListener = {
+            dismissDrawerPopup()
+            if (::layoutAppDrawerOverlay.isInitialized && layoutAppDrawerOverlay.visibility == View.VISIBLE) {
+                closeAppDrawer()
+            }
+        }
+
 
         workspace.setOnLongClickListener {
             val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
@@ -758,71 +1069,28 @@ class MainActivity : AppCompatActivity() {
 
         // App Drawer Grid (5 columns - Ref 11)
         rvDrawerApps.layoutManager = GridLayoutManager(this, 5)
-        drawerAdapter = AppsAdapter(
-            apps = emptyList(),
-            onAppClick = { app, view ->
-                if (app.isFolder && app.folderId != null) {
-                    openDrawerFolderById(app.folderId)
-                } else {
-                    AppManager.launchApp(this, app, view)
-                    val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                    val autoClose = prefs.getBoolean("key_drawer_autoclose", true)
-                    if (autoClose) {
-                        closeAppDrawer()
-                    }
-                }
-            },
-            onAppLongClick = { view, app, touchX, touchY ->
-                if (app.isFolder && app.folderId != null) {
-                    showDrawerFolderPopupMenu(view, app)
-                    true
-                } else {
-                    closeAppDrawer()
-                    val curPage = workspace.getCurrentPage()
-                    val cellLayout = workspace.getActiveCellLayout()
-                    val vacant = cellLayout?.findVacantCell(1, 1) ?: intArrayOf(0, 0)
-
-                    val item = WorkspaceResolvedItem(
-                        entity = WorkspaceItemEntity(
-                            itemType = WorkspaceItemEntity.ITEM_TYPE_APP,
-                            packageName = app.packageName,
-                            className = app.activityName,
-                            container = WorkspaceItemEntity.CONTAINER_DESKTOP,
-                            screenId = curPage,
-                            cellX = vacant[0],
-                            cellY = vacant[1],
-                            title = app.label
-                        ),
-                        appInfo = app
-                    )
-                    dragController.startDrag(view, item, touchX, touchY)
-                    true
-                }
-            }
-        )
-        rvDrawerApps.adapter = drawerAdapter
-
-        // Frequently Used Apps Row (Nova drawer_predictive_apps)
-        rvFrequentApps = findViewById(R.id.rvFrequentApps)
-        tvFrequentAppsEmpty = findViewById(R.id.tvFrequentAppsEmpty)
-        val initialDrawerPrefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-        val initialDrawerCols = initialDrawerPrefs.getInt("key_drawer_grid_cols", 5).coerceAtLeast(1)
-        rvFrequentApps.layoutManager = GridLayoutManager(this, initialDrawerCols)
-        frequentAppsAdapter = AppsAdapter(
-            apps = emptyList(),
-            onAppClick = { app, view ->
+        drawerAdapter = AppsAdapter(apps = emptyList(), onAppClick = { app, view ->
+            if (app.isFolder && app.folderId != null) {
+                openDrawerFolderById(app.folderId)
+            } else {
                 AppManager.launchApp(this, app, view)
-                val p = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                val autoClose = p.getBoolean("key_drawer_autoclose", true)
+                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                val autoClose = prefs.getBoolean("key_drawer_autoclose", true)
                 if (autoClose) {
                     closeAppDrawer()
                 }
-            },
-            onAppLongClick = { view, app, touchX, touchY ->
-                closeAppDrawer()
-                val curPage = workspace.getCurrentPage()
+            }
+        }, onAppLongClick = { view, app, touchX, touchY ->
+            if (app.isFolder && app.folderId != null) {
+                showDrawerFolderPopupMenu(view, app)
+                true
+            } else {
+                val curPage = workspace.getCurrentPageScreenId()
+//                    closeAppDrawer()
+//                    val curPage = workspace.getCurrentPage()
                 val cellLayout = workspace.getActiveCellLayout()
                 val vacant = cellLayout?.findVacantCell(1, 1) ?: intArrayOf(0, 0)
+
                 val item = WorkspaceResolvedItem(
                     entity = WorkspaceItemEntity(
                         itemType = WorkspaceItemEntity.ITEM_TYPE_APP,
@@ -833,13 +1101,49 @@ class MainActivity : AppCompatActivity() {
                         cellX = vacant[0],
                         cellY = vacant[1],
                         title = app.label
-                    ),
-                    appInfo = app
+                    ), appInfo = app
                 )
+                showAppItemPopupMenu(view, item, isDrawer = true)
                 dragController.startDrag(view, item, touchX, touchY)
                 true
             }
-        )
+        })
+        rvDrawerApps.adapter = drawerAdapter
+
+        // Frequently Used Apps Row (Nova drawer_predictive_apps)
+        rvFrequentApps = findViewById(R.id.rvFrequentApps)
+        tvFrequentAppsEmpty = findViewById(R.id.tvFrequentAppsEmpty)
+        val initialDrawerPrefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        val initialDrawerCols =
+            initialDrawerPrefs.getInt("key_drawer_grid_cols", 5).coerceAtLeast(1)
+        rvFrequentApps.layoutManager = GridLayoutManager(this, initialDrawerCols)
+        frequentAppsAdapter = AppsAdapter(apps = emptyList(), onAppClick = { app, view ->
+            AppManager.launchApp(this, app, view)
+            val p = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+            val autoClose = p.getBoolean("key_drawer_autoclose", true)
+            if (autoClose) {
+                closeAppDrawer()
+            }
+        }, onAppLongClick = { view, app, touchX, touchY ->
+            closeAppDrawer()
+            val curPage = workspace.getCurrentPage()
+            val cellLayout = workspace.getActiveCellLayout()
+            val vacant = cellLayout?.findVacantCell(1, 1) ?: intArrayOf(0, 0)
+            val item = WorkspaceResolvedItem(
+                entity = WorkspaceItemEntity(
+                    itemType = WorkspaceItemEntity.ITEM_TYPE_APP,
+                    packageName = app.packageName,
+                    className = app.activityName,
+                    container = WorkspaceItemEntity.CONTAINER_DESKTOP,
+                    screenId = curPage,
+                    cellX = vacant[0],
+                    cellY = vacant[1],
+                    title = app.label
+                ), appInfo = app
+            )
+            dragController.startDrag(view, item, touchX, touchY)
+            true
+        })
         rvFrequentApps.adapter = frequentAppsAdapter
 
         // FastScroller with A–Z rail accent bar (matching Nova Launcher AllAppsFastScroll)
@@ -858,6 +1162,7 @@ class MainActivity : AppCompatActivity() {
                     MotionEvent.ACTION_DOWN -> {
                         pullStartY = e.y
                     }
+
                     MotionEvent.ACTION_MOVE -> {
                         val dy = e.y - pullStartY
                         if (!rv.canScrollVertically(-1) && dy > 120f) {
@@ -865,8 +1170,12 @@ class MainActivity : AppCompatActivity() {
                                 rv.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
                             }
                             etDrawerSearch.requestFocus()
-                            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
-                            imm?.showSoftInput(etDrawerSearch, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                            val imm =
+                                getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+                            imm?.showSoftInput(
+                                etDrawerSearch,
+                                android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT
+                            )
                             return true
                         }
                     }
@@ -923,7 +1232,8 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
                     }
-                } catch (_: Exception) {}
+                } catch (_: Exception) {
+                }
             }
         }
     }
@@ -932,16 +1242,23 @@ class MainActivity : AppCompatActivity() {
         if (token == null) return
         try {
             val wm = WallpaperManager.getInstance(this)
-            val method = wm.javaClass.getMethod("setWallpaperZoomOut", android.os.IBinder::class.java, Float::class.javaPrimitiveType)
+            val method = wm.javaClass.getMethod(
+                "setWallpaperZoomOut",
+                android.os.IBinder::class.java,
+                Float::class.javaPrimitiveType
+            )
             method.invoke(wm, token, zoom)
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+        }
     }
 
     private fun applyAdvancedSettings() {
         val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
         val showShadow = prefs.getBoolean("key_desktop_shadow", false)
-        findViewById<View>(R.id.viewTopShadow)?.visibility = if (showShadow) View.VISIBLE else View.GONE
-        findViewById<View>(R.id.viewBottomShadow)?.visibility = if (showShadow) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.viewTopShadow)?.visibility =
+            if (showShadow) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.viewBottomShadow)?.visibility =
+            if (showShadow) View.VISIBLE else View.GONE
     }
 
     private fun applyLookFeelSettings() {
@@ -949,16 +1266,18 @@ class MainActivity : AppCompatActivity() {
 
         // 1. Screen Orientation
         val rotationEnabled = prefs.getBoolean("key_screen_rotation_enabled", false)
-        val orientationMode = prefs.getString("key_screen_orientation_mode", "Auto rotate (Sensor)") ?: "Auto rotate (Sensor)"
-        val targetOrientation = if (!rotationEnabled || orientationMode.equals("Force portrait", true)) {
-            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        } else if (orientationMode.equals("Force landscape", true)) {
-            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        } else if (orientationMode.equals("No sensor", true)) {
-            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_NOSENSOR
-        } else {
-            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        }
+        val orientationMode = prefs.getString("key_screen_orientation_mode", "Auto rotate (Sensor)")
+            ?: "Auto rotate (Sensor)"
+        val targetOrientation =
+            if (!rotationEnabled || orientationMode.equals("Force portrait", true)) {
+                android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            } else if (orientationMode.equals("Force landscape", true)) {
+                android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            } else if (orientationMode.equals("No sensor", true)) {
+                android.content.pm.ActivityInfo.SCREEN_ORIENTATION_NOSENSOR
+            } else {
+                android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            }
         if (requestedOrientation != targetOrientation) {
             requestedOrientation = targetOrientation
         }
@@ -973,31 +1292,32 @@ class MainActivity : AppCompatActivity() {
             "DARK" -> true
             "LIGHT" -> false
             else -> {
-                val nightMode = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+                val nightMode =
+                    (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
                 !nightMode
             }
         }
 
         val window = window ?: return
-        val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+        val controller =
+            androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
 
         controller.isAppearanceLightStatusBars = isLightTheme
         controller.isAppearanceLightNavigationBars = isLightTheme
 
         if (!showNotifBar) {
             controller.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
-            controller.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.systemBarsBehavior =
+                androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         } else {
             controller.show(androidx.core.view.WindowInsetsCompat.Type.statusBars())
         }
 
         if (transNotifBar) {
-            @Suppress("DEPRECATION")
-            window.statusBarColor = Color.TRANSPARENT
+            @Suppress("DEPRECATION") window.statusBarColor = Color.TRANSPARENT
         }
         if (transNavBar) {
-            @Suppress("DEPRECATION")
-            window.navigationBarColor = Color.TRANSPARENT
+            @Suppress("DEPRECATION") window.navigationBarColor = Color.TRANSPARENT
         }
     }
 
@@ -1035,16 +1355,22 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<View>(R.id.btnHomeSearchMic)?.setOnClickListener {
             try {
-                val voiceIntent = Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                    putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                }
+                val voiceIntent =
+                    Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                        putExtra(
+                            android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                            android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                        )
+                    }
                 startActivity(voiceIntent)
             } catch (e: Exception) {
                 try {
                     val webSearchIntent = Intent(Intent.ACTION_WEB_SEARCH)
                     startActivity(webSearchIntent)
                 } catch (e2: Exception) {
-                    Toast.makeText(this, "Voice search not available on this device", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this, "Voice search not available on this device", Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
@@ -1053,8 +1379,14 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener {
                 val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
                 val searchMode = prefs.getString("key_search_mode", "Immersive") ?: "Immersive"
-                val searchInterface = prefs.getString(com.example.launcherai.ui.SearchSettingsActivity.KEY_HOME_BAR_INTERFACE, "Nova Search") ?: "Nova Search"
-                if (searchMode.equals("Standard", ignoreCase = true) || searchInterface.contains("Google App", ignoreCase = true)) {
+                val searchInterface = prefs.getString(
+                    com.example.launcherai.ui.SearchSettingsActivity.KEY_HOME_BAR_INTERFACE,
+                    "Nova Search"
+                ) ?: "Nova Search"
+                if (searchMode.equals(
+                        "Standard", ignoreCase = true
+                    ) || searchInterface.contains("Google App", ignoreCase = true)
+                ) {
                     try {
                         val intent = Intent(Intent.ACTION_WEB_SEARCH)
                         startActivity(intent)
@@ -1073,8 +1405,12 @@ class MainActivity : AppCompatActivity() {
 
         // Apply Private Keyboard IME flag if enabled
         val searchPrefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-        if (searchPrefs.getBoolean(com.example.launcherai.ui.SearchSettingsActivity.KEY_PRIVATE_KEYBOARD, false)) {
-            etDrawerSearch.imeOptions = etDrawerSearch.imeOptions or android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
+        if (searchPrefs.getBoolean(
+                com.example.launcherai.ui.SearchSettingsActivity.KEY_PRIVATE_KEYBOARD, false
+            )
+        ) {
+            etDrawerSearch.imeOptions =
+                etDrawerSearch.imeOptions or android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
         }
 
         // Suggestion Chips (Ref 11)
@@ -1092,10 +1428,12 @@ class MainActivity : AppCompatActivity() {
                         showCreateDrawerFolderFlow()
                         true
                     }
+
                     3 -> {
                         startActivity(Intent(this, DrawerGroupsActivity::class.java))
                         true
                     }
+
                     else -> false
                 }
             }
@@ -1108,6 +1446,7 @@ class MainActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 viewModel.setSearchQuery(s?.toString().orEmpty())
             }
+
             override fun afterTextChanged(s: Editable?) {}
         })
     }
@@ -1134,9 +1473,7 @@ class MainActivity : AppCompatActivity() {
                 // Multi-page Workspace collector (Apps, Folders & Widgets)
                 launch {
                     combine(
-                        viewModel.pages,
-                        viewModel.resolvedDisplayPageItemsMap,
-                        viewModel.gridConfig
+                        viewModel.pages, viewModel.resolvedDisplayPageItemsMap, viewModel.gridConfig
                     ) { pages, displayItemsMap, gridConfig ->
                         Triple(pages, displayItemsMap, gridConfig)
                     }.collect { (pages, displayItemsMap, gridConfig) ->
@@ -1151,14 +1488,16 @@ class MainActivity : AppCompatActivity() {
                             onFolderClick = { folderResolved ->
                                 openFolderOverlay(folderResolved)
                             },
+                            onItemSwipeAction = { view, itemEntity, action ->
+                                handleItemSwipeAction(view, itemEntity, action)
+                            },
                             onAppLongClick = { view, item, touchX, touchY ->
                                 dragController.startDrag(view, item, touchX, touchY)
                                 true
                             },
                             onFolderLongClick = { view, folderResolved, touchX, touchY ->
                                 val item = WorkspaceResolvedItem(
-                                    entity = folderResolved.entity,
-                                    appInfo = AppInfo(
+                                    entity = folderResolved.entity, appInfo = AppInfo(
                                         label = folderResolved.title,
                                         packageName = "",
                                         activityName = ""
@@ -1169,14 +1508,14 @@ class MainActivity : AppCompatActivity() {
                             },
                             onWidgetLongClick = { view, widgetResolved, touchX, touchY ->
                                 val hostView = view as? LauncherAppWidgetHostView
-                                val cellLayout = (view.parent as? CellLayout) ?: workspace.getActiveCellLayout()
+                                val cellLayout =
+                                    (view.parent as? CellLayout) ?: workspace.getActiveCellLayout()
                                 if (hostView != null && cellLayout != null) {
                                     showWidgetResizeFrame(hostView, widgetResolved, cellLayout)
                                     true
                                 } else {
                                     val item = WorkspaceResolvedItem(
-                                        entity = widgetResolved.entity,
-                                        appInfo = AppInfo(
+                                        entity = widgetResolved.entity, appInfo = AppInfo(
                                             label = widgetResolved.entity.title ?: "Widget",
                                             packageName = widgetResolved.entity.packageName ?: "",
                                             activityName = ""
@@ -1192,8 +1531,7 @@ class MainActivity : AppCompatActivity() {
                                     dismissActiveResizeFrame()
                                     pendingAutoResizeWidgetId = widgetResolved.entity.appWidgetId
                                     val item = WorkspaceResolvedItem(
-                                        entity = widgetResolved.entity,
-                                        appInfo = AppInfo(
+                                        entity = widgetResolved.entity, appInfo = AppInfo(
                                             label = widgetResolved.entity.title ?: "Widget",
                                             packageName = widgetResolved.entity.packageName ?: "",
                                             activityName = ""
@@ -1205,8 +1543,7 @@ class MainActivity : AppCompatActivity() {
                             onEmptySpaceLongClick = { cellX, cellY ->
                                 showHomeScreenOptions(cellX, cellY)
                                 true
-                            }
-                        )
+                            })
                         val activeCell = workspace.getActiveCellLayout()
                         if (activeCell != null) {
                             activeCell.countX = gridConfig.cols
@@ -1225,12 +1562,19 @@ class MainActivity : AppCompatActivity() {
                                     for (i in 0 until activeCellLayout.childCount) {
                                         val child = activeCellLayout.getChildAt(i)
                                         if (child is LauncherAppWidgetHostView && child.appWidgetId == targetWidgetId) {
-                                            val resolved = (child.tag as? WorkspaceWidgetResolvedItem)
-                                                ?: (child.tag as? WorkspaceItemEntity)?.let { ent ->
-                                                    WorkspaceWidgetResolvedItem(ent, child.appWidgetId, child.appWidgetInfo)
-                                                }
+                                            val resolved =
+                                                (child.tag as? WorkspaceWidgetResolvedItem)
+                                                    ?: (child.tag as? WorkspaceItemEntity)?.let { ent ->
+                                                        WorkspaceWidgetResolvedItem(
+                                                            ent,
+                                                            child.appWidgetId,
+                                                            child.appWidgetInfo
+                                                        )
+                                                    }
                                             if (resolved != null) {
-                                                showWidgetResizeFrame(child, resolved, activeCellLayout)
+                                                showWidgetResizeFrame(
+                                                    child, resolved, activeCellLayout
+                                                )
                                             }
                                             break
                                         }
@@ -1243,7 +1587,9 @@ class MainActivity : AppCompatActivity() {
 
                 // Resolved Dock items collector (Apps & Folders + Capacity)
                 launch {
-                    combine(viewModel.resolvedDockItems, viewModel.dockCapacity) { dockItems, capacity ->
+                    combine(
+                        viewModel.resolvedDockItems, viewModel.dockCapacity
+                    ) { dockItems, capacity ->
                         Pair(dockItems, capacity)
                     }.collect { (dockItems, capacity) ->
                         dockHotseat.updateDockItems(dockItems, capacity)
@@ -1286,10 +1632,7 @@ class MainActivity : AppCompatActivity() {
                 // Live sync for open App Drawer folder overlay
                 launch {
                     viewModel.drawerFolders.collect { folders ->
-                        if (::folderOverlay.isInitialized &&
-                            folderOverlay.visibility == View.VISIBLE &&
-                            activeFolderIsDrawer
-                        ) {
+                        if (::folderOverlay.isInitialized && folderOverlay.visibility == View.VISIBLE && activeFolderIsDrawer) {
                             val match = folders.find { it.entity.id == activeFolderId }
                             if (match == null) {
                                 closeFolderOverlay()
@@ -1316,9 +1659,10 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             e.printStackTrace()
         }
-        val dialog = WidgetPickerDialog(this, null, isTapSelectMode = false) { providerInfo, spanX, spanY ->
-            requestAddWidget(providerInfo, spanX, spanY)
-        }
+        val dialog =
+            WidgetPickerDialog(this, null, isTapSelectMode = false) { providerInfo, spanX, spanY ->
+                requestAddWidget(providerInfo, spanX, spanY)
+            }
         dialog.onStartWidgetDrag = { widget, bitmap, rawX, rawY ->
             val loc = IntArray(2)
             dragLayer.getLocationOnScreen(loc)
@@ -1352,8 +1696,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showHiddenAppsDialog() {
         val dialog = HiddenAppsDialogFragment.newInstance(
-            hiddenPackages = viewModel.hiddenPackages.value,
-            apps = viewModel.installedApps.value
+            hiddenPackages = viewModel.hiddenPackages.value, apps = viewModel.installedApps.value
         ) { _ ->
             viewModel.loadHiddenPackages()
         }
@@ -1361,10 +1704,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestAddWidget(
-        providerInfo: AppWidgetProviderInfo,
-        spanX: Int,
-        spanY: Int,
-        targetScreenId: Int = -1
+        providerInfo: AppWidgetProviderInfo, spanX: Int, spanY: Int, targetScreenId: Int = -1
     ) {
         val appWidgetId = appWidgetHost.allocateAppWidgetId()
         pendingWidgetIdToBind = appWidgetId
@@ -1410,7 +1750,9 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             e.printStackTrace()
         }
-        val dialog = com.example.launcherai.ui.WorkspacePageOverviewDialog(this, viewModel) { selectedScreenId ->
+        val dialog = com.example.launcherai.ui.WorkspacePageOverviewDialog(
+            this, viewModel
+        ) { selectedScreenId ->
             workspace.navigateToScreenId(selectedScreenId, smoothScroll = true)
         }
         dialog.setOnDismissListener { if (activeTestDialog == dialog) activeTestDialog = null }
@@ -1429,20 +1771,28 @@ class MainActivity : AppCompatActivity() {
             }
             configureWidgetLauncher.launch(intent)
         } else {
-            val screenId = if (pendingWidgetScreenId >= 0) pendingWidgetScreenId else workspace.getCurrentPage()
+            val screenId =
+                if (pendingWidgetScreenId >= 0) pendingWidgetScreenId else workspace.getCurrentPage()
             val cellLayout = workspace.getActiveCellLayout()
-            val vacant = if (targetWidgetAddCellX >= 0 && targetWidgetAddCellY >= 0 &&
-                cellLayout?.isCellEmpty(targetWidgetAddCellX, targetWidgetAddCellY, pendingWidgetSpanX, pendingWidgetSpanY) == true
-            ) {
-                intArrayOf(targetWidgetAddCellX, targetWidgetAddCellY)
-            } else {
-                cellLayout?.findVacantCell(pendingWidgetSpanX, pendingWidgetSpanY)
-            }
+            val vacant =
+                if (targetWidgetAddCellX >= 0 && targetWidgetAddCellY >= 0 && cellLayout?.isCellEmpty(
+                        targetWidgetAddCellX,
+                        targetWidgetAddCellY,
+                        pendingWidgetSpanX,
+                        pendingWidgetSpanY
+                    ) == true
+                ) {
+                    intArrayOf(targetWidgetAddCellX, targetWidgetAddCellY)
+                } else {
+                    cellLayout?.findVacantCell(pendingWidgetSpanX, pendingWidgetSpanY)
+                }
             targetWidgetAddCellX = -1
             targetWidgetAddCellY = -1
 
             if (vacant == null) {
-                Toast.makeText(this, "Not enough space on this screen for this widget", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this, "Not enough space on this screen for this widget", Toast.LENGTH_SHORT
+                ).show()
                 appWidgetHost.deleteAppWidgetId(appWidgetId)
             } else {
                 pendingAutoResizeWidgetId = appWidgetId
@@ -1483,31 +1833,24 @@ class MainActivity : AppCompatActivity() {
             }
         }
         val dialog = WidgetActionPopup(
-            context = this,
-            widgetItem = widgetResolved,
-            onResize = {
+            context = this, widgetItem = widgetResolved, onResize = {
                 showWidgetResizeFrame(hostView, widgetResolved, cellLayout)
-            },
-            onConfigure = if (widgetResolved.providerInfo?.configure != null) {
+            }, onConfigure = if (widgetResolved.providerInfo?.configure != null) {
                 { reconfigureAppWidget(widgetResolved) }
-            } else null,
-            onMove = {
+            } else null, onMove = {
                 val item = WorkspaceResolvedItem(
-                    entity = widgetResolved.entity,
-                    appInfo = AppInfo(
+                    entity = widgetResolved.entity, appInfo = AppInfo(
                         label = widgetResolved.entity.title ?: "Widget",
                         packageName = widgetResolved.entity.packageName ?: "",
                         activityName = ""
                     )
                 )
                 dragController.startDrag(hostView, item, touchX, touchY)
-            },
-            onRemove = {
+            }, onRemove = {
                 viewModel.deleteAppWidget(widgetResolved, appWidgetHost)
                 cellLayout.removeView(hostView)
                 Toast.makeText(this, "Removed widget from home screen", Toast.LENGTH_SHORT).show()
-            }
-        )
+            })
         dialog.setOnDismissListener { if (activeTestDialog == dialog) activeTestDialog = null }
         activeTestDialog = dialog
         dialog.show()
@@ -1545,16 +1888,14 @@ class MainActivity : AppCompatActivity() {
                 dismissActiveResizeFrame()
                 pendingAutoResizeWidgetId = widgetResolved.entity.appWidgetId
                 val item = WorkspaceResolvedItem(
-                    entity = widgetResolved.entity,
-                    appInfo = AppInfo(
+                    entity = widgetResolved.entity, appInfo = AppInfo(
                         label = widgetResolved.entity.title ?: "Widget",
                         packageName = widgetResolved.entity.packageName ?: "",
                         activityName = ""
                     )
                 )
                 dragController.startDrag(hostView, item, rawX, rawY)
-            }
-        )
+            })
     }
 
     private fun dismissActiveResizeFrame() {
@@ -1578,23 +1919,36 @@ class MainActivity : AppCompatActivity() {
 
     private fun openFolderOverlay(folderResolved: WorkspaceFolderResolvedItem) {
         activeFolderId = folderResolved.entity.id
-        activeFolderIsDrawer = (folderResolved.entity.container == WorkspaceItemEntity.CONTAINER_DRAWER)
+        activeFolderIsDrawer =
+            (folderResolved.entity.container == WorkspaceItemEntity.CONTAINER_DRAWER)
         etFolderTitle.setText(folderResolved.title)
 
         val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-        val style = prefs.getString(FolderSettingsActivity.KEY_FOLDER_WINDOW_STYLE, FolderSettingsActivity.WINDOW_STYLE_WINDOW) ?: FolderSettingsActivity.WINDOW_STYLE_WINDOW
-        val bgColor = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_WINDOW_BG_COLOR, 0xFF202534.toInt())
+        val style = prefs.getString(
+            FolderSettingsActivity.KEY_FOLDER_WINDOW_STYLE,
+            FolderSettingsActivity.WINDOW_STYLE_WINDOW
+        ) ?: FolderSettingsActivity.WINDOW_STYLE_WINDOW
+        val bgColor =
+            prefs.getInt(FolderSettingsActivity.KEY_FOLDER_WINDOW_BG_COLOR, 0xFF202534.toInt())
         val bgAlpha = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_WINDOW_BG_ALPHA, 80)
-        val textColor = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_WINDOW_TEXT_COLOR, 0xFFFFFFFF.toInt())
-        val accentColor = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_WINDOW_ACCENT_COLOR, 0xFFD54526.toInt())
-        val cornerRadiusDp = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_WINDOW_CORNER_RADIUS, 16)
+        val textColor =
+            prefs.getInt(FolderSettingsActivity.KEY_FOLDER_WINDOW_TEXT_COLOR, 0xFFFFFFFF.toInt())
+        val accentColor =
+            prefs.getInt(FolderSettingsActivity.KEY_FOLDER_WINDOW_ACCENT_COLOR, 0xFFD54526.toInt())
+        val cornerRadiusDp =
+            prefs.getInt(FolderSettingsActivity.KEY_FOLDER_WINDOW_CORNER_RADIUS, 16)
         val shadow = prefs.getBoolean(FolderSettingsActivity.KEY_FOLDER_WINDOW_SHADOW, true)
-        val cardBgEnabled = prefs.getBoolean(FolderSettingsActivity.KEY_FOLDER_IMMERSIVE_CARD_BG, false)
-        val alignBottom = prefs.getBoolean(FolderSettingsActivity.KEY_FOLDER_IMMERSIVE_ALIGN_BOTTOM, false)
+        val cardBgEnabled =
+            prefs.getBoolean(FolderSettingsActivity.KEY_FOLDER_IMMERSIVE_CARD_BG, false)
+        val alignBottom =
+            prefs.getBoolean(FolderSettingsActivity.KEY_FOLDER_IMMERSIVE_ALIGN_BOTTOM, false)
         val showFolderName = prefs.getBoolean(FolderSettingsActivity.KEY_FOLDER_SHOW_NAME, true)
         val rows = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_GRID_ROWS, 3).coerceIn(2, 7)
         val cols = prefs.getInt(FolderSettingsActivity.KEY_FOLDER_GRID_COLS, 4).coerceIn(3, 6)
-        val scrollDir = prefs.getString(FolderSettingsActivity.KEY_FOLDER_SCROLL_DIRECTION, FolderSettingsActivity.SCROLL_DIR_VERTICAL) ?: FolderSettingsActivity.SCROLL_DIR_VERTICAL
+        val scrollDir = prefs.getString(
+            FolderSettingsActivity.KEY_FOLDER_SCROLL_DIRECTION,
+            FolderSettingsActivity.SCROLL_DIR_VERTICAL
+        ) ?: FolderSettingsActivity.SCROLL_DIR_VERTICAL
 
         val resolved = FolderGeometry.resolveFolderWindowAppearance(
             style = style,
@@ -1617,8 +1971,11 @@ class MainActivity : AppCompatActivity() {
 
         if (resolved.isImmersive) {
             val insets = ViewCompat.getRootWindowInsets(folderOverlay)
-            val statusBarTop = insets?.getInsets(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout())?.top ?: (24 * density).toInt()
-            val navBarBottom = insets?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: (24 * density).toInt()
+            val statusBarTop =
+                insets?.getInsets(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout())?.top
+                    ?: (24 * density).toInt()
+            val navBarBottom = insets?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom
+                ?: (24 * density).toInt()
 
             val params = folderCard.layoutParams as FrameLayout.LayoutParams
             folderCard.elevation = 0f
@@ -1626,11 +1983,14 @@ class MainActivity : AppCompatActivity() {
             if (resolved.showCardBackground) {
                 folderOverlay.setBackgroundColor(Color.argb((0.6f * 255).toInt(), 0, 0, 0))
                 params.width = ViewGroup.LayoutParams.MATCH_PARENT
-                params.height = if (resolved.alignBottom) ViewGroup.LayoutParams.WRAP_CONTENT else ViewGroup.LayoutParams.MATCH_PARENT
+                params.height =
+                    if (resolved.alignBottom) ViewGroup.LayoutParams.WRAP_CONTENT else ViewGroup.LayoutParams.MATCH_PARENT
                 params.gravity = if (resolved.alignBottom) Gravity.BOTTOM else Gravity.CENTER
                 val horiz = (16 * density).toInt()
-                val topMargin = if (resolved.alignBottom) statusBarTop else statusBarTop + (12 * density).toInt()
-                val bottomMargin = if (resolved.alignBottom) navBarBottom + (84 * density).toInt() else navBarBottom + (12 * density).toInt()
+                val topMargin =
+                    if (resolved.alignBottom) statusBarTop else statusBarTop + (12 * density).toInt()
+                val bottomMargin =
+                    if (resolved.alignBottom) navBarBottom + (84 * density).toInt() else navBarBottom + (12 * density).toInt()
                 params.setMargins(horiz, topMargin, horiz, bottomMargin)
                 folderCard.layoutParams = params
 
@@ -1638,13 +1998,21 @@ class MainActivity : AppCompatActivity() {
                     setColor(cardBgTint)
                     cornerRadius = resolved.effectiveCornerRadiusDp * density
                 }
-                folderCard.setPadding((20 * density).toInt(), (18 * density).toInt(), (20 * density).toInt(), (18 * density).toInt())
+                folderCard.setPadding(
+                    (20 * density).toInt(),
+                    (18 * density).toInt(),
+                    (20 * density).toInt(),
+                    (18 * density).toInt()
+                )
             } else {
                 folderOverlay.setBackgroundColor(cardBgTint)
                 params.width = ViewGroup.LayoutParams.MATCH_PARENT
-                params.height = if (resolved.alignBottom) ViewGroup.LayoutParams.WRAP_CONTENT else ViewGroup.LayoutParams.MATCH_PARENT
+                params.height =
+                    if (resolved.alignBottom) ViewGroup.LayoutParams.WRAP_CONTENT else ViewGroup.LayoutParams.MATCH_PARENT
                 params.gravity = if (resolved.alignBottom) Gravity.BOTTOM else Gravity.NO_GRAVITY
-                params.setMargins(0, 0, 0, if (resolved.alignBottom) navBarBottom + (84 * density).toInt() else 0)
+                params.setMargins(
+                    0, 0, 0, if (resolved.alignBottom) navBarBottom + (84 * density).toInt() else 0
+                )
                 folderCard.layoutParams = params
 
                 folderCard.background = GradientDrawable().apply {
@@ -1664,14 +2032,21 @@ class MainActivity : AppCompatActivity() {
             folderOverlay.setBackgroundColor(Color.argb(scrimAlpha, 0, 0, 0))
 
             val displayWidth = resources.displayMetrics.widthPixels
-            val maxCardWidth = (displayWidth - (48 * density).toInt()).coerceAtLeast((280 * density).toInt())
-            val targetCardWidth = ((cols * 76 + 40) * density).toInt().coerceIn((280 * density).toInt(), maxCardWidth)
+            val maxCardWidth =
+                (displayWidth - (48 * density).toInt()).coerceAtLeast((280 * density).toInt())
+            val targetCardWidth =
+                ((cols * 76 + 40) * density).toInt().coerceIn((280 * density).toInt(), maxCardWidth)
 
             val params = folderCard.layoutParams as FrameLayout.LayoutParams
             params.width = targetCardWidth
             params.height = ViewGroup.LayoutParams.WRAP_CONTENT
             params.gravity = Gravity.CENTER
-            params.setMargins((24 * density).toInt(), (48 * density).toInt(), (24 * density).toInt(), (48 * density).toInt())
+            params.setMargins(
+                (24 * density).toInt(),
+                (48 * density).toInt(),
+                (24 * density).toInt(),
+                (48 * density).toInt()
+            )
             folderCard.layoutParams = params
 
             folderCard.elevation = resolved.effectiveElevationDp * density
@@ -1680,7 +2055,12 @@ class MainActivity : AppCompatActivity() {
                 cornerRadius = cornerRadiusDp * density
             }
             folderCard.background = cardBg
-            folderCard.setPadding((20 * density).toInt(), (20 * density).toInt(), (20 * density).toInt(), (20 * density).toInt())
+            folderCard.setPadding(
+                (20 * density).toInt(),
+                (20 * density).toInt(),
+                (20 * density).toInt(),
+                (20 * density).toInt()
+            )
         }
 
         // Configure Grid Dimensions & Scroll Direction
@@ -1694,7 +2074,8 @@ class MainActivity : AppCompatActivity() {
             apps = activeFolderApps,
             onAppClick = { appInfo, view ->
                 AppManager.launchApp(this, appInfo, view)
-                val autoCloseFolder = prefs.getBoolean(FolderSettingsActivity.KEY_FOLDER_AUTO_CLOSE, true)
+                val autoCloseFolder =
+                    prefs.getBoolean(FolderSettingsActivity.KEY_FOLDER_AUTO_CLOSE, true)
                 if (autoCloseFolder) {
                     closeFolderOverlay()
                     if (activeFolderIsDrawer && prefs.getBoolean("key_drawer_autoclose", true)) {
@@ -1714,8 +2095,7 @@ class MainActivity : AppCompatActivity() {
                 }
             } else null,
             displayMode = if (isHorizontalScroll) AppsAdapter.DisplayMode.HORIZONTAL else AppsAdapter.DisplayMode.GRID,
-            isFolder = true
-        )
+            isFolder = true)
 
         folderSnapHelper?.attachToRecyclerView(null)
         folderSnapHelper = null
@@ -1738,7 +2118,9 @@ class MainActivity : AppCompatActivity() {
 
         etFolderTitle.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus && folderOverlay.visibility == View.VISIBLE) {
-                updateFolderCategorySuggestionsUi(etFolderTitle.text.toString(), showKeyboardRequested = true)
+                updateFolderCategorySuggestionsUi(
+                    etFolderTitle.text.toString(), showKeyboardRequested = true
+                )
             }
         }
 
@@ -1747,15 +2129,17 @@ class MainActivity : AppCompatActivity() {
         folderOverlay.animate().alpha(1f).setDuration(200).start()
     }
 
-    private fun updateFolderCategorySuggestionsUi(currentTitle: String, showKeyboardRequested: Boolean = false) {
+    private fun updateFolderCategorySuggestionsUi(
+        currentTitle: String, showKeyboardRequested: Boolean = false
+    ) {
         val scroll = findViewById<View>(R.id.scrollFolderCategorySuggestions) ?: return
-        val container = findViewById<LinearLayout>(R.id.containerFolderCategorySuggestions) ?: return
+        val container =
+            findViewById<LinearLayout>(R.id.containerFolderCategorySuggestions) ?: return
         val folderId = activeFolderId
-        val shouldShow = folderId != null && (
-            showKeyboardRequested ||
-                currentTitle.isBlank() ||
-                currentTitle.equals("Folder", ignoreCase = true)
-            )
+        val shouldShow =
+            folderId != null && (showKeyboardRequested || currentTitle.isBlank() || currentTitle.equals(
+                "Folder", ignoreCase = true
+            ))
         if (!shouldShow) {
             scroll.visibility = View.GONE
             return
@@ -1775,7 +2159,12 @@ class MainActivity : AppCompatActivity() {
                 text = catTitle
                 textSize = 12f
                 gravity = Gravity.CENTER
-                setPadding((10 * density).toInt(), (4 * density).toInt(), (10 * density).toInt(), (4 * density).toInt())
+                setPadding(
+                    (10 * density).toInt(),
+                    (4 * density).toInt(),
+                    (10 * density).toInt(),
+                    (4 * density).toInt()
+                )
                 setBackgroundResource(if (isCurrent) R.drawable.bg_nova_chip_active else R.drawable.bg_nova_chip_inactive)
                 setTextColor(
                     if (isCurrent) Color.WHITE
@@ -1784,8 +2173,7 @@ class MainActivity : AppCompatActivity() {
                 isClickable = true
                 isFocusable = true
                 val lp = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    (28 * density).toInt()
+                    LinearLayout.LayoutParams.WRAP_CONTENT, (28 * density).toInt()
                 ).apply { marginEnd = (6 * density).toInt() }
                 layoutParams = lp
                 setOnClickListener {
@@ -1837,7 +2225,9 @@ class MainActivity : AppCompatActivity() {
                         val snapView = snapHelper.findSnapView(lm)
                         if (snapView != null) {
                             val pos = lm.getPosition(snapView)
-                            val pageIndex = if (itemsPerPage > 0) (pos / itemsPerPage).coerceIn(0, pageCount - 1) else 0
+                            val pageIndex = if (itemsPerPage > 0) (pos / itemsPerPage).coerceIn(
+                                0, pageCount - 1
+                            ) else 0
                             folderPageIndicator.onPageSelected(pageIndex)
                         }
                     }
@@ -1859,6 +2249,8 @@ class MainActivity : AppCompatActivity() {
         if (activeFolderIsDrawer) {
             popup.menu.add(0, 5, 4, "Edit folder")
             popup.menu.add(0, 6, 5, "Delete folder")
+        } else {
+            popup.menu.add(0, 7, 4, "Edit folder gestures")
         }
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
@@ -1874,12 +2266,15 @@ class MainActivity : AppCompatActivity() {
                     }
                     true
                 }
+
                 2 -> {
                     viewModel.sortFolderAppsAlphabetically(folderId)
-                    activeFolderApps = activeFolderApps.sortedBy { it.label.lowercase() }.toMutableList()
+                    activeFolderApps =
+                        activeFolderApps.sortedBy { it.label.lowercase() }.toMutableList()
                     folderAppsAdapter.updateApps(activeFolderApps)
                     true
                 }
+
                 3 -> {
                     etFolderTitle.visibility = View.VISIBLE
                     etFolderTitle.requestFocus()
@@ -1888,19 +2283,31 @@ class MainActivity : AppCompatActivity() {
                     imm?.showSoftInput(etFolderTitle, InputMethodManager.SHOW_IMPLICIT)
                     true
                 }
+
                 4 -> {
                     closeFolderOverlay()
                     startActivity(Intent(this, FolderSettingsActivity::class.java))
                     true
                 }
+
                 5 -> {
                     showEditDrawerFolderDialog(folderId)
                     true
                 }
+
                 6 -> {
-                    confirmDeleteDrawerFolder(folderId, etFolderTitle.text.toString().ifBlank { "Folder" })
+                    confirmDeleteDrawerFolder(
+                        folderId, etFolderTitle.text.toString().ifBlank { "Folder" })
                     true
                 }
+
+                7 -> {
+                    findWorkspaceFolderResolvedItem(folderId)?.let { folder ->
+                        showEditWorkspaceItemDialog(folder.entity, folder.title, isFolder = true)
+                    }
+                    true
+                }
+
                 else -> false
             }
         }
@@ -1909,31 +2316,31 @@ class MainActivity : AppCompatActivity() {
 
     private fun showSelectAppsForFolderDialog(folderId: Long) {
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val allApps = AppManager.getInstalledApps(this@MainActivity).sortedBy { it.label.lowercase() }
-            val currentKeys = activeFolderApps.map { "${it.packageName}/${it.activityName}" }.toHashSet()
-            val available = allApps.filter { "${it.packageName}/${it.activityName}" !in currentKeys }
+            val allApps =
+                AppManager.getInstalledApps(this@MainActivity).sortedBy { it.label.lowercase() }
+            val currentKeys =
+                activeFolderApps.map { "${it.packageName}/${it.activityName}" }.toHashSet()
+            val available =
+                allApps.filter { "${it.packageName}/${it.activityName}" !in currentKeys }
             val labels = available.map { it.label }.toTypedArray()
             val checked = BooleanArray(available.size)
             withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (available.isEmpty()) {
-                    Toast.makeText(this@MainActivity, "All apps already added", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, "All apps already added", Toast.LENGTH_SHORT)
+                        .show()
                     return@withContext
                 }
-                AlertDialog.Builder(this@MainActivity)
-                    .setTitle("Add apps to folder")
+                AlertDialog.Builder(this@MainActivity).setTitle("Add apps to folder")
                     .setMultiChoiceItems(labels, checked) { _, idx, isChecked ->
                         checked[idx] = isChecked
-                    }
-                    .setPositiveButton("Add") { _, _ ->
+                    }.setPositiveButton("Add") { _, _ ->
                         val chosen = available.filterIndexed { idx, _ -> checked[idx] }
                         if (chosen.isNotEmpty()) {
                             viewModel.addAppsToFolder(folderId, chosen)
                             activeFolderApps.addAll(chosen)
                             folderAppsAdapter.updateApps(activeFolderApps)
                         }
-                    }
-                    .setNegativeButton("Cancel", null)
-                    .show()
+                    }.setNegativeButton("Cancel", null).show()
             }
         }
     }
@@ -1970,9 +2377,11 @@ class MainActivity : AppCompatActivity() {
             isEditing = false,
             onSave = { title, keepInMain, categoryId, autoAddNewApps ->
                 val preselectedKeys = if (categoryId != null) {
-                    installed
-                        .filter { !it.isFolder && SmartCategoryHelper.matchesCategory(it, categoryId) }
-                        .map { DrawerFolderHelper.componentKey(it.packageName, it.activityName) }
+                    installed.filter {
+                        !it.isFolder && SmartCategoryHelper.matchesCategory(
+                            it, categoryId
+                        )
+                    }.map { DrawerFolderHelper.componentKey(it.packageName, it.activityName) }
                         .toSet()
                 } else {
                     emptySet()
@@ -1993,8 +2402,7 @@ class MainActivity : AppCompatActivity() {
                         )
                     }
                 }
-            }
-        )
+            })
     }
 
     private fun showEditDrawerFolderDialog(folderId: Long) {
@@ -2025,8 +2433,7 @@ class MainActivity : AppCompatActivity() {
             },
             onDelete = {
                 confirmDeleteDrawerFolder(folderId, resolved.title)
-            }
-        )
+            })
     }
 
     private fun showSelectAppsForDrawerFolder(
@@ -2039,9 +2446,7 @@ class MainActivity : AppCompatActivity() {
             DrawerFolderHelper.componentKey(it.packageName, it.activityName)
         }.toSet()
         val dialog = FolderAppsPickerDialogFragment.newInstance(
-            title = folderTitle,
-            preselectedKeys = preselected,
-            apps = viewModel.installedApps.value
+            title = folderTitle, preselectedKeys = preselected, apps = viewModel.installedApps.value
         ) { chosen ->
             viewModel.setDrawerFolderApps(folderId, chosen)
             if (activeFolderId == folderId && activeFolderIsDrawer) {
@@ -2056,17 +2461,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun confirmDeleteDrawerFolder(folderId: Long, folderTitle: String) {
-        AlertDialog.Builder(this)
-            .setTitle("Delete \"$folderTitle\"?")
+        AlertDialog.Builder(this).setTitle("Delete \"$folderTitle\"?")
             .setMessage("Apps inside this folder will remain installed and appear back in your app drawer.")
             .setPositiveButton("Delete") { _, _ ->
                 viewModel.deleteDrawerFolder(folderId)
                 if (activeFolderId == folderId && folderOverlay.visibility == View.VISIBLE) {
                     closeFolderOverlay()
                 }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+            }.setNegativeButton("Cancel", null).show()
     }
 
     private fun showDrawerFolderPopupMenu(anchor: View, folderApp: AppInfo) {
@@ -2083,14 +2485,19 @@ class MainActivity : AppCompatActivity() {
                     openDrawerFolderById(folderId)
                     true
                 }
+
                 2 -> {
-                    showSelectAppsForDrawerFolder(folderId, folderApp.label, folderApp.folderChildren)
+                    showSelectAppsForDrawerFolder(
+                        folderId, folderApp.label, folderApp.folderChildren
+                    )
                     true
                 }
+
                 3 -> {
                     showEditDrawerFolderDialog(folderId)
                     true
                 }
+
                 4 -> {
                     val targetScreenId = workspace.getCurrentPageScreenId()
                     viewModel.copyDrawerFolderToDesktop(folderId, targetScreenId) { desktopId ->
@@ -2106,10 +2513,12 @@ class MainActivity : AppCompatActivity() {
                     }
                     true
                 }
+
                 5 -> {
                     confirmDeleteDrawerFolder(folderId, folderApp.label)
                     true
                 }
+
                 else -> false
             }
         }
@@ -2124,25 +2533,31 @@ class MainActivity : AppCompatActivity() {
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 1 -> {
-                    val folderResolved = viewModel.drawerFolders.value.find { it.entity.id == folderId }
-                    val targetKey = DrawerFolderHelper.componentKey(app.packageName, app.activityName)
+                    val folderResolved =
+                        viewModel.drawerFolders.value.find { it.entity.id == folderId }
+                    val targetKey =
+                        DrawerFolderHelper.componentKey(app.packageName, app.activityName)
                     val childEntity = folderResolved?.children?.find {
-                        DrawerFolderHelper.componentKey(it.appInfo.packageName, it.appInfo.activityName) == targetKey ||
-                            it.entity.packageName == app.packageName
+                        DrawerFolderHelper.componentKey(
+                            it.appInfo.packageName, it.appInfo.activityName
+                        ) == targetKey || it.entity.packageName == app.packageName
                     }?.entity
                     if (childEntity != null) {
                         viewModel.removeAppFromDrawerFolder(folderId, childEntity.id)
                     }
                     true
                 }
+
                 2 -> {
                     AppManager.openAppDetails(this, app.packageName)
                     true
                 }
+
                 3 -> {
                     AppManager.uninstallApp(this, app.packageName)
                     true
                 }
+
                 else -> false
             }
         }
@@ -2151,7 +2566,8 @@ class MainActivity : AppCompatActivity() {
 
     fun isDrawerTopScrolled(): Boolean {
         if (!::rvDrawerApps.isInitialized) return true
-        val lm = rvDrawerApps.layoutManager as? GridLayoutManager ?: (rvDrawerApps.layoutManager as? LinearLayoutManager) ?: return true
+        val lm = rvDrawerApps.layoutManager as? GridLayoutManager
+            ?: (rvDrawerApps.layoutManager as? LinearLayoutManager) ?: return true
         val firstVisible = lm.findFirstVisibleItemPosition()
         if (firstVisible <= 0) {
             val firstView = lm.findViewByPosition(0)
@@ -2194,11 +2610,8 @@ class MainActivity : AppCompatActivity() {
                 ((remainingDist / height) * 450L).toLong().coerceIn(180L, 450L)
             }
 
-            layoutAppDrawerOverlay.animate()
-                .translationY(0f)
-                .setDuration(duration)
-                .setInterpolator(android.view.animation.DecelerateInterpolator(2.0f))
-                .start()
+            layoutAppDrawerOverlay.animate().translationY(0f).setDuration(duration)
+                .setInterpolator(android.view.animation.DecelerateInterpolator(2.0f)).start()
             workspace.animate().scaleX(0.85f).scaleY(0.85f).alpha(0f).setDuration(duration).start()
             dockHotseat.animate().alpha(0f).setDuration(duration).start()
 
@@ -2208,8 +2621,11 @@ class MainActivity : AppCompatActivity() {
             if (showKeyboard) {
                 etDrawerSearch.post {
                     etDrawerSearch.requestFocus()
-                    val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
-                    imm?.showSoftInput(etDrawerSearch, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                    val imm =
+                        getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+                    imm?.showSoftInput(
+                        etDrawerSearch, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT
+                    )
                 }
             }
         } else {
@@ -2220,17 +2636,14 @@ class MainActivity : AppCompatActivity() {
                 ((remainingDist / height) * 400L).toLong().coerceIn(150L, 400L)
             }
 
-            layoutAppDrawerOverlay.animate()
-                .translationY(height)
-                .setDuration(duration)
+            layoutAppDrawerOverlay.animate().translationY(height).setDuration(duration)
                 .setInterpolator(android.view.animation.AccelerateInterpolator(1.5f))
                 .withEndAction {
                     layoutAppDrawerOverlay.visibility = View.GONE
                     layoutAppDrawerOverlay.translationY = 0f
                     etDrawerSearch.setText("")
                     applyDrawerPlacementAndSettings()
-                }
-                .start()
+                }.start()
             workspace.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(duration).start()
             dockHotseat.animate().alpha(1f).setDuration(duration).start()
         }
@@ -2260,28 +2673,25 @@ class MainActivity : AppCompatActivity() {
                 layoutAppDrawerOverlay.scaleX = 1.25f
                 layoutAppDrawerOverlay.scaleY = 1.25f
                 layoutAppDrawerOverlay.alpha = 0f
-                layoutAppDrawerOverlay.animate()
-                    .scaleX(1f).scaleY(1f).alpha(1f)
-                    .setDuration(durationOverlay)
-                    .setInterpolator(slideInterpolator)
-                    .start()
-                workspace.animate().scaleX(0.7f).scaleY(0.7f).alpha(0f).setDuration(durationWorkspace).start()
+                layoutAppDrawerOverlay.animate().scaleX(1f).scaleY(1f).alpha(1f)
+                    .setDuration(durationOverlay).setInterpolator(slideInterpolator).start()
+                workspace.animate().scaleX(0.7f).scaleY(0.7f).alpha(0f)
+                    .setDuration(durationWorkspace).start()
                 dockHotseat.animate().alpha(0f).setDuration(durationDock).start()
             }
+
             "FADE" -> {
                 layoutAppDrawerOverlay.visibility = View.VISIBLE
                 layoutAppDrawerOverlay.translationY = 0f
                 layoutAppDrawerOverlay.scaleX = 1f
                 layoutAppDrawerOverlay.scaleY = 1f
                 layoutAppDrawerOverlay.alpha = 0f
-                layoutAppDrawerOverlay.animate()
-                    .alpha(1f)
-                    .setDuration(durationOverlay)
-                    .setInterpolator(slideInterpolator)
-                    .start()
+                layoutAppDrawerOverlay.animate().alpha(1f).setDuration(durationOverlay)
+                    .setInterpolator(slideInterpolator).start()
                 workspace.animate().alpha(0f).setDuration(durationWorkspace).start()
                 dockHotseat.animate().alpha(0f).setDuration(durationDock).start()
             }
+
             else -> { // "SLIDE"
                 layoutAppDrawerOverlay.visibility = View.VISIBLE
                 layoutAppDrawerOverlay.scaleX = 1f
@@ -2289,12 +2699,10 @@ class MainActivity : AppCompatActivity() {
                 layoutAppDrawerOverlay.alpha = 1f
                 val height = resources.displayMetrics.heightPixels.toFloat()
                 layoutAppDrawerOverlay.translationY = height
-                layoutAppDrawerOverlay.animate()
-                    .translationY(0f)
-                    .setDuration(durationOverlay)
-                    .setInterpolator(slideInterpolator)
-                    .start()
-                workspace.animate().scaleX(0.85f).scaleY(0.85f).alpha(0f).setDuration(durationWorkspace).start()
+                layoutAppDrawerOverlay.animate().translationY(0f).setDuration(durationOverlay)
+                    .setInterpolator(slideInterpolator).start()
+                workspace.animate().scaleX(0.85f).scaleY(0.85f).alpha(0f)
+                    .setDuration(durationWorkspace).start()
                 dockHotseat.animate().alpha(0f).setDuration(durationDock).start()
             }
         }
@@ -2310,8 +2718,7 @@ class MainActivity : AppCompatActivity() {
             if (savedDrawerPosition > 0 || savedDrawerOffset != 0) {
                 rvDrawerApps.post {
                     (rvDrawerApps.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(
-                        savedDrawerPosition,
-                        savedDrawerOffset
+                        savedDrawerPosition, savedDrawerOffset
                     )
                 }
             } else {
@@ -2325,9 +2732,11 @@ class MainActivity : AppCompatActivity() {
 
         val incognito = prefs.getBoolean("key_drawer_search_incognito", false)
         if (incognito) {
-            etDrawerSearch.imeOptions = etDrawerSearch.imeOptions or android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
+            etDrawerSearch.imeOptions =
+                etDrawerSearch.imeOptions or android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
         } else {
-            etDrawerSearch.imeOptions = etDrawerSearch.imeOptions and android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING.inv()
+            etDrawerSearch.imeOptions =
+                etDrawerSearch.imeOptions and android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING.inv()
         }
 
         applyDrawerPlacementAndSettings()
@@ -2336,12 +2745,16 @@ class MainActivity : AppCompatActivity() {
         if (showKeyboard) {
             etDrawerSearch.post {
                 etDrawerSearch.requestFocus()
-                val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
-                imm?.showSoftInput(etDrawerSearch, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                val imm =
+                    getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+                imm?.showSoftInput(
+                    etDrawerSearch, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT
+                )
             }
         } else {
             etDrawerSearch.clearFocus()
-            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+            val imm =
+                getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
             imm?.hideSoftInputFromWindow(etDrawerSearch.windowToken, 0)
         }
     }
@@ -2357,9 +2770,11 @@ class MainActivity : AppCompatActivity() {
         val swipeIndicator = prefs.getBoolean("key_drawer_swipe_indicator", true)
         val swipeToOpen = prefs.getBoolean("key_drawer_swipe_to_open", true)
 
-        ivDrawerSwipeIndicator?.visibility = if (swipeIndicator && swipeToOpen && layoutAppDrawerOverlay.visibility != View.VISIBLE) View.VISIBLE else View.GONE
+        ivDrawerSwipeIndicator?.visibility =
+            if (swipeIndicator && swipeToOpen && layoutAppDrawerOverlay.visibility != View.VISIBLE) View.VISIBLE else View.GONE
 
-        findViewById<View>(R.id.layoutFrequentAppsHeader)?.visibility = if (showFrequent) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.layoutFrequentAppsHeader)?.visibility =
+            if (showFrequent) View.VISIBLE else View.GONE
         if (::rvFrequentApps.isInitialized) {
             rvFrequentApps.layoutManager = GridLayoutManager(this, cols)
         }
@@ -2378,17 +2793,21 @@ class MainActivity : AppCompatActivity() {
         val fastScrollColor = prefs.getInt("key_drawer_fastscroll_color", 0xFFD54526.toInt())
         fastScroller.setAccentColor(fastScrollColor)
 
-        val isHidden = drawerPlacement.equals("None", ignoreCase = true) || drawerPlacement.equals("Hidden", ignoreCase = true)
+        val isHidden = drawerPlacement.equals("None", ignoreCase = true) || drawerPlacement.equals(
+            "Hidden", ignoreCase = true
+        )
 
         when {
             isHidden -> {
                 searchContainer.visibility = View.GONE
             }
+
             drawerPlacement.equals("Bottom", ignoreCase = true) -> {
                 searchContainer.visibility = View.VISIBLE
                 drawerLayout.removeView(searchContainer)
                 drawerLayout.addView(searchContainer)
             }
+
             else -> { // "Top"
                 searchContainer.visibility = View.VISIBLE
                 drawerLayout.removeView(searchContainer)
@@ -2400,7 +2819,9 @@ class MainActivity : AppCompatActivity() {
         val drawerLogoView = findViewById<ImageView>(R.id.ivDrawerSearchLogo)
         val drawerActionsContainer = findViewById<LinearLayout>(R.id.containerDrawerBarActions)
         if (drawerBarView != null) {
-            val drawerConfig = com.example.launcherai.ui.SearchBarConfig.load(prefs, com.example.launcherai.ui.SearchBarConfig.MODE_DRAWER)
+            val drawerConfig = com.example.launcherai.ui.SearchBarConfig.load(
+                prefs, com.example.launcherai.ui.SearchBarConfig.MODE_DRAWER
+            )
             applySearchBarConfigToViews(
                 barView = drawerBarView,
                 logoView = drawerLogoView,
@@ -2420,8 +2841,10 @@ class MainActivity : AppCompatActivity() {
                 drawerAdapter.setDisplayMode(AppsAdapter.DisplayMode.LIST)
                 fastScroller.isEnabled = fastScrollEnabled
             }
+
             "Horizontal" -> {
-                rvDrawerApps.layoutManager = GridLayoutManager(this, rows, RecyclerView.HORIZONTAL, false)
+                rvDrawerApps.layoutManager =
+                    GridLayoutManager(this, rows, RecyclerView.HORIZONTAL, false)
                 drawerAdapter.setDisplayMode(AppsAdapter.DisplayMode.HORIZONTAL)
                 fastScroller.isEnabled = false
                 if (horizontalSnapHelper == null) {
@@ -2430,10 +2853,12 @@ class MainActivity : AppCompatActivity() {
                     horizontalSnapHelper = snap
                 }
             }
+
             else -> { // "Vertical"
                 horizontalSnapHelper?.attachToRecyclerView(null)
                 horizontalSnapHelper = null
-                rvDrawerApps.layoutManager = GridLayoutManager(this, cols, RecyclerView.VERTICAL, false)
+                rvDrawerApps.layoutManager =
+                    GridLayoutManager(this, cols, RecyclerView.VERTICAL, false)
                 drawerAdapter.setDisplayMode(AppsAdapter.DisplayMode.GRID)
                 fastScroller.isEnabled = fastScrollEnabled
             }
@@ -2467,8 +2892,13 @@ class MainActivity : AppCompatActivity() {
         val activePresetCategories = SmartFolderCategory.PRESET_CATEGORIES.filter { cat ->
             fullDrawerAppsList.any { item ->
                 if (item.isFolder) {
-                    item.smartCategoryId?.equals(cat.id, ignoreCase = true) == true ||
-                        item.folderChildren.any { SmartCategoryHelper.matchesCategory(it, cat.id) }
+                    item.smartCategoryId?.equals(
+                        cat.id, ignoreCase = true
+                    ) == true || item.folderChildren.any {
+                        SmartCategoryHelper.matchesCategory(
+                            it, cat.id
+                        )
+                    }
                 } else {
                     SmartCategoryHelper.matchesCategory(item, cat.id)
                 }
@@ -2486,14 +2916,22 @@ class MainActivity : AppCompatActivity() {
                 text = category
                 textSize = 13f
                 gravity = Gravity.CENTER
-                setPadding((14 * density).toInt(), (6 * density).toInt(), (14 * density).toInt(), (6 * density).toInt())
+                setPadding(
+                    (14 * density).toInt(),
+                    (6 * density).toInt(),
+                    (14 * density).toInt(),
+                    (6 * density).toInt()
+                )
                 setBackgroundResource(if (isSelected) R.drawable.bg_nova_chip_active else R.drawable.bg_nova_chip_inactive)
-                setTextColor(if (isSelected) Color.WHITE else ContextCompat.getColor(this@MainActivity, R.color.nova_text_brown_primary))
+                setTextColor(
+                    if (isSelected) Color.WHITE else ContextCompat.getColor(
+                        this@MainActivity, R.color.nova_text_brown_primary
+                    )
+                )
                 isClickable = true
                 isFocusable = true
                 val lp = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    (32 * density).toInt()
+                    LinearLayout.LayoutParams.WRAP_CONTENT, (32 * density).toInt()
                 ).apply {
                     marginStart = (8 * density).toInt()
                 }
@@ -2516,20 +2954,13 @@ class MainActivity : AppCompatActivity() {
     private fun confirmCreateSmartCategoryFolder(suggestion: SmartCategorySuggestion) {
         val catTitle = suggestion.category.defaultTitle
         val count = suggestion.matchingApps.size
-        AlertDialog.Builder(this)
-            .setTitle("Add '$catTitle' Folder")
-            .setMessage(
-                "We found $count apps that would fit into a '$catTitle' folder. " +
-                    "Would you like to create one? Future '$catTitle' apps will automatically get added to this folder."
-            )
-            .setPositiveButton("Create") { _, _ ->
-                viewModel.enableSmartCategoryFolder(suggestion.category, suggestion.matchingApps)
-            }
-            .setNeutralButton("Dismiss") { _, _ ->
-                viewModel.dismissSmartCategorySuggestion(suggestion.category)
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        AlertDialog.Builder(this).setTitle("Add '$catTitle' Folder").setMessage(
+            "We found $count apps that would fit into a '$catTitle' folder. " + "Would you like to create one? Future '$catTitle' apps will automatically get added to this folder."
+        ).setPositiveButton("Create") { _, _ ->
+            viewModel.enableSmartCategoryFolder(suggestion.category, suggestion.matchingApps)
+        }.setNeutralButton("Dismiss") { _, _ ->
+            viewModel.dismissSmartCategorySuggestion(suggestion.category)
+        }.setNegativeButton("Cancel", null).show()
     }
 
     private fun matchesAppCategory(app: AppInfo, category: String): Boolean {
@@ -2541,7 +2972,9 @@ class MainActivity : AppCompatActivity() {
         return apps.filter { app ->
             if (app.isFolder) {
                 app.smartCategoryId?.let {
-                    SmartCategoryHelper.matchesCategory(AppInfo(app.label, "", "", category = it), category)
+                    SmartCategoryHelper.matchesCategory(
+                        AppInfo(app.label, "", "", category = it), category
+                    )
                 } == true || app.folderChildren.any { matchesAppCategory(it, category) }
             } else {
                 matchesAppCategory(app, category)
@@ -2557,14 +2990,14 @@ class MainActivity : AppCompatActivity() {
         drawerAdapter.updateApps(sorted)
         fastScroller.updateApps(sorted)
         val query = viewModel.searchQuery.value
-        tvDrawerEmpty.visibility = if (sorted.isEmpty() && query.isNotBlank()) View.VISIBLE else View.GONE
+        tvDrawerEmpty.visibility =
+            if (sorted.isEmpty() && query.isNotBlank()) View.VISIBLE else View.GONE
 
         val rememberPos = prefs.getBoolean("key_drawer_remember_position", false)
         if (query.isBlank() && selectedCategory == "All" && rememberPos && (savedDrawerPosition > 0 || savedDrawerOffset != 0)) {
             rvDrawerApps.post {
                 (rvDrawerApps.layoutManager as? LinearLayoutManager)?.scrollToPositionWithOffset(
-                    savedDrawerPosition,
-                    savedDrawerOffset
+                    savedDrawerPosition, savedDrawerOffset
                 )
             }
         }
@@ -2579,12 +3012,16 @@ class MainActivity : AppCompatActivity() {
 
         if (query.isNotBlank()) {
             val shortcutSearch = prefs.getBoolean("key_shortcut_search", true)
-            val hasContactPerm = ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
+            val hasContactPerm = ContextCompat.checkSelfPermission(
+                this, android.Manifest.permission.READ_CONTACTS
+            ) == PackageManager.PERMISSION_GRANTED
             val contactSearch = prefs.getBoolean("key_contact_search", false) && hasContactPerm
 
             val childCount = chipsContainer.childCount
             if (childCount > FIXED_DRAWER_CHIP_COUNT) {
-                chipsContainer.removeViews(FIXED_DRAWER_CHIP_COUNT, childCount - FIXED_DRAWER_CHIP_COUNT)
+                chipsContainer.removeViews(
+                    FIXED_DRAWER_CHIP_COUNT, childCount - FIXED_DRAWER_CHIP_COUNT
+                )
             }
 
             val density = resources.displayMetrics.density
@@ -2596,21 +3033,32 @@ class MainActivity : AppCompatActivity() {
 
             // Add Contact results if contact search is enabled
             if (contactSearch) {
-                val contacts = com.example.launcherai.search.ContactSearchHelper.searchContacts(this, query, 3)
+                val contacts =
+                    com.example.launcherai.search.ContactSearchHelper.searchContacts(this, query, 3)
                 contacts.forEach { contact ->
                     val chipView = TextView(this).apply {
                         text = "📞 ${contact.name}"
                         textSize = 13f
-                        setPadding((14 * density).toInt(), (6 * density).toInt(), (14 * density).toInt(), (6 * density).toInt())
+                        setPadding(
+                            (14 * density).toInt(),
+                            (6 * density).toInt(),
+                            (14 * density).toInt(),
+                            (6 * density).toInt()
+                        )
                         setBackgroundResource(R.drawable.bg_nova_search_pill_drawer)
-                        setTextColor(ContextCompat.getColor(this@MainActivity, R.color.nova_text_brown_primary))
+                        setTextColor(
+                            ContextCompat.getColor(
+                                this@MainActivity, R.color.nova_text_brown_primary
+                            )
+                        )
                         val lp = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.WRAP_CONTENT,
-                            (32 * density).toInt()
+                            LinearLayout.LayoutParams.WRAP_CONTENT, (32 * density).toInt()
                         ).apply { marginStart = (8 * density).toInt() }
                         layoutParams = lp
                         setOnClickListener {
-                            com.example.launcherai.search.ContactSearchHelper.dialContact(this@MainActivity, contact.number)
+                            com.example.launcherai.search.ContactSearchHelper.dialContact(
+                                this@MainActivity, contact.number
+                            )
                             val p = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
                             if (p.getBoolean("key_drawer_autoclose", true)) {
                                 closeAppDrawer()
@@ -2623,28 +3071,42 @@ class MainActivity : AppCompatActivity() {
 
             // Add Shortcut results if shortcut search is enabled
             if (shortcutSearch) {
-                val shortcuts = com.example.launcherai.search.ShortcutSearchHelper.searchShortcuts(this, query)
+                val shortcuts =
+                    com.example.launcherai.search.ShortcutSearchHelper.searchShortcuts(this, query)
                 shortcuts.take(3).forEach { shortcut ->
                     val chipView = TextView(this).apply {
                         text = "🔍 ${shortcut.title}"
                         textSize = 13f
-                        setPadding((14 * density).toInt(), (6 * density).toInt(), (14 * density).toInt(), (6 * density).toInt())
+                        setPadding(
+                            (14 * density).toInt(),
+                            (6 * density).toInt(),
+                            (14 * density).toInt(),
+                            (6 * density).toInt()
+                        )
                         setBackgroundResource(R.drawable.bg_nova_search_pill_drawer)
-                        setTextColor(ContextCompat.getColor(this@MainActivity, R.color.nova_text_brown_primary))
+                        setTextColor(
+                            ContextCompat.getColor(
+                                this@MainActivity, R.color.nova_text_brown_primary
+                            )
+                        )
                         val lp = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.WRAP_CONTENT,
-                            (32 * density).toInt()
+                            LinearLayout.LayoutParams.WRAP_CONTENT, (32 * density).toInt()
                         ).apply { marginStart = (8 * density).toInt() }
                         layoutParams = lp
                         setOnClickListener {
                             try {
                                 startActivity(shortcut.intent)
-                                val p = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                                val p =
+                                    getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
                                 if (p.getBoolean("key_drawer_autoclose", true)) {
                                     closeAppDrawer()
                                 }
                             } catch (e: Exception) {
-                                Toast.makeText(this@MainActivity, "Cannot start shortcut action", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "Cannot start shortcut action",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         }
                     }
@@ -2670,34 +3132,32 @@ class MainActivity : AppCompatActivity() {
                     savedDrawerPosition = pos
                     val firstView = lm.findViewByPosition(pos)
                     savedDrawerOffset = firstView?.top ?: 0
-                    prefs.edit()
-                        .putInt("key_drawer_saved_pos", savedDrawerPosition)
-                        .putInt("key_drawer_saved_offset", savedDrawerOffset)
-                        .apply()
+                    prefs.edit().putInt("key_drawer_saved_pos", savedDrawerPosition)
+                        .putInt("key_drawer_saved_offset", savedDrawerOffset).apply()
                 }
             }
         } else {
             savedDrawerPosition = 0
             savedDrawerOffset = 0
-            prefs.edit()
-                .putInt("key_drawer_saved_pos", 0)
-                .putInt("key_drawer_saved_offset", 0)
+            prefs.edit().putInt("key_drawer_saved_pos", 0).putInt("key_drawer_saved_offset", 0)
                 .apply()
             rvDrawerApps.scrollToPosition(0)
         }
 
         when (animMode.uppercase()) {
             "ZOOM" -> {
-                layoutAppDrawerOverlay.animate().scaleX(1.25f).scaleY(1.25f).alpha(0f).setDuration(220).withEndAction {
-                    layoutAppDrawerOverlay.visibility = View.GONE
-                    layoutAppDrawerOverlay.scaleX = 1f
-                    layoutAppDrawerOverlay.scaleY = 1f
-                    etDrawerSearch.setText("")
-                    applyDrawerPlacementAndSettings()
-                }.start()
+                layoutAppDrawerOverlay.animate().scaleX(1.25f).scaleY(1.25f).alpha(0f)
+                    .setDuration(220).withEndAction {
+                        layoutAppDrawerOverlay.visibility = View.GONE
+                        layoutAppDrawerOverlay.scaleX = 1f
+                        layoutAppDrawerOverlay.scaleY = 1f
+                        etDrawerSearch.setText("")
+                        applyDrawerPlacementAndSettings()
+                    }.start()
                 workspace.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(240).start()
                 dockHotseat.animate().alpha(1f).setDuration(200).start()
             }
+
             "FADE" -> {
                 layoutAppDrawerOverlay.animate().alpha(0f).setDuration(200).withEndAction {
                     layoutAppDrawerOverlay.visibility = View.GONE
@@ -2707,14 +3167,17 @@ class MainActivity : AppCompatActivity() {
                 workspace.animate().alpha(1f).setDuration(200).start()
                 dockHotseat.animate().alpha(1f).setDuration(200).start()
             }
+
             else -> { // "SLIDE"
                 val height = resources.displayMetrics.heightPixels.toFloat()
-                layoutAppDrawerOverlay.animate().translationY(height).setDuration(240).setInterpolator(android.view.animation.AccelerateInterpolator(1.5f)).withEndAction {
-                    layoutAppDrawerOverlay.visibility = View.GONE
-                    layoutAppDrawerOverlay.translationY = 0f
-                    etDrawerSearch.setText("")
-                    applyDrawerPlacementAndSettings()
-                }.start()
+                layoutAppDrawerOverlay.animate().translationY(height).setDuration(240)
+                    .setInterpolator(android.view.animation.AccelerateInterpolator(1.5f))
+                    .withEndAction {
+                        layoutAppDrawerOverlay.visibility = View.GONE
+                        layoutAppDrawerOverlay.translationY = 0f
+                        etDrawerSearch.setText("")
+                        applyDrawerPlacementAndSettings()
+                    }.start()
                 workspace.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(240).start()
                 dockHotseat.animate().alpha(1f).setDuration(200).start()
             }
@@ -2722,16 +3185,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun showUndoBar(item: WorkspaceResolvedItem) {
-        val lookFeelPrefs = getSharedPreferences(LookFeelSettingsActivity.PREFS_NAME, Context.MODE_PRIVATE)
+        val lookFeelPrefs =
+            getSharedPreferences(LookFeelSettingsActivity.PREFS_NAME, Context.MODE_PRIVATE)
         val showUndo = lookFeelPrefs.getBoolean(LookFeelSettingsActivity.KEY_SHOW_UNDO_BAR, true)
         if (!showUndo) return
 
         val label = if (item.appInfo.label.isNotEmpty()) item.appInfo.label else "Item"
         val rootView = findViewById<View>(android.R.id.content) ?: return
         val snackbar = com.google.android.material.snackbar.Snackbar.make(
-            rootView,
-            "$label removed",
-            5000
+            rootView, "$label removed", 5000
         )
         snackbar.setAction("UNDO") {
             viewModel.addWorkspaceItem(item.entity)
@@ -2744,24 +3206,29 @@ class MainActivity : AppCompatActivity() {
             shape = android.graphics.drawable.GradientDrawable.RECTANGLE
             cornerRadius = 24f * density
             setColor(ContextCompat.getColor(this@MainActivity, R.color.bg_surface_elevated))
-            setStroke((1 * density).toInt(), ContextCompat.getColor(this@MainActivity, R.color.card_stroke))
+            setStroke(
+                (1 * density).toInt(),
+                ContextCompat.getColor(this@MainActivity, R.color.card_stroke)
+            )
         }
         snackbar.view.background = bg
         val params = snackbar.view.layoutParams as? android.view.ViewGroup.MarginLayoutParams
         params?.let {
             it.setMargins(
-                (16 * density).toInt(),
-                0,
-                (16 * density).toInt(),
-                (24 * density).toInt()
+                (16 * density).toInt(), 0, (16 * density).toInt(), (24 * density).toInt()
             )
             snackbar.view.layoutParams = it
         }
         snackbar.show()
     }
 
-    fun showAppItemPopupMenu(anchorView: View, item: WorkspaceResolvedItem, isDrawer: Boolean = false) {
-        AppItemPopupMenu(
+    private var activeDrawerPopup: AppItemPopupMenu? = null
+
+    fun showAppItemPopupMenu(
+        anchorView: View, item: WorkspaceResolvedItem, isDrawer: Boolean = false
+    ): AppItemPopupMenu {
+        activeDrawerPopup?.dismiss()
+        val popup = AppItemPopupMenu(
             context = this,
             anchorView = anchorView,
             appInfo = item.appInfo,
@@ -2771,7 +3238,7 @@ class MainActivity : AppCompatActivity() {
                 showUndoBar(item)
             },
             onEditClick = {
-                showRenameAppDialog(item)
+                showEditWorkspaceItemDialog(item.entity, item.appInfo.label, isFolder = false)
             },
             onHideClick = {
                 showHiddenAppsDialog()
@@ -2779,31 +3246,112 @@ class MainActivity : AppCompatActivity() {
             onWidgetsClick = {
                 showWidgetPicker()
             }
-        ).show()
+        )
+        popup.show()
+        if (isDrawer) {
+            activeDrawerPopup = popup
+        }
+        return popup
     }
 
-    private fun showRenameAppDialog(item: WorkspaceResolvedItem) {
-        val input = android.widget.EditText(this).apply {
-            setText(item.appInfo.label)
+    fun dismissDrawerPopup() {
+        activeDrawerPopup?.dismiss()
+        activeDrawerPopup = null
+    }
+
+//        ).show()
+
+    private fun showEditWorkspaceItemDialog(
+        itemEntity: WorkspaceItemEntity, fallbackTitle: String, isFolder: Boolean
+    ) {
+        val density = resources.displayMetrics.density
+        var selectedSwipeUp = NamedAction.deserialize(itemEntity.swipeUpAction)
+        var selectedSwipeDown = NamedAction.deserialize(itemEntity.swipeDownAction)
+
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val hPad = (20 * density).toInt()
+            val vPad = (12 * density).toInt()
+            setPadding(hPad, vPad, hPad, vPad / 2)
+        }
+
+        val inputTitle = EditText(this).apply {
+            hint = if (isFolder) "Folder name" else "App label"
+            setText(itemEntity.title?.takeIf { it.isNotBlank() } ?: fallbackTitle)
             setSelection(text.length)
             setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_primary))
         }
-        val container = android.widget.FrameLayout(this).apply {
-            val pad = (20 * resources.displayMetrics.density).toInt()
-            setPadding(pad, pad / 2, pad, pad / 2)
-            addView(input)
-        }
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("Edit shortcut")
-            .setView(container)
-            .setPositiveButton("Save") { _, _ ->
-                val newName = input.text.toString().trim()
-                if (newName.isNotEmpty()) {
-                    Toast.makeText(this, "Renamed to $newName", Toast.LENGTH_SHORT).show()
+        root.addView(inputTitle)
+
+        fun addSwipePickerRow(
+            directionLabel: String, current: NamedAction, onPicked: (NamedAction) -> Unit
+        ) {
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                val lp = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    topMargin = (14 * density).toInt()
+                }
+                layoutParams = lp
+                val pad = (10 * density).toInt()
+                setPadding(pad, pad, pad, pad)
+                background = GradientDrawable().apply {
+                    setColor(0x14000000)
+                    cornerRadius = 10f * density
                 }
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+            val tvTitle = TextView(this).apply {
+                text = directionLabel
+                textSize = 14f
+                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_primary))
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            }
+            val tvSummary = TextView(this).apply {
+                text = current.displaySummary()
+                textSize = 13f
+                setTextColor(0xFFD54526.toInt())
+            }
+            row.addView(tvTitle)
+            row.addView(tvSummary)
+            row.setOnClickListener {
+                itemEditSwipeCallback = { chosen ->
+                    onPicked(chosen)
+                    tvSummary.text = chosen.displaySummary()
+                }
+                itemSwipePickerLauncher.launch(
+                    ChooseActionActivity.createIntent(
+                        context = this@MainActivity,
+                        title = directionLabel,
+                        slotKey = "item_${itemEntity.id}_$directionLabel",
+                        folderMode = isFolder
+                    )
+                )
+            }
+            root.addView(row)
+        }
+
+        addSwipePickerRow("Swipe up action", selectedSwipeUp) { selectedSwipeUp = it }
+        addSwipePickerRow("Swipe down action", selectedSwipeDown) { selectedSwipeDown = it }
+
+        AlertDialog.Builder(this).setTitle(if (isFolder) "Edit folder" else "Edit shortcut")
+            .setView(root).setPositiveButton("Save") { _, _ ->
+                val newName = inputTitle.text.toString().trim().ifEmpty { fallbackTitle }
+                val upSerialized = if (selectedSwipeUp.isNone) null else selectedSwipeUp.serialize()
+                val downSerialized =
+                    if (selectedSwipeDown.isNone) null else selectedSwipeDown.serialize()
+                viewModel.updateItemEditDetails(
+                    itemId = itemEntity.id,
+                    newTitle = newName,
+                    swipeUpAction = upSerialized,
+                    swipeDownAction = downSerialized
+                )
+                if (isFolder && activeFolderId == itemEntity.id) {
+                    etFolderTitle.setText(newName)
+                }
+                Toast.makeText(this, "Saved $newName", Toast.LENGTH_SHORT).show()
+            }.setNegativeButton("Cancel", null).show()
     }
 
     private fun handleTestCommand(intent: Intent?) {
@@ -2816,61 +3364,87 @@ class MainActivity : AppCompatActivity() {
                 activeTestDialog?.dismiss()
                 activeTestDialog = null
             }
+
             "show_home_options" -> {
                 activeTestDialog?.dismiss()
                 val cx = intent.getIntExtra("cellX", 1)
                 val cy = intent.getIntExtra("cellY", 2)
                 showHomeScreenOptions(cx, cy)
             }
+
             "show_page_overview" -> {
                 activeTestDialog?.dismiss()
                 showPageOverview()
             }
+
             "show_widget_picker" -> {
                 activeTestDialog?.dismiss()
                 showWidgetPicker()
             }
+
             "expand_widget_group" -> {
                 val group = intent.getStringExtra("group") ?: "Chrome"
-                (activeTestDialog as? com.example.launcherai.widgets.WidgetPickerDialog)?.expandGroup(group)
+                (activeTestDialog as? com.example.launcherai.widgets.WidgetPickerDialog)?.expandGroup(
+                    group
+                )
             }
+
             "select_widget_item" -> {
                 val group = intent.getStringExtra("group") ?: "Chrome"
                 val index = intent.getIntExtra("index", 0)
-                (activeTestDialog as? com.example.launcherai.widgets.WidgetPickerDialog)?.selectWidget(group, index)
+                (activeTestDialog as? com.example.launcherai.widgets.WidgetPickerDialog)?.selectWidget(
+                    group, index
+                )
             }
+
             "tap_widget_item" -> {
                 val group = intent.getStringExtra("group") ?: "Chrome"
                 val index = intent.getIntExtra("index", 0)
-                (activeTestDialog as? com.example.launcherai.widgets.WidgetPickerDialog)?.tapWidget(group, index)
+                (activeTestDialog as? com.example.launcherai.widgets.WidgetPickerDialog)?.tapWidget(
+                    group, index
+                )
             }
+
             "long_press_widget_item" -> {
                 val group = intent.getStringExtra("group") ?: "Chrome"
                 val index = intent.getIntExtra("index", 0)
-                (activeTestDialog as? com.example.launcherai.widgets.WidgetPickerDialog)?.longPressWidget(group, index)
+                (activeTestDialog as? com.example.launcherai.widgets.WidgetPickerDialog)?.longPressWidget(
+                    group, index
+                )
             }
+
             "show_tap_select_widget_picker" -> {
                 activeTestDialog?.dismiss()
-                val dialog = WidgetPickerDialog(this, null, isTapSelectMode = true) { providerInfo, spanX, spanY ->
+                val dialog = WidgetPickerDialog(
+                    this, null, isTapSelectMode = true
+                ) { providerInfo, spanX, spanY ->
                     requestAddWidget(providerInfo, spanX, spanY)
                 }
-                dialog.setOnDismissListener { if (activeTestDialog == dialog) activeTestDialog = null }
+                dialog.setOnDismissListener {
+                    if (activeTestDialog == dialog) activeTestDialog = null
+                }
                 activeTestDialog = dialog
                 dialog.show()
             }
+
             "search_widget_picker" -> {
                 val query = intent.getStringExtra("query") ?: ""
-                (activeTestDialog as? com.example.launcherai.widgets.WidgetPickerDialog)?.findViewById<EditText>(R.id.etWidgetSearch)?.setText(query)
+                (activeTestDialog as? com.example.launcherai.widgets.WidgetPickerDialog)?.findViewById<EditText>(
+                    R.id.etWidgetSearch
+                )?.setText(query)
             }
+
             "add_widget" -> {
                 activeTestDialog?.dismiss()
                 activeTestDialog = null
                 val pkg = intent.getStringExtra("pkg") ?: "com.android.chrome"
-                val provider = appWidgetManager.installedProviders.firstOrNull { it.provider.packageName == pkg }
-                    ?: appWidgetManager.installedProviders.firstOrNull()
+                val provider =
+                    appWidgetManager.installedProviders.firstOrNull { it.provider.packageName == pkg }
+                        ?: appWidgetManager.installedProviders.firstOrNull()
                 if (provider != null) {
                     val appWidgetId = appWidgetHost.allocateAppWidgetId()
-                    val canBind = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, provider.provider)
+                    val canBind =
+                        appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, provider.provider)
                     if (canBind) {
                         pendingAutoResizeWidgetId = appWidgetId
                         viewModel.addAppWidgetToWorkspace(
@@ -2885,6 +3459,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+
             "widget_long_press" -> {
                 activeTestDialog?.dismiss()
                 activeTestDialog = null
@@ -2901,14 +3476,17 @@ class MainActivity : AppCompatActivity() {
                     }
                 }, 500)
             }
+
             "verify_direct_drag_resize" -> {
                 activeTestDialog?.dismiss()
                 activeTestDialog = null
                 workspace.postDelayed({
                     val cell = workspace.getActiveCellLayout()
-                    val hostView = (0 until (cell?.childCount ?: 0))
-                        .mapNotNull { cell?.getChildAt(it) as? LauncherAppWidgetHostView }
-                        .firstOrNull()
+                    val hostView = (0 until (cell?.childCount ?: 0)).mapNotNull {
+                        cell?.getChildAt(
+                            it
+                        ) as? LauncherAppWidgetHostView
+                    }.firstOrNull()
 
                     val results = StringBuilder()
                     results.append("=== Direct Widget Drag & Resize Verification ===\n")
@@ -2920,29 +3498,48 @@ class MainActivity : AppCompatActivity() {
                             val isPopupShowing = activeTestDialog != null
                             results.append("Direct Manipulation Mode Entered: $isFrameShowing\n")
                             results.append("WidgetActionPopup Suppressed: ${!isPopupShowing}\n")
-                            results.append("Resize Handles Available: ${activeResizeFrame?.findViewById<View>(R.id.handleRight) != null}\n")
-                            results.append("Badge Text: ${activeResizeFrame?.findViewById<TextView>(R.id.tvResizeSpan)?.text}\n")
+                            results.append(
+                                "Resize Handles Available: ${
+                                    activeResizeFrame?.findViewById<View>(
+                                        R.id.handleRight
+                                    ) != null
+                                }\n"
+                            )
+                            results.append(
+                                "Badge Text: ${
+                                    activeResizeFrame?.findViewById<TextView>(
+                                        R.id.tvResizeSpan
+                                    )?.text
+                                }\n"
+                            )
 
                             val pass = isFrameShowing && !isPopupShowing
                             results.append("Result: ${if (pass) "PASS" else "FAIL"}\n")
 
-                            val outFile = java.io.File(getExternalFilesDir(null), "direct_drag_resize_verification.txt")
+                            val outFile = java.io.File(
+                                getExternalFilesDir(null), "direct_drag_resize_verification.txt"
+                            )
                             outFile.writeText(results.toString())
                             android.util.Log.i("LauncherAI_Test", results.toString())
                         }, 500)
                     } else {
                         results.append("No placed widget found on active page. Result: SKIPPED\n")
-                        val outFile = java.io.File(getExternalFilesDir(null), "direct_drag_resize_verification.txt")
+                        val outFile = java.io.File(
+                            getExternalFilesDir(null), "direct_drag_resize_verification.txt"
+                        )
                         outFile.writeText(results.toString())
                     }
                 }, 500)
             }
+
             "test_drag_widget" -> {
                 workspace.postDelayed({
                     val cell = workspace.getActiveCellLayout()
-                    val hostView = (0 until (cell?.childCount ?: 0))
-                        .mapNotNull { cell?.getChildAt(it) as? LauncherAppWidgetHostView }
-                        .firstOrNull()
+                    val hostView = (0 until (cell?.childCount ?: 0)).mapNotNull {
+                        cell?.getChildAt(
+                            it
+                        ) as? LauncherAppWidgetHostView
+                    }.firstOrNull()
                     val results = StringBuilder()
                     results.append("=== Direct Widget Drag & Move Test ===\n")
                     if (hostView != null && cell != null) {
@@ -2953,7 +3550,9 @@ class MainActivity : AppCompatActivity() {
 
                         val resolved = (hostView.tag as? WorkspaceWidgetResolvedItem)
                             ?: (hostView.tag as? WorkspaceItemEntity)?.let { ent ->
-                                WorkspaceWidgetResolvedItem(ent, hostView.appWidgetId, hostView.appWidgetInfo)
+                                WorkspaceWidgetResolvedItem(
+                                    ent, hostView.appWidgetId, hostView.appWidgetInfo
+                                )
                             }
                         if (resolved != null) {
                             val targetY = if (origY + 1 < cell.countY) origY + 1 else origY - 1
@@ -2961,8 +3560,7 @@ class MainActivity : AppCompatActivity() {
                             results.append("Moving widget to target cell: ($targetX, $targetY)\n")
 
                             val item = WorkspaceResolvedItem(
-                                entity = resolved.entity,
-                                appInfo = AppInfo(
+                                entity = resolved.entity, appInfo = AppInfo(
                                     label = resolved.entity.title ?: "Widget",
                                     packageName = resolved.entity.packageName ?: "",
                                     activityName = ""
@@ -2973,13 +3571,19 @@ class MainActivity : AppCompatActivity() {
                             dragController.startDrag(hostView, item, 500f, 800f)
                             results.append("DragController isDragging: ${dragController.isDragging}\n")
 
-                            val targetPixelX = targetX * cell.getCellWidth() + cell.getCellWidth() / 2f
-                            val targetPixelY = targetY * cell.getCellHeight() + cell.getCellHeight() / 2f
+                            val targetPixelX =
+                                targetX * cell.getCellWidth() + cell.getCellWidth() / 2f
+                            val targetPixelY =
+                                targetY * cell.getCellHeight() + cell.getCellHeight() / 2f
                             val cellLoc = IntArray(2)
                             cell.getLocationOnScreen(cellLoc)
-                            dragController.onDragMove(cellLoc[0] + targetPixelX, cellLoc[1] + targetPixelY)
+                            dragController.onDragMove(
+                                cellLoc[0] + targetPixelX, cellLoc[1] + targetPixelY
+                            )
 
-                            dragController.endDrag(cellLoc[0] + targetPixelX, cellLoc[1] + targetPixelY)
+                            dragController.endDrag(
+                                cellLoc[0] + targetPixelX, cellLoc[1] + targetPixelY
+                            )
                             results.append("DragController isDragging after drop: ${dragController.isDragging}\n")
 
                             workspace.postDelayed({
@@ -2988,24 +3592,31 @@ class MainActivity : AppCompatActivity() {
                                 results.append("ResizeFrame re-attached on drop: ${activeResizeFrame != null}\n")
                                 results.append("Result: PASS\n")
 
-                                val outFile = java.io.File(getExternalFilesDir(null), "direct_widget_drag_results.txt")
+                                val outFile = java.io.File(
+                                    getExternalFilesDir(null), "direct_widget_drag_results.txt"
+                                )
                                 outFile.writeText(results.toString())
                                 android.util.Log.i("LauncherAI_Test", results.toString())
                             }, 500)
                         }
                     } else {
                         results.append("No hostView found. Result: SKIPPED\n")
-                        val outFile = java.io.File(getExternalFilesDir(null), "direct_widget_drag_results.txt")
+                        val outFile = java.io.File(
+                            getExternalFilesDir(null), "direct_widget_drag_results.txt"
+                        )
                         outFile.writeText(results.toString())
                     }
                 }, 500)
             }
+
             "test_resize_handle" -> {
                 workspace.postDelayed({
                     val cell = workspace.getActiveCellLayout()
-                    val hostView = (0 until (cell?.childCount ?: 0))
-                        .mapNotNull { cell?.getChildAt(it) as? LauncherAppWidgetHostView }
-                        .firstOrNull()
+                    val hostView = (0 until (cell?.childCount ?: 0)).mapNotNull {
+                        cell?.getChildAt(
+                            it
+                        ) as? LauncherAppWidgetHostView
+                    }.firstOrNull()
                     val results = StringBuilder()
                     results.append("=== Direct Resize Handles Test ===\n")
                     if (hostView != null && cell != null) {
@@ -3014,7 +3625,9 @@ class MainActivity : AppCompatActivity() {
 
                         val resolved = (hostView.tag as? WorkspaceWidgetResolvedItem)
                             ?: (hostView.tag as? WorkspaceItemEntity)?.let { ent ->
-                                WorkspaceWidgetResolvedItem(ent, hostView.appWidgetId, hostView.appWidgetInfo)
+                                WorkspaceWidgetResolvedItem(
+                                    ent, hostView.appWidgetId, hostView.appWidgetInfo
+                                )
                             }
                         if (resolved != null) {
                             showWidgetResizeFrame(hostView, resolved, cell)
@@ -3028,28 +3641,44 @@ class MainActivity : AppCompatActivity() {
                             val cellH = cell.getCellHeight()
                             val newSpanY = (lp?.cellVSpan ?: 1) + 1
                             if (newSpanY <= cell.countY) {
-                                cell.updateChildSpanAndPosition(hostView, lp!!.cellX, lp.cellY, lp.cellHSpan, newSpanY)
-                                hostView.updateSizeOptions(lp.cellHSpan, newSpanY, cell.getCellWidth(), cellH)
-                                frame?.findViewById<TextView>(R.id.tvResizeSpan)?.text = "${lp.cellHSpan} × $newSpanY"
+                                cell.updateChildSpanAndPosition(
+                                    hostView, lp!!.cellX, lp.cellY, lp.cellHSpan, newSpanY
+                                )
+                                hostView.updateSizeOptions(
+                                    lp.cellHSpan, newSpanY, cell.getCellWidth(), cellH
+                                )
+                                frame?.findViewById<TextView>(R.id.tvResizeSpan)?.text =
+                                    "${lp.cellHSpan} × $newSpanY"
                                 frame?.updateFramePosition()
-                                results.append("Updated badge text: ${frame?.findViewById<TextView>(R.id.tvResizeSpan)?.text}\n")
+                                results.append(
+                                    "Updated badge text: ${
+                                        frame?.findViewById<TextView>(
+                                            R.id.tvResizeSpan
+                                        )?.text
+                                    }\n"
+                                )
                                 results.append("Updated widget span: ${lp.cellHSpan}x${lp.cellVSpan}\n")
                                 results.append("Result: PASS\n")
                             } else {
                                 results.append("Max height reached. Result: PASS\n")
                             }
 
-                            val outFile = java.io.File(getExternalFilesDir(null), "direct_resize_handle_results.txt")
+                            val outFile = java.io.File(
+                                getExternalFilesDir(null), "direct_resize_handle_results.txt"
+                            )
                             outFile.writeText(results.toString())
                             android.util.Log.i("LauncherAI_Test", results.toString())
                         }
                     } else {
                         results.append("No hostView found. Result: SKIPPED\n")
-                        val outFile = java.io.File(getExternalFilesDir(null), "direct_resize_handle_results.txt")
+                        val outFile = java.io.File(
+                            getExternalFilesDir(null), "direct_resize_handle_results.txt"
+                        )
                         outFile.writeText(results.toString())
                     }
                 }, 500)
             }
+
             "run_verification_suite" -> {
                 workspace.setCurrentPage(0, false)
                 workspace.postDelayed({
@@ -3115,7 +3744,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
         val edgeTarget = edgeVacantCell ?: vacantCell
-        val edgePixelX = if (edgeTarget[0] == cellLayout.countX - 1) (cellLayout.width - 20f).coerceAtLeast(0f) else 20f
+        val edgePixelX =
+            if (edgeTarget[0] == cellLayout.countX - 1) (cellLayout.width - 20f).coerceAtLeast(0f) else 20f
         val edgePixelY = edgeTarget[1] * cellH + cellH / 2f
         val child2 = cellLayout.findChildUnder(edgePixelX, edgePixelY)
         val cell2 = cellLayout.pointToCellExact(edgePixelX, edgePixelY)
@@ -3128,12 +3758,14 @@ class MainActivity : AppCompatActivity() {
         results.append("  Result: ${if (child2 == null && isEmpty2) "PASS" else "FAIL"}\n\n")
 
         // Test 3: Long-press existing app icon
-        val iconChild = (0 until cellLayout.childCount).map { cellLayout.getChildAt(it) }.firstOrNull { it !is LauncherAppWidgetHostView }
+        val iconChild = (0 until cellLayout.childCount).map { cellLayout.getChildAt(it) }
+            .firstOrNull { it !is LauncherAppWidgetHostView }
         val iconLp = iconChild?.layoutParams as? CellLayout.LayoutParams
         val iconCenterX = if (iconChild != null) (iconChild.left + iconChild.width / 2f) else 50f
         val iconCenterY = if (iconChild != null) (iconChild.top + iconChild.height / 2f) else 50f
         val childAtIcon = cellLayout.findChildUnder(iconCenterX, iconCenterY)
-        val isIconCellEmpty = if (iconLp != null) cellLayout.isCellEmpty(iconLp.cellX, iconLp.cellY) else false
+        val isIconCellEmpty =
+            if (iconLp != null) cellLayout.isCellEmpty(iconLp.cellX, iconLp.cellY) else false
         results.append("Test 3 - Long-press existing app icon:\n")
         results.append("  Icon view present: ${iconChild != null} at pos (${iconLp?.cellX}, ${iconLp?.cellY})\n")
         results.append("  Is icon cell empty: $isIconCellEmpty\n")
@@ -3147,7 +3779,8 @@ class MainActivity : AppCompatActivity() {
         results.append("  Result: PASS\n\n")
 
         // Test 5: Long-press widget background
-        val hostView = (0 until cellLayout.childCount).map { cellLayout.getChildAt(it) }.filterIsInstance<LauncherAppWidgetHostView>().firstOrNull()
+        val hostView = (0 until cellLayout.childCount).map { cellLayout.getChildAt(it) }
+            .filterIsInstance<LauncherAppWidgetHostView>().firstOrNull()
         val widgetLp = hostView?.layoutParams as? CellLayout.LayoutParams
         results.append("Test 5 - Long-press widget background:\n")
         results.append("  HostView present on desktop: ${hostView != null}\n")
