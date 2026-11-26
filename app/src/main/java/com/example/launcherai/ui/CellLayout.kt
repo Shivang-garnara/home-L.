@@ -253,11 +253,13 @@ class CellLayout @JvmOverloads constructor(
     }
 
     fun getCellWidth(): Int {
-        return (width - paddingLeft - paddingRight) / maxOf(1, countX)
+        val usableWidth = maxOf(0, width - paddingLeft - paddingRight)
+        return if (usableWidth > 0) usableWidth / maxOf(1, countX) else (resources.displayMetrics.widthPixels - paddingLeft - paddingRight) / maxOf(1, countX)
     }
 
     fun getCellHeight(): Int {
-        return (height - paddingTop - paddingBottom) / maxOf(1, countY)
+        val usableHeight = maxOf(0, height - paddingTop - paddingBottom)
+        return if (usableHeight > 0) usableHeight / maxOf(1, countY) else (resources.displayMetrics.heightPixels - paddingTop - paddingBottom) / maxOf(1, countY)
     }
 
     fun isRegionAvailableForChild(
@@ -316,14 +318,14 @@ class CellLayout @JvmOverloads constructor(
      * Converts a local pixel coordinate (x, y) into grid column and row indexes (cellX, cellY).
      */
     fun pointToCellExact(x: Float, y: Float): IntArray {
-        val cellW = (width - paddingLeft - paddingRight) / maxOf(1, countX)
-        val cellH = (height - paddingTop - paddingBottom) / maxOf(1, countY)
+        val usableW = maxOf(1, width - paddingLeft - paddingRight)
+        val usableH = maxOf(1, height - paddingTop - paddingBottom)
 
-        val relX = x - paddingLeft
-        val relY = y - paddingTop
+        val relX = (x - paddingLeft).coerceIn(0f, usableW.toFloat())
+        val relY = (y - paddingTop).coerceIn(0f, usableH.toFloat())
 
-        val cellX = (relX / maxOf(1, cellW)).toInt().coerceIn(0, countX - 1)
-        val cellY = (relY / maxOf(1, cellH)).toInt().coerceIn(0, countY - 1)
+        val cellX = ((relX / usableW) * countX).toInt().coerceIn(0, countX - 1)
+        val cellY = ((relY / usableH) * countY).toInt().coerceIn(0, countY - 1)
 
         return intArrayOf(cellX, cellY)
     }
@@ -374,14 +376,16 @@ class CellLayout @JvmOverloads constructor(
         val width = MeasureSpec.getSize(widthMeasureSpec)
         val height = MeasureSpec.getSize(heightMeasureSpec)
 
-        val cellWidth = (width - paddingLeft - paddingRight) / maxOf(1, countX)
-        val cellHeight = (height - paddingTop - paddingBottom) / maxOf(1, countY)
+        val usableWidth = maxOf(0, width - paddingLeft - paddingRight)
+        val usableHeight = maxOf(0, height - paddingTop - paddingBottom)
 
         val count = childCount
         for (i in 0 until count) {
             val child = getChildAt(i)
             if (child.visibility != GONE) {
                 val lp = child.layoutParams as? LayoutParams
+                val cellX = lp?.cellX ?: 0
+                val cellY = lp?.cellY ?: 0
                 val hSpan = lp?.cellHSpan ?: 1
                 val vSpan = lp?.cellVSpan ?: 1
                 val leftMargin = lp?.leftMargin ?: 0
@@ -389,8 +393,13 @@ class CellLayout @JvmOverloads constructor(
                 val topMargin = lp?.topMargin ?: 0
                 val bottomMargin = lp?.bottomMargin ?: 0
 
-                val childWidth = maxOf(0, cellWidth * hSpan - leftMargin - rightMargin)
-                val childHeight = maxOf(0, cellHeight * vSpan - topMargin - bottomMargin)
+                val leftPx = (usableWidth * cellX) / maxOf(1, countX)
+                val rightPx = (usableWidth * (cellX + hSpan)) / maxOf(1, countX)
+                val topPx = (usableHeight * cellY) / maxOf(1, countY)
+                val bottomPx = (usableHeight * (cellY + vSpan)) / maxOf(1, countY)
+
+                val childWidth = maxOf(0, (rightPx - leftPx) - leftMargin - rightMargin)
+                val childHeight = maxOf(0, (bottomPx - topPx) - topMargin - bottomMargin)
 
                 child.measure(
                     MeasureSpec.makeMeasureSpec(childWidth, MeasureSpec.EXACTLY),
@@ -406,8 +415,8 @@ class CellLayout @JvmOverloads constructor(
         val width = r - l
         val height = b - t
 
-        val cellWidth = (width - paddingLeft - paddingRight) / maxOf(1, countX)
-        val cellHeight = (height - paddingTop - paddingBottom) / maxOf(1, countY)
+        val usableWidth = maxOf(0, width - paddingLeft - paddingRight)
+        val usableHeight = maxOf(0, height - paddingTop - paddingBottom)
 
         val count = childCount
         for (i in 0 until count) {
@@ -415,10 +424,15 @@ class CellLayout @JvmOverloads constructor(
             if (child.visibility != GONE) {
                 val lp = child.layoutParams as? LayoutParams ?: continue
 
-                val childLeft = paddingLeft + lp.cellX * cellWidth + lp.leftMargin
-                val childTop = paddingTop + lp.cellY * cellHeight + lp.topMargin
-                val childWidth = maxOf(0, cellWidth * lp.cellHSpan - lp.leftMargin - lp.rightMargin)
-                val childHeight = maxOf(0, cellHeight * lp.cellVSpan - lp.topMargin - lp.bottomMargin)
+                val leftPx = (usableWidth * lp.cellX) / maxOf(1, countX)
+                val rightPx = (usableWidth * (lp.cellX + lp.cellHSpan)) / maxOf(1, countX)
+                val topPx = (usableHeight * lp.cellY) / maxOf(1, countY)
+                val bottomPx = (usableHeight * (lp.cellY + lp.cellVSpan)) / maxOf(1, countY)
+
+                val childLeft = paddingLeft + leftPx + lp.leftMargin
+                val childTop = paddingTop + topPx + lp.topMargin
+                val childWidth = maxOf(0, (rightPx - leftPx) - lp.leftMargin - lp.rightMargin)
+                val childHeight = maxOf(0, (bottomPx - topPx) - lp.topMargin - lp.bottomMargin)
 
                 child.layout(childLeft, childTop, childLeft + childWidth, childTop + childHeight)
             }
