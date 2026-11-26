@@ -13,6 +13,9 @@ import com.example.launcherai.LauncherApplication
 import com.example.launcherai.data.db.WorkspaceItemEntity
 import com.example.launcherai.data.db.WorkspacePageEntity
 import com.example.launcherai.data.model.AppInfo
+import com.example.launcherai.data.model.SmartCategoryHelper
+import com.example.launcherai.data.model.SmartCategorySuggestion
+import com.example.launcherai.data.model.SmartFolderCategory
 import com.example.launcherai.data.repository.WorkspaceRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -76,6 +79,8 @@ class WorkspaceViewModel(
 
     private val _hiddenPackages = MutableStateFlow<Set<String>>(emptySet())
     val hiddenPackages: StateFlow<Set<String>> = _hiddenPackages.asStateFlow()
+
+    private val smartSyncTrigger = MutableStateFlow(0)
 
     // Workspace pages from DB
     val pages: StateFlow<List<WorkspacePageEntity>> = repository.allPagesFlow
@@ -161,7 +166,8 @@ class WorkspaceViewModel(
             val pm = getApplication<Application>().packageManager
             val folderItems = items.filter {
                 it.container == WorkspaceItemEntity.CONTAINER_DRAWER &&
-                    it.itemType == WorkspaceItemEntity.ITEM_TYPE_FOLDER
+                    it.itemType == WorkspaceItemEntity.ITEM_TYPE_FOLDER &&
+                    !SmartCategoryHelper.isFolderDisabled(it)
             }
             val childrenMap = items
                 .filter { it.container > 0 && it.itemType == WorkspaceItemEntity.ITEM_TYPE_APP }
@@ -201,6 +207,32 @@ class WorkspaceViewModel(
             selectedCategory = category,
             hiddenPackages = hidden,
             foldersFirst = prefs.getBoolean("key_drawer_folders_first", false)
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    // Nova-style "Add '<Category>' Folder" suggestion chips when an uncreated default category hits >= 3 apps
+    val smartFolderSuggestions: StateFlow<List<SmartCategorySuggestion>> = combine(
+        installedApps,
+        repository.allWorkspaceItemsFlow,
+        _searchQuery,
+        _hiddenPackages,
+        smartSyncTrigger
+    ) { apps, allItems, query, hidden, _ ->
+        val smartEnabled = prefs.getBoolean(WorkspaceRepository.KEY_DRAWER_SMART_FOLDERS, true)
+        val dismissed = prefs.getStringSet(WorkspaceRepository.KEY_DISMISSED_SMART_CATEGORIES, emptySet()) ?: emptySet()
+        val excluded = prefs.getStringSet(WorkspaceRepository.KEY_EXCLUDED_SMART_FOLDER_KEYS, emptySet()) ?: emptySet()
+        SmartCategoryHelper.getSuggestionCandidates(
+            installedApps = apps,
+            allWorkspaceItems = allItems,
+            smartFoldersEnabled = smartEnabled,
+            dismissedCategoryIds = dismissed,
+            excludedKeys = excluded,
+            hiddenPackages = hidden,
+            searchQuery = query
         )
     }.stateIn(
         scope = viewModelScope,
@@ -261,7 +293,13 @@ class WorkspaceViewModel(
     fun refreshInstalledApps() {
         viewModelScope.launch(Dispatchers.IO) {
             repository.refreshInstalledApps()
+            repository.syncSmartFoldersIfNeeded()
+            smartSyncTrigger.value += 1
         }
+    }
+
+    fun notifySmartPrefsChanged() {
+        smartSyncTrigger.value += 1
     }
 
     fun saveCurrentPage(screenId: Int) {
@@ -346,35 +384,83 @@ class WorkspaceViewModel(
         title: String,
         keepAppsInMainDrawer: Boolean,
         initialApps: List<AppInfo> = emptyList(),
+        categoryId: String? = null,
+        autoAddNewApps: Boolean = false,
         onCreated: ((Long) -> Unit)? = null
     ) {
         viewModelScope.launch {
-            val id = repository.createDrawerFolder(title, keepAppsInMainDrawer, initialApps)
+            val id = repository.createDrawerFolder(
+                title = title,
+                keepAppsInMainDrawer = keepAppsInMainDrawer,
+                initialApps = initialApps,
+                categoryId = categoryId,
+                autoAddNewApps = autoAddNewApps
+            )
+            smartSyncTrigger.value += 1
             onCreated?.invoke(id)
         }
     }
 
-    fun updateDrawerFolder(folderId: Long, title: String, keepAppsInMainDrawer: Boolean) {
+    fun updateDrawerFolder(
+        folderId: Long,
+        title: String,
+        keepAppsInMainDrawer: Boolean,
+        categoryId: String? = null,
+        autoAddNewApps: Boolean = false,
+        updateCategoryConfig: Boolean = false
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
-            repository.updateDrawerFolder(folderId, title, keepAppsInMainDrawer)
+            repository.updateDrawerFolder(
+                folderId = folderId,
+                title = title,
+                keepAppsInMainDrawer = keepAppsInMainDrawer,
+                categoryId = categoryId,
+                autoAddNewApps = autoAddNewApps,
+                updateCategoryConfig = updateCategoryConfig
+            )
+            smartSyncTrigger.value += 1
+        }
+    }
+
+    fun setSmartFoldersEnabled(enabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.setSmartFoldersEnabled(enabled)
+            smartSyncTrigger.value += 1
+        }
+    }
+
+    fun enableSmartCategoryFolder(category: SmartFolderCategory, initialApps: List<AppInfo>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.enableSmartCategoryFolder(category, initialApps)
+            smartSyncTrigger.value += 1
+        }
+    }
+
+    fun dismissSmartCategorySuggestion(category: SmartFolderCategory) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.dismissSmartCategorySuggestion(category)
+            smartSyncTrigger.value += 1
         }
     }
 
     fun setDrawerFolderApps(folderId: Long, selectedApps: List<AppInfo>) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.setDrawerFolderApps(folderId, selectedApps)
+            smartSyncTrigger.value += 1
         }
     }
 
     fun removeAppFromDrawerFolder(folderId: Long, itemId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.removeAppFromDrawerFolder(folderId, itemId)
+            smartSyncTrigger.value += 1
         }
     }
 
     fun deleteDrawerFolder(folderId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.deleteDrawerFolder(folderId)
+            smartSyncTrigger.value += 1
         }
     }
 
@@ -578,7 +664,8 @@ class WorkspaceViewModel(
                 packageName = pkg,
                 activityName = cls,
                 icon = icon,
-                isSystem = (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
+                isSystem = (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0,
+                category = com.example.launcherai.util.AppManager.resolveCategory(appInfo, pkg, cls, label)
             )
             WorkspaceResolvedItem(item, app)
         } catch (e: PackageManager.NameNotFoundException) {
@@ -612,7 +699,8 @@ class WorkspaceViewModel(
                     packageName = pkg,
                     activityName = cls,
                     icon = icon,
-                    isSystem = (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
+                    isSystem = (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0,
+                    category = com.example.launcherai.util.AppManager.resolveCategory(appInfo, pkg, cls, label)
                 )
             } catch (e: PackageManager.NameNotFoundException) {
                 if (item.title != null) {

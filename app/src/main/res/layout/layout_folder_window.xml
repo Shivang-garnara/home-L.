@@ -69,6 +69,22 @@
                 android:contentDescription="Close Folder" />
         </LinearLayout>
 
+        <!-- Default Category Quick Name Suggestions (shown for unnamed/"Folder" folders or when renaming) -->
+        <HorizontalScrollView
+            android:id="@+id/scrollFolderCategorySuggestions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:scrollbars="none"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/containerFolderCategorySuggestions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+        </HorizontalScrollView>
+
         <!-- Folder Apps Grid -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvFolderApps"

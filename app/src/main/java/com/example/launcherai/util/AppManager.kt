@@ -56,7 +56,12 @@ object AppManager {
                 pm.defaultActivityIcon
             }
 
-            val category = resolveCategory(info.activityInfo.applicationInfo, packageName)
+            val category = resolveCategory(
+                appInfo = info.activityInfo.applicationInfo,
+                packageName = packageName,
+                activityName = activityName,
+                label = label
+            )
 
             // Exclude self from launcher list if desired, or keep
             apps.add(AppInfo(
@@ -73,29 +78,23 @@ object AppManager {
         apps
     }
 
-    private fun resolveCategory(appInfo: android.content.pm.ApplicationInfo, packageName: String): String {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            when (appInfo.category) {
-                android.content.pm.ApplicationInfo.CATEGORY_GAME -> return AppInfo.CATEGORY_GAMES
-                android.content.pm.ApplicationInfo.CATEGORY_AUDIO,
-                android.content.pm.ApplicationInfo.CATEGORY_VIDEO -> return AppInfo.CATEGORY_ENTERTAINMENT
-                android.content.pm.ApplicationInfo.CATEGORY_IMAGE -> return AppInfo.CATEGORY_PHOTOGRAPHY
-                android.content.pm.ApplicationInfo.CATEGORY_SOCIAL,
-                android.content.pm.ApplicationInfo.CATEGORY_PRODUCTIVITY -> return AppInfo.CATEGORY_PRODUCTIVITY
-                android.content.pm.ApplicationInfo.CATEGORY_MAPS,
-                android.content.pm.ApplicationInfo.CATEGORY_NEWS -> return AppInfo.CATEGORY_COMMUNICATION
-            }
+    fun resolveCategory(
+        appInfo: android.content.pm.ApplicationInfo,
+        packageName: String,
+        activityName: String = "",
+        label: String = ""
+    ): String {
+        val rawCategory = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            appInfo.category
+        } else {
+            -1
         }
-        val lowerPkg = packageName.lowercase()
-        return when {
-            lowerPkg.contains("game") || lowerPkg.contains("play") -> AppInfo.CATEGORY_GAMES
-            lowerPkg.contains("chat") || lowerPkg.contains("messag") || lowerPkg.contains("mail") || lowerPkg.contains("dial") || lowerPkg.contains("phone") -> AppInfo.CATEGORY_COMMUNICATION
-            lowerPkg.contains("media") || lowerPkg.contains("video") || lowerPkg.contains("music") || lowerPkg.contains("youtube") -> AppInfo.CATEGORY_ENTERTAINMENT
-            lowerPkg.contains("camera") || lowerPkg.contains("photo") || lowerPkg.contains("gallery") -> AppInfo.CATEGORY_PHOTOGRAPHY
-            lowerPkg.contains("doc") || lowerPkg.contains("note") || lowerPkg.contains("office") || lowerPkg.contains("drive") -> AppInfo.CATEGORY_PRODUCTIVITY
-            lowerPkg.contains("setting") || lowerPkg.contains("tool") || lowerPkg.contains("calc") || lowerPkg.contains("clock") -> AppInfo.CATEGORY_TOOLS
-            else -> AppInfo.CATEGORY_OTHER
-        }
+        return com.example.launcherai.data.model.SmartCategoryHelper.resolveAppCategoryName(
+            appCategoryInt = rawCategory,
+            packageName = packageName,
+            activityName = activityName,
+            label = label
+        )
     }
 
     fun launchApp(context: Context, app: AppInfo, sourceView: View? = null) {

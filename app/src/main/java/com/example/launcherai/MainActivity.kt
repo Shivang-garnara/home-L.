@@ -50,6 +50,9 @@ import com.example.launcherai.ai.ui.NovaAiChatActivity
 import com.example.launcherai.data.db.WorkspaceItemEntity
 import com.example.launcherai.data.model.AppInfo
 import com.example.launcherai.data.model.DrawerFolderHelper
+import com.example.launcherai.data.model.SmartCategoryHelper
+import com.example.launcherai.data.model.SmartCategorySuggestion
+import com.example.launcherai.data.model.SmartFolderCategory
 import com.example.launcherai.dragndrop.DragController
 import com.example.launcherai.gestures.GestureAction
 import com.example.launcherai.gestures.GestureHandler
@@ -145,6 +148,7 @@ class MainActivity : AppCompatActivity() {
     private var horizontalSnapHelper: PagerSnapHelper? = null
     private var selectedCategory: String = "All"
     private var fullDrawerAppsList: List<AppInfo> = emptyList()
+    private var currentSmartFolderSuggestions: List<SmartCategorySuggestion> = emptyList()
     private var savedDrawerPosition: Int = 0
     private var savedDrawerOffset: Int = 0
 
@@ -1081,7 +1085,8 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.chipNewDrawerFolder)?.setOnClickListener { anchor ->
             val popup = PopupMenu(this, anchor)
             popup.menu.add(0, 1, 0, "New drawer folder")
-            popup.menu.add(0, 2, 1, "Manage drawer groups")
+            popup.menu.add(0, 2, 1, "Auto-organize Smart Folders")
+            popup.menu.add(0, 3, 2, "Manage drawer groups")
             popup.setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     1 -> {
@@ -1089,6 +1094,11 @@ class MainActivity : AppCompatActivity() {
                         true
                     }
                     2 -> {
+                        viewModel.setSmartFoldersEnabled(true)
+                        Toast.makeText(this, "Organizing apps into Smart Folders", Toast.LENGTH_SHORT).show()
+                        true
+                    }
+                    3 -> {
                         startActivity(Intent(this, DrawerGroupsActivity::class.java))
                         true
                     }
@@ -1268,6 +1278,14 @@ class MainActivity : AppCompatActivity() {
                     viewModel.drawerApps.collect { drawerApps ->
                         fullDrawerAppsList = drawerApps
                         applyDrawerAppFilter()
+                    }
+                }
+
+                // Smart Folder suggestion chips ("Add '<Category>' Folder" when >= 3 apps match)
+                launch {
+                    viewModel.smartFolderSuggestions.collect { suggestions ->
+                        currentSmartFolderSuggestions = suggestions
+                        refreshDrawerSuggestionChips()
                     }
                 }
 
@@ -1722,10 +1740,71 @@ class MainActivity : AppCompatActivity() {
             rvFolderApps.adapter = folderAppsAdapter
         }
         updateFolderEmptyAndPaginationUi()
+        updateFolderCategorySuggestionsUi(folderResolved.title, showKeyboardRequested = false)
+
+        etFolderTitle.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus && folderOverlay.visibility == View.VISIBLE) {
+                updateFolderCategorySuggestionsUi(etFolderTitle.text.toString(), showKeyboardRequested = true)
+            }
+        }
 
         folderOverlay.visibility = View.VISIBLE
         folderOverlay.alpha = 0f
         folderOverlay.animate().alpha(1f).setDuration(200).start()
+    }
+
+    private fun updateFolderCategorySuggestionsUi(currentTitle: String, showKeyboardRequested: Boolean = false) {
+        val scroll = findViewById<View>(R.id.scrollFolderCategorySuggestions) ?: return
+        val container = findViewById<LinearLayout>(R.id.containerFolderCategorySuggestions) ?: return
+        val folderId = activeFolderId
+        val shouldShow = folderId != null && (
+            showKeyboardRequested ||
+                currentTitle.isBlank() ||
+                currentTitle.equals("Folder", ignoreCase = true)
+            )
+        if (!shouldShow) {
+            scroll.visibility = View.GONE
+            return
+        }
+
+        val suggestions = SmartCategoryHelper.getQuickRenameSuggestions(activeFolderApps)
+        if (suggestions.isEmpty()) {
+            scroll.visibility = View.GONE
+            return
+        }
+
+        container.removeAllViews()
+        val density = resources.displayMetrics.density
+        for (catTitle in suggestions) {
+            val isCurrent = currentTitle.equals(catTitle, ignoreCase = true)
+            val chip = TextView(this).apply {
+                text = catTitle
+                textSize = 12f
+                gravity = Gravity.CENTER
+                setPadding((10 * density).toInt(), (4 * density).toInt(), (10 * density).toInt(), (4 * density).toInt())
+                setBackgroundResource(if (isCurrent) R.drawable.bg_nova_chip_active else R.drawable.bg_nova_chip_inactive)
+                setTextColor(
+                    if (isCurrent) Color.WHITE
+                    else ContextCompat.getColor(this@MainActivity, R.color.nova_text_brown_primary)
+                )
+                isClickable = true
+                isFocusable = true
+                val lp = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    (28 * density).toInt()
+                ).apply { marginEnd = (6 * density).toInt() }
+                layoutParams = lp
+                setOnClickListener {
+                    etFolderTitle.setText(catTitle)
+                    etFolderTitle.setSelection(catTitle.length)
+                    activeFolderId?.let { id -> viewModel.updateFolderTitle(id, catTitle) }
+                    etFolderTitle.clearFocus()
+                    scroll.visibility = View.GONE
+                }
+            }
+            container.addView(chip)
+        }
+        scroll.visibility = View.VISIBLE
     }
 
     private fun updateFolderEmptyAndPaginationUi() {
@@ -1888,18 +1967,35 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showCreateDrawerFolderFlow() {
+        val installed = viewModel.installedApps.value
         DrawerFolderDialogHelper.showFolderEditorDialog(
             context = this,
             initialTitle = "",
             initialKeepInMainDrawer = false,
+            installedApps = installed,
             isEditing = false,
-            onSave = { title, keepInMain ->
-                viewModel.createDrawerFolder(title, keepInMain) { newFolderId ->
+            onSave = { title, keepInMain, categoryId, autoAddNewApps ->
+                val preselectedKeys = if (categoryId != null) {
+                    installed
+                        .filter { !it.isFolder && SmartCategoryHelper.matchesCategory(it, categoryId) }
+                        .map { DrawerFolderHelper.componentKey(it.packageName, it.activityName) }
+                        .toSet()
+                } else {
+                    emptySet()
+                }
+                viewModel.createDrawerFolder(
+                    title = title,
+                    keepAppsInMainDrawer = keepInMain,
+                    initialApps = emptyList(),
+                    categoryId = categoryId,
+                    autoAddNewApps = autoAddNewApps
+                ) { newFolderId ->
                     runOnUiThread {
                         showSelectAppsForDrawerFolder(
                             folderId = newFolderId,
                             folderTitle = title,
-                            currentApps = emptyList()
+                            currentApps = emptyList(),
+                            preselectedOverride = preselectedKeys
                         )
                     }
                 }
@@ -1910,13 +2006,25 @@ class MainActivity : AppCompatActivity() {
     private fun showEditDrawerFolderDialog(folderId: Long) {
         val resolved = viewModel.drawerFolders.value.find { it.entity.id == folderId } ?: return
         val keepInMain = resolved.entity.cellX == 1
+        val initialCategoryId = SmartCategoryHelper.decodeCategoryId(resolved.entity.packageName)
+        val initialAutoAdd = SmartCategoryHelper.isAutoAddEnabled(resolved.entity)
         DrawerFolderDialogHelper.showFolderEditorDialog(
             context = this,
             initialTitle = resolved.title,
             initialKeepInMainDrawer = keepInMain,
+            initialCategoryId = initialCategoryId,
+            initialAutoAddNewApps = initialAutoAdd,
+            installedApps = viewModel.installedApps.value,
             isEditing = true,
-            onSave = { newTitle, newKeepInMain ->
-                viewModel.updateDrawerFolder(folderId, newTitle, newKeepInMain)
+            onSave = { newTitle, newKeepInMain, newCategoryId, newAutoAdd ->
+                viewModel.updateDrawerFolder(
+                    folderId = folderId,
+                    title = newTitle,
+                    keepAppsInMainDrawer = newKeepInMain,
+                    categoryId = newCategoryId,
+                    autoAddNewApps = newAutoAdd,
+                    updateCategoryConfig = true
+                )
                 if (activeFolderId == folderId && activeFolderIsDrawer) {
                     etFolderTitle.setText(newTitle)
                 }
@@ -1930,9 +2038,10 @@ class MainActivity : AppCompatActivity() {
     private fun showSelectAppsForDrawerFolder(
         folderId: Long,
         folderTitle: String,
-        currentApps: List<AppInfo>
+        currentApps: List<AppInfo>,
+        preselectedOverride: Set<String>? = null
     ) {
-        val preselected = currentApps.map {
+        val preselected = preselectedOverride ?: currentApps.map {
             DrawerFolderHelper.componentKey(it.packageName, it.activityName)
         }.toSet()
         val dialog = FolderAppsPickerDialogFragment.newInstance(
@@ -2334,7 +2443,7 @@ class MainActivity : AppCompatActivity() {
         }
         drawerAdapter.notifyDataSetChanged()
 
-        // Smart Folders Category Chips
+        // Smart Folders Category Chips & Contextual "Add '<Category>' Folder" Suggestions
         val chipsContainer = findViewById<LinearLayout>(R.id.containerSuggestionChips)
         if (chipsContainer != null) {
             setupSmartFolderChips(chipsContainer, smartFolders)
@@ -2353,17 +2462,36 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val categories = listOf("All", "Social", "Tools", "Media", "Games", "Work")
         val density = resources.displayMetrics.density
+
+        // Show Nova-style "Add '<Category>' Folder" prompt chips for uncreated categories with >= 3 apps
+        addSmartFolderSuggestionChips(container, density)
+
+        val activePresetCategories = SmartFolderCategory.PRESET_CATEGORIES.filter { cat ->
+            fullDrawerAppsList.any { item ->
+                if (item.isFolder) {
+                    item.smartCategoryId?.equals(cat.id, ignoreCase = true) == true ||
+                        item.folderChildren.any { SmartCategoryHelper.matchesCategory(it, cat.id) }
+                } else {
+                    SmartCategoryHelper.matchesCategory(item, cat.id)
+                }
+            }
+        }.map { it.defaultTitle }
+
+        val categories = listOf("All") + activePresetCategories
+        if (selectedCategory !in categories) {
+            selectedCategory = "All"
+        }
 
         categories.forEach { category ->
             val isSelected = (category == selectedCategory)
             val chipView = TextView(this).apply {
                 text = category
                 textSize = 13f
+                gravity = Gravity.CENTER
                 setPadding((14 * density).toInt(), (6 * density).toInt(), (14 * density).toInt(), (6 * density).toInt())
                 setBackgroundResource(if (isSelected) R.drawable.bg_nova_chip_active else R.drawable.bg_nova_chip_inactive)
-                setTextColor(if (isSelected) android.graphics.Color.WHITE else ContextCompat.getColor(this@MainActivity, R.color.nova_text_brown_primary))
+                setTextColor(if (isSelected) Color.WHITE else ContextCompat.getColor(this@MainActivity, R.color.nova_text_brown_primary))
                 isClickable = true
                 isFocusable = true
                 val lp = LinearLayout.LayoutParams(
@@ -2384,49 +2512,63 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun matchesAppCategory(app: AppInfo, category: String): Boolean {
-        val pkg = app.packageName.lowercase()
-        val label = app.label.lowercase()
-        return when (category) {
-            "Social" -> {
-                pkg.contains("whatsapp") || pkg.contains("telegram") || pkg.contains("facebook") ||
-                    pkg.contains("instagram") || pkg.contains("twitter") || pkg.contains("messenger") ||
-                    pkg.contains("snapchat") || pkg.contains("discord") || pkg.contains("viber") ||
-                    pkg.contains("message") || pkg.contains("dialer") || pkg.contains("contact") ||
-                    label.contains("message") || label.contains("chat") || label.contains("phone")
+    private fun addSmartFolderSuggestionChips(container: LinearLayout, density: Float) {
+        if (currentSmartFolderSuggestions.isEmpty()) return
+        for (suggestion in currentSmartFolderSuggestions) {
+            val chipView = TextView(this).apply {
+                text = "+ Add '${suggestion.category.defaultTitle}' Folder"
+                textSize = 13f
+                gravity = Gravity.CENTER
+                setPadding((14 * density).toInt(), (6 * density).toInt(), (14 * density).toInt(), (6 * density).toInt())
+                setBackgroundResource(R.drawable.bg_nova_search_pill_drawer)
+                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.nova_accent_orange))
+                isClickable = true
+                isFocusable = true
+                val lp = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    (32 * density).toInt()
+                ).apply {
+                    marginStart = (8 * density).toInt()
+                }
+                layoutParams = lp
+                setOnClickListener {
+                    confirmCreateSmartCategoryFolder(suggestion)
+                }
             }
-            "Tools" -> {
-                pkg.contains("calculator") || pkg.contains("calendar") || pkg.contains("clock") ||
-                    pkg.contains("settings") || pkg.contains("file") || pkg.contains("camera") ||
-                    pkg.contains("chrome") || pkg.contains("browser") || pkg.contains("note") ||
-                    pkg.contains("keep") || pkg.contains("deskclock") || label.contains("tool") ||
-                    label.contains("calc") || label.contains("clock") || label.contains("setting")
-            }
-            "Media" -> {
-                pkg.contains("youtube") || pkg.contains("music") || pkg.contains("video") ||
-                    pkg.contains("gallery") || pkg.contains("photo") || pkg.contains("spotify") ||
-                    pkg.contains("player") || pkg.contains("netflix") || label.contains("music") ||
-                    label.contains("video") || label.contains("media") || label.contains("gallery")
-            }
-            "Games" -> {
-                pkg.contains("game") || pkg.contains("play.games") || label.contains("game")
-            }
-            "Work" -> {
-                pkg.contains("mail") || pkg.contains("gmail") || pkg.contains("outlook") ||
-                    pkg.contains("docs") || pkg.contains("sheets") || pkg.contains("slides") ||
-                    pkg.contains("office") || pkg.contains("pdf") || pkg.contains("drive") ||
-                    pkg.contains("meet") || pkg.contains("zoom") || pkg.contains("teams") ||
-                    label.contains("mail") || label.contains("drive") || label.contains("doc")
-            }
-            else -> true
+            container.addView(chipView)
         }
+    }
+
+    private fun confirmCreateSmartCategoryFolder(suggestion: SmartCategorySuggestion) {
+        val catTitle = suggestion.category.defaultTitle
+        val count = suggestion.matchingApps.size
+        AlertDialog.Builder(this)
+            .setTitle("Add '$catTitle' Folder")
+            .setMessage(
+                "We found $count apps that would fit into a '$catTitle' folder. " +
+                    "Would you like to create one? Future '$catTitle' apps will automatically get added to this folder."
+            )
+            .setPositiveButton("Create") { _, _ ->
+                viewModel.enableSmartCategoryFolder(suggestion.category, suggestion.matchingApps)
+            }
+            .setNeutralButton("Dismiss") { _, _ ->
+                viewModel.dismissSmartCategorySuggestion(suggestion.category)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun matchesAppCategory(app: AppInfo, category: String): Boolean {
+        return SmartCategoryHelper.matchesCategory(app, category)
     }
 
     private fun filterAppsByCategory(apps: List<AppInfo>, category: String): List<AppInfo> {
         if (category == "All") return apps
         return apps.filter { app ->
             if (app.isFolder) {
-                app.folderChildren.any { matchesAppCategory(it, category) }
+                app.smartCategoryId?.let {
+                    SmartCategoryHelper.matchesCategory(AppInfo(app.label, "", "", category = it), category)
+                } == true || app.folderChildren.any { matchesAppCategory(it, category) }
             } else {
                 matchesAppCategory(app, category)
             }
@@ -2453,7 +2595,13 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        refreshDrawerSuggestionChips()
+    }
+
+    private fun refreshDrawerSuggestionChips() {
         val chipsContainer = findViewById<LinearLayout>(R.id.containerSuggestionChips) ?: return
+        val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        val query = viewModel.searchQuery.value
 
         if (query.isNotBlank()) {
             val shortcutSearch = prefs.getBoolean("key_shortcut_search", true)
@@ -2466,6 +2614,11 @@ class MainActivity : AppCompatActivity() {
             }
 
             val density = resources.displayMetrics.density
+
+            // Surface matching Smart Folder suggestion chips during search (Nova ShortcutChipsRowView parity)
+            if (prefs.getBoolean("key_drawer_smart_folders", true)) {
+                addSmartFolderSuggestionChips(chipsContainer, density)
+            }
 
             // Add Contact results if contact search is enabled
             if (contactSearch) {

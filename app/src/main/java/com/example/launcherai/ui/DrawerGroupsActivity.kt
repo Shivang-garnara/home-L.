@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.launcherai.R
 import com.example.launcherai.data.model.AppInfo
 import com.example.launcherai.data.model.DrawerFolderHelper
+import com.example.launcherai.data.model.SmartCategoryHelper
 import com.example.launcherai.icons.FolderIconRenderer
 import kotlinx.coroutines.launch
 
@@ -93,14 +94,28 @@ class DrawerGroupsActivity : AppCompatActivity() {
             context = this,
             initialTitle = "",
             initialKeepInMainDrawer = false,
+            installedApps = currentInstalledApps,
             isEditing = false,
-            onSave = { title, keepInMain ->
-                viewModel.createDrawerFolder(title, keepInMain) { newFolderId ->
+            onSave = { title, keepInMain, categoryId, autoAddNewApps ->
+                val preselectedKeys = if (categoryId != null) {
+                    currentInstalledApps
+                        .filter { !it.isFolder && SmartCategoryHelper.matchesCategory(it, categoryId) }
+                        .map { DrawerFolderHelper.componentKey(it.packageName, it.activityName) }
+                        .toSet()
+                } else {
+                    emptySet()
+                }
+                viewModel.createDrawerFolder(
+                    title = title,
+                    keepAppsInMainDrawer = keepInMain,
+                    initialApps = emptyList(),
+                    categoryId = categoryId,
+                    autoAddNewApps = autoAddNewApps
+                ) { newFolderId ->
                     runOnUiThread {
-                        val preselected = emptySet<String>()
                         val dialog = FolderAppsPickerDialogFragment.newInstance(
                             title = title,
-                            preselectedKeys = preselected,
+                            preselectedKeys = preselectedKeys,
                             apps = currentInstalledApps
                         ) { chosen ->
                             viewModel.setDrawerFolderApps(newFolderId, chosen)
@@ -114,13 +129,25 @@ class DrawerGroupsActivity : AppCompatActivity() {
 
     private fun showEditDrawerFolderDialog(folder: WorkspaceFolderResolvedItem) {
         val keepInMain = folder.entity.cellX == 1
+        val initialCategoryId = SmartCategoryHelper.decodeCategoryId(folder.entity.packageName)
+        val initialAutoAdd = SmartCategoryHelper.isAutoAddEnabled(folder.entity)
         DrawerFolderDialogHelper.showFolderEditorDialog(
             context = this,
             initialTitle = folder.title,
             initialKeepInMainDrawer = keepInMain,
+            initialCategoryId = initialCategoryId,
+            initialAutoAddNewApps = initialAutoAdd,
+            installedApps = currentInstalledApps,
             isEditing = true,
-            onSave = { newTitle, newKeepInMain ->
-                viewModel.updateDrawerFolder(folder.entity.id, newTitle, newKeepInMain)
+            onSave = { newTitle, newKeepInMain, newCategoryId, newAutoAdd ->
+                viewModel.updateDrawerFolder(
+                    folderId = folder.entity.id,
+                    title = newTitle,
+                    keepAppsInMainDrawer = newKeepInMain,
+                    categoryId = newCategoryId,
+                    autoAddNewApps = newAutoAdd,
+                    updateCategoryConfig = true
+                )
             },
             onDelete = {
                 confirmDeleteFolder(folder)
@@ -213,6 +240,9 @@ class DrawerGroupsActivity : AppCompatActivity() {
                 FolderIconRenderer.renderFolderIconFromPrefs(context, childDrawables, targetSizePx = sizePx)
             )
 
+            val categoryBadge = SmartCategoryHelper.decodeCategory(folder.entity.packageName)?.let { cat ->
+                if (SmartCategoryHelper.isAutoAddEnabled(folder.entity)) "Smart (${cat.defaultTitle}) • " else "${cat.defaultTitle} • "
+            }.orEmpty()
             val appsText = if (folder.children.isEmpty()) {
                 "Empty"
             } else {
@@ -220,7 +250,7 @@ class DrawerGroupsActivity : AppCompatActivity() {
                 if (folder.children.size > 4) "$names +${folder.children.size - 4}" else names
             }
             val visibilityHint = if (folder.entity.cellX == 1) " • Also in main drawer" else ""
-            holder.tvSubtitle.text = "$appsText$visibilityHint"
+            holder.tvSubtitle.text = "$categoryBadge$appsText$visibilityHint"
 
             holder.itemView.setOnClickListener { onFolderClick(folder) }
             holder.btnMenu.setOnClickListener { onMenuClick(folder, it) }

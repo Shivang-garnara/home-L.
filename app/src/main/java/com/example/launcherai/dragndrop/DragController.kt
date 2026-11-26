@@ -10,6 +10,8 @@ import android.widget.FrameLayout
 import android.widget.Toast
 import com.example.launcherai.R
 import com.example.launcherai.data.db.WorkspaceItemEntity
+import com.example.launcherai.data.model.AppInfo
+import com.example.launcherai.data.model.SmartCategoryHelper
 import com.example.launcherai.ui.DragLayer
 import com.example.launcherai.ui.Workspace
 import com.example.launcherai.ui.WorkspaceResolvedItem
@@ -388,12 +390,14 @@ class DragController(
 
                     if (targetEntity != null && targetEntity.id != item.entity.id) {
                         if (targetEntity.itemType == WorkspaceItemEntity.ITEM_TYPE_APP && item.entity.itemType == WorkspaceItemEntity.ITEM_TYPE_APP) {
+                            val inferredTitle = inferFolderTitle(targetEntity, item)
                             viewModel?.createFolder(
                                 existingItem = targetEntity,
                                 draggedItem = item.entity,
-                                folderTitle = "Folder"
+                                folderTitle = inferredTitle
                             )
-                            Toast.makeText(context, "Folder created in dock", Toast.LENGTH_SHORT).show()
+                            val msg = if (inferredTitle == "Folder") "Folder created in dock" else "\"$inferredTitle\" folder created in dock"
+                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                         } else if (targetEntity.itemType == WorkspaceItemEntity.ITEM_TYPE_FOLDER) {
                             viewModel?.addItemToFolder(
                                 folderId = targetEntity.id,
@@ -486,13 +490,15 @@ class DragController(
                     item.entity.itemType == WorkspaceItemEntity.ITEM_TYPE_APP) {
                     // Dropped onto another workspace item (Apps only)
                     if (targetEntity.itemType == WorkspaceItemEntity.ITEM_TYPE_APP) {
-                        // Create a new folder containing both apps
+                        // Create a new folder containing both apps (inferring category title when both match)
+                        val inferredTitle = inferFolderTitle(targetEntity, item)
                         viewModel?.createFolder(
                             existingItem = targetEntity,
                             draggedItem = item.entity,
-                            folderTitle = "Folder"
+                            folderTitle = inferredTitle
                         )
-                        Toast.makeText(context, "Folder created", Toast.LENGTH_SHORT).show()
+                        val msg = if (inferredTitle == "Folder") "Folder created" else "\"$inferredTitle\" folder created"
+                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                     } else if (targetEntity.itemType == WorkspaceItemEntity.ITEM_TYPE_FOLDER) {
                         // Add dragged app to existing folder
                         viewModel?.addItemToFolder(
@@ -725,6 +731,28 @@ class DragController(
         val loc = IntArray(2)
         view.getLocationOnScreen(loc)
         return Rect(loc[0], loc[1], loc[0] + view.width, loc[1] + view.height)
+    }
+
+    private fun inferFolderTitle(
+        targetEntity: WorkspaceItemEntity,
+        draggedItem: WorkspaceResolvedItem
+    ): String {
+        val installed = viewModel?.installedApps?.value.orEmpty()
+        val firstApp = installed.find {
+            it.packageName == targetEntity.packageName &&
+                (targetEntity.className.isNullOrEmpty() || it.activityName == targetEntity.className)
+        } ?: targetEntity.packageName?.let { pkg ->
+            AppInfo(
+                label = targetEntity.title ?: pkg,
+                packageName = pkg,
+                activityName = targetEntity.className.orEmpty()
+            )
+        }
+        val secondApp = installed.find {
+            it.packageName == draggedItem.appInfo.packageName &&
+                (draggedItem.appInfo.activityName.isEmpty() || it.activityName == draggedItem.appInfo.activityName)
+        } ?: draggedItem.appInfo
+        return SmartCategoryHelper.inferFolderTitleForApps(firstApp, secondApp)
     }
 
     enum class DropTargetType {

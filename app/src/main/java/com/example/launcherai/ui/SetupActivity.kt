@@ -19,9 +19,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import com.example.launcherai.LauncherApplication
 import com.example.launcherai.MainActivity
 import com.example.launcherai.R
 import com.example.launcherai.databinding.ActivitySetupBinding
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * First-Run Setup Wizard matching Nova Launcher 8.9.6 reference screens 01, 04, 05, 06, 07, 08.
@@ -240,6 +244,12 @@ class SetupActivity : AppCompatActivity() {
 
         binding.tglSmartFolders.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("key_drawer_smart_folders", isChecked).apply()
+            val repo = (application as? LauncherApplication)?.repository
+            if (repo != null) {
+                lifecycleScope.launch(Dispatchers.IO) {
+                    repo.setSmartFoldersEnabled(isChecked)
+                }
+            }
         }
     }
 

@@ -42,10 +42,12 @@ object DrawerFolderHelper {
 
         val drawerFolderEntities = allWorkspaceItems.filter {
             it.container == WorkspaceItemEntity.CONTAINER_DRAWER &&
-                it.itemType == WorkspaceItemEntity.ITEM_TYPE_FOLDER
+                it.itemType == WorkspaceItemEntity.ITEM_TYPE_FOLDER &&
+                !SmartCategoryHelper.isFolderDisabled(it)
         }
+        val activeFolderIds = drawerFolderEntities.map { it.id.toInt() }.toHashSet()
         val childrenByContainer = allWorkspaceItems
-            .filter { it.container > 0 && it.itemType == WorkspaceItemEntity.ITEM_TYPE_APP }
+            .filter { it.container in activeFolderIds && it.itemType == WorkspaceItemEntity.ITEM_TYPE_APP }
             .groupBy { it.container }
 
         val hiddenKeysByFolders = HashSet<String>()
@@ -92,7 +94,9 @@ object DrawerFolderHelper {
                     isFolder = true,
                     folderId = folderEntity.id,
                     folderChildren = resolvedChildren,
-                    keepAppsInMainDrawer = keepInMain
+                    keepAppsInMainDrawer = keepInMain,
+                    smartCategoryId = SmartCategoryHelper.decodeCategoryId(folderEntity.packageName),
+                    autoAddNewApps = SmartCategoryHelper.isAutoAddEnabled(folderEntity)
                 )
             )
         }
@@ -116,9 +120,14 @@ object DrawerFolderHelper {
         } else {
             combined.filter { item ->
                 if (item.isFolder) {
-                    item.folderChildren.any { it.category == selectedCategory }
+                    item.smartCategoryId?.let {
+                        SmartCategoryHelper.matchesCategory(
+                            AppInfo(item.label, "", "", category = it),
+                            selectedCategory
+                        )
+                    } == true || item.folderChildren.any { SmartCategoryHelper.matchesCategory(it, selectedCategory) }
                 } else {
-                    item.category == selectedCategory
+                    SmartCategoryHelper.matchesCategory(item, selectedCategory)
                 }
             }
         }

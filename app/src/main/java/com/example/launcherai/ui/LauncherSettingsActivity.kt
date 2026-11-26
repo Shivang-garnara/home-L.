@@ -433,9 +433,16 @@ class LauncherSettingsActivity : AppCompatActivity() {
                         Toast.makeText(this, "Frequently used apps: ${if (!freqApps) "Enabled" else "Disabled"}", Toast.LENGTH_SHORT).show()
                     }
                     3 -> {
-                        prefs.edit().putBoolean("key_drawer_smart_folders", !smartFolders).apply()
+                        val nextState = !smartFolders
+                        prefs.edit().putBoolean("key_drawer_smart_folders", nextState).apply()
+                        val repo = (application as? LauncherApplication)?.repository
+                        if (repo != null) {
+                            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                                repo.setSmartFoldersEnabled(nextState)
+                            }
+                        }
                         updateSummaryTexts()
-                        Toast.makeText(this, "Smart folders: ${if (!smartFolders) "Enabled" else "Disabled"}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "Smart folders: ${if (nextState) "Enabled" else "Disabled"}", Toast.LENGTH_SHORT).show()
                     }
                     4 -> {
                         startActivity(Intent(this, SetupActivity::class.java).apply {

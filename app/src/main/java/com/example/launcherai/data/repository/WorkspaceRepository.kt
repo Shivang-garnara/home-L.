@@ -6,6 +6,9 @@ import com.example.launcherai.data.db.WorkspaceDao
 import com.example.launcherai.data.db.WorkspaceItemEntity
 import com.example.launcherai.data.db.WorkspacePageEntity
 import com.example.launcherai.data.model.AppInfo
+import com.example.launcherai.data.model.DrawerFolderHelper
+import com.example.launcherai.data.model.SmartCategoryHelper
+import com.example.launcherai.data.model.SmartFolderCategory
 import com.example.launcherai.util.AppManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +28,12 @@ class WorkspaceRepository(
 
     companion object {
         private val seedMutex = Mutex()
+
+        const val KEY_DRAWER_SMART_FOLDERS = "key_drawer_smart_folders"
+        const val KEY_SMART_FOLDERS_INITIAL_DONE = "key_drawer_smart_folders_did_initial_load"
+        const val KEY_DISMISSED_SMART_CATEGORIES = "key_dismissed_smart_categories"
+        const val KEY_EXCLUDED_SMART_FOLDER_KEYS = "key_excluded_smart_folder_keys"
+        const val KEY_HIDDEN_PACKAGES = "key_hidden_packages"
 
         /**
          * Identifies redundant duplicate APP items sharing the exact same slot and component,
@@ -67,6 +76,7 @@ class WorkspaceRepository(
             initializeDefaultWorkspaceIfEmpty()
             deduplicateOverlappingItems()
             ensurePagesExist()
+            syncSmartFoldersIfNeeded()
         }
     }
 
@@ -656,6 +666,7 @@ class WorkspaceRepository(
 
     suspend fun onPackageAdded(packageName: String) = withContext(Dispatchers.IO) {
         refreshInstalledApps()
+        syncSmartFoldersIfNeeded()
         val autoAdd = prefs.getBoolean("key_add_icon_to_home", false)
         if (autoAdd) {
             val pm = context.packageManager
@@ -754,10 +765,12 @@ class WorkspaceRepository(
 
     suspend fun onPackageChanged(packageName: String) = withContext(Dispatchers.IO) {
         refreshInstalledApps()
+        syncSmartFoldersIfNeeded()
     }
 
     suspend fun onPackageReplaced(packageName: String) = withContext(Dispatchers.IO) {
         refreshInstalledApps()
+        syncSmartFoldersIfNeeded()
     }
 
     // --- Folder Operations ---
@@ -941,23 +954,174 @@ class WorkspaceRepository(
         }
     }
 
-    // --- App Drawer Folder Operations (Nova Drawer Groups / TAB_FOLDER parity) ---
+    // --- App Drawer Folder Operations (Nova Drawer Groups / TAB_FOLDER & Smart Folders parity) ---
 
-    suspend fun createDrawerFolder(
-        title: String,
-        keepAppsInMainDrawer: Boolean = false,
-        initialApps: List<AppInfo> = emptyList()
+    suspend fun syncSmartFoldersIfNeeded(forceInitialEnable: Boolean = false) = withContext(Dispatchers.IO) {
+        seedMutex.withLock {
+            val apps = _installedApps.value.ifEmpty {
+                AppManager.getInstalledApps(context).also { _installedApps.value = it }
+            }
+            if (apps.isEmpty()) return@withLock
+
+            val allItems = workspaceDao.getAllWorkspaceItemsSync()
+            val smartEnabled = prefs.getBoolean(KEY_DRAWER_SMART_FOLDERS, true)
+            val didInitialLoad = if (forceInitialEnable) false else prefs.getBoolean(KEY_SMART_FOLDERS_INITIAL_DONE, false)
+            val dismissed = prefs.getStringSet(KEY_DISMISSED_SMART_CATEGORIES, emptySet())?.toSet() ?: emptySet()
+            val excluded = prefs.getStringSet(KEY_EXCLUDED_SMART_FOLDER_KEYS, emptySet())?.toSet() ?: emptySet()
+            val hidden = prefs.getStringSet(KEY_HIDDEN_PACKAGES, emptySet())?.toSet() ?: emptySet()
+
+            val plan = SmartCategoryHelper.planSmartFolderSync(
+                installedApps = apps,
+                allWorkspaceItems = allItems,
+                smartFoldersEnabled = smartEnabled,
+                didInitialLoad = didInitialLoad,
+                dismissedCategoryIds = dismissed,
+                excludedKeys = excluded,
+                hiddenPackages = hidden
+            )
+
+            for (folderId in plan.folderIdsToDisable) {
+                val existing = workspaceDao.getWorkspaceItemById(folderId) ?: continue
+                workspaceDao.updateWorkspaceItem(
+                    existing.copy(cellY = existing.cellY or SmartCategoryHelper.FLAG_SMART_DISABLED)
+                )
+            }
+
+            for (folderId in plan.folderIdsToEnable) {
+                val existing = workspaceDao.getWorkspaceItemById(folderId) ?: continue
+                val clearedFlags = (existing.cellY and SmartCategoryHelper.FLAG_SMART_DISABLED.inv()
+                    and SmartCategoryHelper.FLAG_SMART_USER_DISMISSED.inv()) or SmartCategoryHelper.FLAG_AUTO_ADD_NEW_APPS
+                workspaceDao.updateWorkspaceItem(existing.copy(cellY = clearedFlags))
+            }
+
+            for ((folderId, appsToAdd) in plan.appsToAddByFolderId) {
+                if (appsToAdd.isNotEmpty()) {
+                    addAppsToFolder(folderId, appsToAdd)
+                }
+            }
+
+            for ((category, matchingApps) in plan.foldersToCreate) {
+                createDrawerFolderInternal(
+                    title = category.defaultTitle,
+                    keepAppsInMainDrawer = false,
+                    initialApps = matchingApps,
+                    categoryId = category.id,
+                    flags = SmartCategoryHelper.FLAG_SMART_AUTO_CREATED or SmartCategoryHelper.FLAG_AUTO_ADD_NEW_APPS
+                )
+            }
+
+            if (plan.markInitialSyncDone) {
+                prefs.edit().putBoolean(KEY_SMART_FOLDERS_INITIAL_DONE, true).apply()
+            }
+        }
+    }
+
+    suspend fun setSmartFoldersEnabled(enabled: Boolean) = withContext(Dispatchers.IO) {
+        if (enabled) {
+            prefs.edit()
+                .putBoolean(KEY_DRAWER_SMART_FOLDERS, true)
+                .putBoolean(KEY_SMART_FOLDERS_INITIAL_DONE, false)
+                .remove(KEY_DISMISSED_SMART_CATEGORIES)
+                .remove(KEY_EXCLUDED_SMART_FOLDER_KEYS)
+                .apply()
+            syncSmartFoldersIfNeeded(forceInitialEnable = true)
+        } else {
+            prefs.edit()
+                .putBoolean(KEY_DRAWER_SMART_FOLDERS, false)
+                .apply()
+            syncSmartFoldersIfNeeded(forceInitialEnable = false)
+        }
+    }
+
+    suspend fun enableSmartCategoryFolder(
+        category: SmartFolderCategory,
+        initialApps: List<AppInfo>
     ): Long = withContext(Dispatchers.IO) {
+        seedMutex.withLock {
+            removeDismissedSmartCategoryLocked(category.id)
+            val allItems = workspaceDao.getAllWorkspaceItemsSync()
+            val existingFolder = allItems.find {
+                it.container == WorkspaceItemEntity.CONTAINER_DRAWER &&
+                    it.itemType == WorkspaceItemEntity.ITEM_TYPE_FOLDER &&
+                    SmartCategoryHelper.decodeCategory(it.packageName) == category
+            }
+            if (existingFolder != null) {
+                val updatedFlags = (existingFolder.cellY and SmartCategoryHelper.FLAG_SMART_DISABLED.inv()
+                    and SmartCategoryHelper.FLAG_SMART_USER_DISMISSED.inv()) or SmartCategoryHelper.FLAG_AUTO_ADD_NEW_APPS
+                workspaceDao.updateWorkspaceItem(existingFolder.copy(cellY = updatedFlags))
+                if (initialApps.isNotEmpty()) {
+                    addAppsToFolder(existingFolder.id, initialApps)
+                }
+                existingFolder.id
+            } else {
+                createDrawerFolderInternal(
+                    title = category.defaultTitle,
+                    keepAppsInMainDrawer = false,
+                    initialApps = initialApps,
+                    categoryId = category.id,
+                    flags = SmartCategoryHelper.FLAG_SMART_AUTO_CREATED or SmartCategoryHelper.FLAG_AUTO_ADD_NEW_APPS
+                )
+            }
+        }
+    }
+
+    suspend fun dismissSmartCategorySuggestion(category: SmartFolderCategory) = withContext(Dispatchers.IO) {
+        seedMutex.withLock {
+            addDismissedSmartCategoryLocked(category.id)
+            val allItems = workspaceDao.getAllWorkspaceItemsSync()
+            allItems.filter {
+                it.container == WorkspaceItemEntity.CONTAINER_DRAWER &&
+                    it.itemType == WorkspaceItemEntity.ITEM_TYPE_FOLDER &&
+                    SmartCategoryHelper.decodeCategory(it.packageName) == category &&
+                    SmartCategoryHelper.isFolderDisabled(it)
+            }.forEach { entity ->
+                workspaceDao.updateWorkspaceItem(
+                    entity.copy(cellY = entity.cellY or SmartCategoryHelper.FLAG_SMART_USER_DISMISSED)
+                )
+            }
+        }
+    }
+
+    private fun addDismissedSmartCategoryLocked(categoryId: String) {
+        val current = HashSet(prefs.getStringSet(KEY_DISMISSED_SMART_CATEGORIES, emptySet()) ?: emptySet())
+        current.add(categoryId.uppercase(java.util.Locale.ROOT))
+        prefs.edit().putStringSet(KEY_DISMISSED_SMART_CATEGORIES, current).apply()
+    }
+
+    private fun removeDismissedSmartCategoryLocked(categoryId: String) {
+        val current = HashSet(prefs.getStringSet(KEY_DISMISSED_SMART_CATEGORIES, emptySet()) ?: emptySet())
+        if (current.remove(categoryId.uppercase(java.util.Locale.ROOT))) {
+            prefs.edit().putStringSet(KEY_DISMISSED_SMART_CATEGORIES, current).apply()
+        }
+    }
+
+    private fun updateExcludedSmartKeysLocked(categoryId: String, addKeys: Set<String>, removeKeys: Set<String>) {
+        if (addKeys.isEmpty() && removeKeys.isEmpty()) return
+        val current = HashSet(prefs.getStringSet(KEY_EXCLUDED_SMART_FOLDER_KEYS, emptySet()) ?: emptySet())
+        current.addAll(addKeys)
+        current.removeAll(removeKeys)
+        prefs.edit().putStringSet(KEY_EXCLUDED_SMART_FOLDER_KEYS, current).apply()
+    }
+
+    private suspend fun createDrawerFolderInternal(
+        title: String,
+        keepAppsInMainDrawer: Boolean,
+        initialApps: List<AppInfo>,
+        categoryId: String?,
+        flags: Int
+    ): Long {
         val safeTitle = title.trim().ifEmpty { "Folder" }
         val keepFlag = if (keepAppsInMainDrawer) 1 else 0
+        val encodedPkg = categoryId?.let { SmartCategoryHelper.encodeCategoryPackageName(it) }
         val folderId = workspaceDao.insertWorkspaceItem(
             WorkspaceItemEntity(
                 itemType = WorkspaceItemEntity.ITEM_TYPE_FOLDER,
+                packageName = encodedPkg,
                 title = safeTitle,
                 container = WorkspaceItemEntity.CONTAINER_DRAWER,
                 screenId = 0,
                 cellX = keepFlag,
-                cellY = 0
+                cellY = flags
             )
         )
         workspaceDao.insertFolder(
@@ -966,29 +1130,73 @@ class WorkspaceRepository(
                 title = safeTitle,
                 screenId = 0,
                 cellX = keepFlag,
-                cellY = 0
+                cellY = flags
             )
         )
         if (initialApps.isNotEmpty()) {
             addAppsToFolder(folderId, initialApps)
         }
-        folderId
+        return folderId
+    }
+
+    suspend fun createDrawerFolder(
+        title: String,
+        keepAppsInMainDrawer: Boolean = false,
+        initialApps: List<AppInfo> = emptyList(),
+        categoryId: String? = null,
+        autoAddNewApps: Boolean = false
+    ): Long = withContext(Dispatchers.IO) {
+        if (!categoryId.isNullOrBlank()) {
+            seedMutex.withLock {
+                removeDismissedSmartCategoryLocked(categoryId)
+            }
+        }
+        val flags = if (!categoryId.isNullOrBlank() && autoAddNewApps) {
+            SmartCategoryHelper.FLAG_AUTO_ADD_NEW_APPS
+        } else 0
+        createDrawerFolderInternal(title, keepAppsInMainDrawer, initialApps, categoryId, flags)
     }
 
     suspend fun updateDrawerFolder(
         folderId: Long,
         title: String,
-        keepAppsInMainDrawer: Boolean
+        keepAppsInMainDrawer: Boolean,
+        categoryId: String? = null,
+        autoAddNewApps: Boolean = false,
+        updateCategoryConfig: Boolean = false
     ) = withContext(Dispatchers.IO) {
         val safeTitle = title.trim().ifEmpty { "Folder" }
         val keepFlag = if (keepAppsInMainDrawer) 1 else 0
+        val folderItem = workspaceDao.getWorkspaceItemById(folderId)
+        val newPkg = if (updateCategoryConfig) {
+            categoryId?.let { SmartCategoryHelper.encodeCategoryPackageName(it) }
+        } else {
+            folderItem?.packageName
+        }
+        val newFlags = if (updateCategoryConfig && folderItem != null) {
+            val baseFlags = folderItem.cellY and SmartCategoryHelper.FLAG_AUTO_ADD_NEW_APPS.inv()
+            if (!categoryId.isNullOrBlank() && autoAddNewApps) {
+                baseFlags or SmartCategoryHelper.FLAG_AUTO_ADD_NEW_APPS
+            } else {
+                baseFlags and SmartCategoryHelper.FLAG_SMART_AUTO_CREATED.inv()
+            }
+        } else {
+            folderItem?.cellY ?: 0
+        }
+
         val folderRecord = workspaceDao.getFolderById(folderId)
         if (folderRecord != null) {
-            workspaceDao.updateFolder(folderRecord.copy(title = safeTitle, cellX = keepFlag))
+            workspaceDao.updateFolder(folderRecord.copy(title = safeTitle, cellX = keepFlag, cellY = newFlags))
         }
-        val folderItem = workspaceDao.getWorkspaceItemById(folderId)
         if (folderItem != null) {
-            workspaceDao.updateWorkspaceItem(folderItem.copy(title = safeTitle, cellX = keepFlag))
+            workspaceDao.updateWorkspaceItem(
+                folderItem.copy(
+                    title = safeTitle,
+                    cellX = keepFlag,
+                    cellY = newFlags,
+                    packageName = newPkg
+                )
+            )
         }
     }
 
@@ -996,21 +1204,27 @@ class WorkspaceRepository(
         folderId: Long,
         selectedApps: List<AppInfo>
     ) = withContext(Dispatchers.IO) {
+        val folderItem = workspaceDao.getWorkspaceItemById(folderId)
+        val catId = SmartCategoryHelper.decodeCategoryId(folderItem?.packageName)
         val existing = workspaceDao.getWorkspaceItemsByContainerSync(folderId.toInt())
         val selectedByKey = selectedApps.associateBy {
-            com.example.launcherai.data.model.DrawerFolderHelper.componentKey(it.packageName, it.activityName)
+            DrawerFolderHelper.componentKey(it.packageName, it.activityName)
         }
 
         val kept = mutableListOf<WorkspaceItemEntity>()
         val keptKeys = HashSet<String>()
+        val removedExcludedKeys = HashSet<String>()
         for (item in existing.sortedWith(compareBy({ it.rank }, { it.id }))) {
             val pkg = item.packageName.orEmpty()
-            val key = com.example.launcherai.data.model.DrawerFolderHelper.componentKey(pkg, item.className)
+            val key = DrawerFolderHelper.componentKey(pkg, item.className)
             if (key in selectedByKey) {
                 kept.add(item)
                 keptKeys.add(key)
             } else {
                 workspaceDao.deleteWorkspaceItemById(item.id)
+                if (catId != null) {
+                    removedExcludedKeys.add(SmartCategoryHelper.excludedAppKey(catId, pkg, item.className))
+                }
             }
         }
 
@@ -1020,9 +1234,13 @@ class WorkspaceRepository(
             }
         }
 
+        val newlyAddedExcludedClears = HashSet<String>()
         var nextRank = kept.size
         for (app in selectedApps) {
-            val key = com.example.launcherai.data.model.DrawerFolderHelper.componentKey(app.packageName, app.activityName)
+            val key = DrawerFolderHelper.componentKey(app.packageName, app.activityName)
+            if (catId != null) {
+                newlyAddedExcludedClears.add(SmartCategoryHelper.excludedAppKey(catId, app.packageName, app.activityName))
+            }
             if (key !in keptKeys) {
                 keptKeys.add(key)
                 workspaceDao.insertWorkspaceItem(
@@ -1042,9 +1260,19 @@ class WorkspaceRepository(
                 )
             }
         }
+
+        if (catId != null) {
+            seedMutex.withLock {
+                updateExcludedSmartKeysLocked(catId, removedExcludedKeys, newlyAddedExcludedClears)
+            }
+        }
     }
 
     suspend fun removeAppFromDrawerFolder(folderId: Long, itemId: Long) = withContext(Dispatchers.IO) {
+        val folderItem = workspaceDao.getWorkspaceItemById(folderId)
+        val catId = SmartCategoryHelper.decodeCategoryId(folderItem?.packageName)
+        val removingItem = if (catId != null) workspaceDao.getWorkspaceItemById(itemId) else null
+
         workspaceDao.deleteWorkspaceItemById(itemId)
         val remaining = workspaceDao.getWorkspaceItemsByContainerSync(folderId.toInt())
             .sortedWith(compareBy({ it.rank }, { it.id }))
@@ -1053,9 +1281,25 @@ class WorkspaceRepository(
                 workspaceDao.updateWorkspaceItem(item.copy(rank = idx))
             }
         }
+
+        if (catId != null && removingItem?.packageName != null) {
+            val exKey = SmartCategoryHelper.excludedAppKey(catId, removingItem.packageName, removingItem.className)
+            seedMutex.withLock {
+                updateExcludedSmartKeysLocked(catId, setOf(exKey), emptySet())
+            }
+        }
     }
 
     suspend fun deleteDrawerFolder(folderId: Long) = withContext(Dispatchers.IO) {
+        val folderItem = workspaceDao.getWorkspaceItemById(folderId)
+        if (folderItem != null && SmartCategoryHelper.isSmartAutoCreated(folderItem)) {
+            val catId = SmartCategoryHelper.decodeCategoryId(folderItem.packageName)
+            if (catId != null) {
+                seedMutex.withLock {
+                    addDismissedSmartCategoryLocked(catId)
+                }
+            }
+        }
         val children = workspaceDao.getWorkspaceItemsByContainerSync(folderId.toInt())
         for (child in children) {
             workspaceDao.deleteWorkspaceItemById(child.id)
@@ -1138,7 +1382,10 @@ class WorkspaceRepository(
     suspend fun getDrawerFoldersWithChildrenSync(): List<Pair<WorkspaceItemEntity, List<WorkspaceItemEntity>>> =
         withContext(Dispatchers.IO) {
             val drawerFolders = workspaceDao.getWorkspaceItemsByContainerSync(WorkspaceItemEntity.CONTAINER_DRAWER)
-                .filter { it.itemType == WorkspaceItemEntity.ITEM_TYPE_FOLDER }
+                .filter {
+                    it.itemType == WorkspaceItemEntity.ITEM_TYPE_FOLDER &&
+                        !SmartCategoryHelper.isFolderDisabled(it)
+                }
                 .sortedBy { (it.title ?: "").lowercase() }
             drawerFolders.map { folder ->
                 val children = workspaceDao.getWorkspaceItemsByContainerSync(folder.id.toInt())

@@ -372,8 +372,18 @@ class AppDrawerSettingsActivity : AppCompatActivity() {
         }
         binding.swDrawerSmartFolders.setOnCheckedChangeListener { _, isChecked ->
             smartFolders = isChecked
-            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putBoolean("key_drawer_smart_folders", isChecked).apply()
+            lifecycleScope.launch(Dispatchers.IO) {
+                val repo = (application as? LauncherApplication)?.repository
+                if (repo != null) {
+                    repo.setSmartFoldersEnabled(isChecked)
+                } else {
+                    getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                        .edit().putBoolean("key_drawer_smart_folders", isChecked).apply()
+                }
+                withContext(Dispatchers.Main) {
+                    updateDrawerGroupsSubtitle()
+                }
+            }
         }
 
         binding.rowDrawerFoldersFirst.setOnClickListener {
