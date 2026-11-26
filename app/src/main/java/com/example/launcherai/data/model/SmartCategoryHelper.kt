@@ -312,22 +312,20 @@ object SmartCategoryHelper {
             }
         }
 
-        // 2. On initial load (or after re-enabling Smart Folders in Settings), auto-create categories with >= 3 apps
+        // 2. Auto-create smart category folders automatically every time for any unorganized category apps
         val foldersToCreate = mutableListOf<Pair<SmartFolderCategory, List<AppInfo>>>()
-        if (!didInitialLoad) {
-            for (cat in SmartFolderCategory.NOVA_AUTO_CATEGORIES) {
-                if (cat.id in activeCategoryIds || cat.id in dismissedCategoryIds) continue
-                val candidates = nonHiddenApps.filter { app ->
-                    val key = DrawerFolderHelper.componentKey(app.packageName, app.activityName)
-                    key !in alreadyPlacedKeys &&
-                        excludedAppKey(cat.id, app.packageName, app.activityName) !in excludedKeys &&
-                        matchesCategory(app, cat.id)
-                }
-                if (candidates.size >= SMART_AUTO_ENABLE_MIN_APPS) {
-                    foldersToCreate.add(cat to candidates)
-                    candidates.forEach {
-                        alreadyPlacedKeys.add(DrawerFolderHelper.componentKey(it.packageName, it.activityName))
-                    }
+        for (cat in SmartFolderCategory.PRESET_CATEGORIES) {
+            if (cat.id in activeCategoryIds || cat.id in dismissedCategoryIds) continue
+            val candidates = nonHiddenApps.filter { app ->
+                val key = DrawerFolderHelper.componentKey(app.packageName, app.activityName)
+                key !in alreadyPlacedKeys &&
+                    excludedAppKey(cat.id, app.packageName, app.activityName) !in excludedKeys &&
+                    matchesCategory(app, cat.id)
+            }
+            if (candidates.isNotEmpty()) {
+                foldersToCreate.add(cat to candidates)
+                candidates.forEach {
+                    alreadyPlacedKeys.add(DrawerFolderHelper.componentKey(it.packageName, it.activityName))
                 }
             }
         }

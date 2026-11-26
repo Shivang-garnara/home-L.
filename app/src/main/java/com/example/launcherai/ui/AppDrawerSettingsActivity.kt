@@ -125,7 +125,7 @@ class AppDrawerSettingsActivity : AppCompatActivity() {
         // Apps
         frequentApps = prefs.getBoolean("key_drawer_frequent_apps", true)
         smartFolders = prefs.getBoolean("key_drawer_smart_folders", true)
-        foldersFirst = prefs.getBoolean("key_drawer_folders_first", false)
+        foldersFirst = prefs.getBoolean("key_drawer_folders_first", true)
 
         // Advanced
         rememberPosition = prefs.getBoolean("key_drawer_remember_position", false)
@@ -174,7 +174,7 @@ class AppDrawerSettingsActivity : AppCompatActivity() {
 
         // Apps UI
         binding.swDrawerFrequentApps.isChecked = frequentApps
-        binding.swDrawerSmartFolders.isChecked = smartFolders
+        binding.rowDrawerSmartFolders.visibility = android.view.View.GONE
         binding.swDrawerFoldersFirst.isChecked = foldersFirst
         updateHideAppsSubtitle()
 

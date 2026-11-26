@@ -206,7 +206,7 @@ class WorkspaceViewModel(
             searchQuery = query,
             selectedCategory = category,
             hiddenPackages = hidden,
-            foldersFirst = prefs.getBoolean("key_drawer_folders_first", false)
+            foldersFirst = prefs.getBoolean("key_drawer_folders_first", true)
         )
     }.stateIn(
         scope = viewModelScope,
