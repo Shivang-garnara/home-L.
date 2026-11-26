@@ -394,13 +394,11 @@ class LauncherSettingsActivity : AppCompatActivity() {
         val currentStyle = prefs.getString("key_app_drawer_style", "Vertical") ?: "Vertical"
         val showKb = prefs.getBoolean("key_drawer_show_keyboard", true)
         val freqApps = prefs.getBoolean("key_drawer_frequent_apps", true)
-        val smartFolders = prefs.getBoolean("key_drawer_smart_folders", true)
 
         val options = arrayOf(
             "App Drawer Style: $currentStyle",
             "Show Keyboard: ${if (showKb) "ON" else "OFF"}",
             "Frequently Used Apps: ${if (freqApps) "ON" else "OFF"}",
-            "Smart Folders: ${if (smartFolders) "ON" else "OFF"}",
             "Open Drawer Setup Wizard"
         )
 
@@ -433,18 +431,6 @@ class LauncherSettingsActivity : AppCompatActivity() {
                         Toast.makeText(this, "Frequently used apps: ${if (!freqApps) "Enabled" else "Disabled"}", Toast.LENGTH_SHORT).show()
                     }
                     3 -> {
-                        val nextState = !smartFolders
-                        prefs.edit().putBoolean("key_drawer_smart_folders", nextState).apply()
-                        val repo = (application as? LauncherApplication)?.repository
-                        if (repo != null) {
-                            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                                repo.setSmartFoldersEnabled(nextState)
-                            }
-                        }
-                        updateSummaryTexts()
-                        Toast.makeText(this, "Smart folders: ${if (nextState) "Enabled" else "Disabled"}", Toast.LENGTH_SHORT).show()
-                    }
-                    4 -> {
                         startActivity(Intent(this, SetupActivity::class.java).apply {
                             putExtra("setup_step", 3)
                         })

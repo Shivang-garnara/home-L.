@@ -116,7 +116,7 @@ class SmartCategoryTest {
         )
 
         val createdTitles = plan.foldersToCreate.map { it.first.defaultTitle }
-        assertEquals(listOf("Entertainment", "Social"), createdTitles)
+        assertEquals(listOf("Entertainment", "Social", "Games"), createdTitles)
         // Netflix stayed in custom folder ("Watch Later"), not duplicated into Entertainment
         val entertainmentApps = plan.foldersToCreate[0].second.map { it.packageName }
         assertFalse(entertainmentApps.contains("com.netflix.mediaclient"))

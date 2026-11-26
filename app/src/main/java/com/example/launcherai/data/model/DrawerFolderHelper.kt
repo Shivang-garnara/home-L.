@@ -28,7 +28,7 @@ object DrawerFolderHelper {
         searchQuery: String = "",
         selectedCategory: String = AppInfo.CATEGORY_ALL,
         hiddenPackages: Set<String> = emptySet(),
-        foldersFirst: Boolean = false
+        foldersFirst: Boolean = true
     ): List<AppInfo> {
         val visibleInstalled = installedApps.filter { !it.isFolder && it.packageName !in hiddenPackages }
         val appByKey = HashMap<String, AppInfo>(visibleInstalled.size)
@@ -135,7 +135,7 @@ object DrawerFolderHelper {
         return sortDrawerItems(categoryFiltered, foldersFirst)
     }
 
-    fun sortDrawerItems(items: List<AppInfo>, foldersFirst: Boolean): List<AppInfo> {
+    fun sortDrawerItems(items: List<AppInfo>, foldersFirst: Boolean = true): List<AppInfo> {
         return if (foldersFirst) {
             items.sortedWith(compareBy({ !it.isFolder }, { it.label.lowercase(Locale.ROOT) }))
         } else {

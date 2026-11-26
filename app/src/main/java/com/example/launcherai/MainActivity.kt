@@ -1085,17 +1085,11 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.chipNewDrawerFolder)?.setOnClickListener { anchor ->
             val popup = PopupMenu(this, anchor)
             popup.menu.add(0, 1, 0, "New drawer folder")
-            popup.menu.add(0, 2, 1, "Auto-organize Smart Folders")
-            popup.menu.add(0, 3, 2, "Manage drawer groups")
+            popup.menu.add(0, 3, 1, "Manage drawer groups")
             popup.setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     1 -> {
                         showCreateDrawerFolderFlow()
-                        true
-                    }
-                    2 -> {
-                        viewModel.setSmartFoldersEnabled(true)
-                        Toast.makeText(this, "Organizing apps into Smart Folders", Toast.LENGTH_SHORT).show()
                         true
                     }
                     3 -> {
@@ -2247,6 +2241,9 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        // Auto-organize apps into Smart Folders automatically on App Drawer open
+        viewModel.refreshInstalledApps()
+
         val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
         val animMode = prefs.getString("key_drawer_animation", "SLIDE") ?: "SLIDE"
         ivDrawerSwipeIndicator?.visibility = View.GONE
@@ -2513,30 +2510,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun addSmartFolderSuggestionChips(container: LinearLayout, density: Float) {
-        if (currentSmartFolderSuggestions.isEmpty()) return
-        for (suggestion in currentSmartFolderSuggestions) {
-            val chipView = TextView(this).apply {
-                text = "+ Add '${suggestion.category.defaultTitle}' Folder"
-                textSize = 13f
-                gravity = Gravity.CENTER
-                setPadding((14 * density).toInt(), (6 * density).toInt(), (14 * density).toInt(), (6 * density).toInt())
-                setBackgroundResource(R.drawable.bg_nova_search_pill_drawer)
-                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.nova_accent_orange))
-                isClickable = true
-                isFocusable = true
-                val lp = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    (32 * density).toInt()
-                ).apply {
-                    marginStart = (8 * density).toInt()
-                }
-                layoutParams = lp
-                setOnClickListener {
-                    confirmCreateSmartCategoryFolder(suggestion)
-                }
-            }
-            container.addView(chipView)
-        }
+        // Smart Folders are created automatically on App Drawer load
     }
 
     private fun confirmCreateSmartCategoryFolder(suggestion: SmartCategorySuggestion) {
@@ -2578,7 +2552,7 @@ class MainActivity : AppCompatActivity() {
     private fun applyDrawerAppFilter() {
         val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
         val filtered = filterAppsByCategory(fullDrawerAppsList, selectedCategory)
-        val foldersFirst = prefs.getBoolean("key_drawer_folders_first", false)
+        val foldersFirst = prefs.getBoolean("key_drawer_folders_first", true)
         val sorted = DrawerFolderHelper.sortDrawerItems(filtered, foldersFirst)
         drawerAdapter.updateApps(sorted)
         fastScroller.updateApps(sorted)
