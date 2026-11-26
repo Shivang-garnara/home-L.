@@ -204,29 +204,7 @@ class DragController(
         dragLayer?.addView(dv, lp)
         dv.move(touchX, touchY)
 
-        val lookFeelPrefs = context.getSharedPreferences(com.example.launcherai.ui.LookFeelSettingsActivity.PREFS_NAME, Context.MODE_PRIVATE)
-        val dropTargetsEnabled = lookFeelPrefs.getBoolean(com.example.launcherai.ui.LookFeelSettingsActivity.KEY_DROP_TARGETS, true)
-
-        if (dropTargetsEnabled) {
-            dropTargetBar?.let { bar ->
-                bar.visibility = View.VISIBLE
-                bar.alpha = 0f
-                val density = context.resources.displayMetrics.density
-                val barHeight = if (bar.height > 0) bar.height.toFloat() else 56f * density
-                bar.translationY = -barHeight
-                bar.animate()
-                    .alpha(1f)
-                    .translationY(0f)
-                    .setDuration(175)
-                    .start()
-            }
-            // Zoom out desktop (matching Nova's drop targets desktop zoom-out effect)
-            workspace?.animate()
-                ?.scaleX(0.92f)
-                ?.scaleY(0.92f)
-                ?.setDuration(200)
-                ?.start()
-        }
+        dropTargetBar?.visibility = View.GONE
     }
 
     fun onDragMove(touchX: Float, touchY: Float) {
@@ -258,8 +236,11 @@ class DragController(
         spanY: Int,
         cellLayout: com.example.launcherai.ui.CellLayout
     ): IntArray {
-        val cellW = maxOf(1, cellLayout.getCellWidth()).toFloat()
-        val cellH = maxOf(1, cellLayout.getCellHeight()).toFloat()
+        val usableW = maxOf(1f, (cellLayout.width - cellLayout.paddingLeft - cellLayout.paddingRight).toFloat())
+        val usableH = maxOf(1f, (cellLayout.height - cellLayout.paddingTop - cellLayout.paddingBottom).toFloat())
+
+        val cellW = maxOf(1f, cellLayout.getCellWidth().toFloat())
+        val cellH = maxOf(1f, cellLayout.getCellHeight().toFloat())
         val pLeft = cellLayout.paddingLeft.toFloat()
         val pTop = cellLayout.paddingTop.toFloat()
 
@@ -286,7 +267,9 @@ class DragController(
             regX = regX,
             regY = regY,
             countX = cellLayout.countX,
-            countY = cellLayout.countY
+            countY = cellLayout.countY,
+            usableW = usableW,
+            usableH = usableH
         )
     }
 
@@ -652,18 +635,6 @@ class DragController(
     }
 
     private fun evaluateDropTargetHit(x: Float, y: Float): DropTargetType? {
-        val bar = dropTargetBar ?: return null
-        if (bar.visibility != View.VISIBLE) return null
-
-        val removeRect = getRelativeBounds(targetRemove)
-        if (removeRect.contains(x.toInt(), y.toInt())) return DropTargetType.REMOVE
-
-        val infoRect = getRelativeBounds(targetAppInfo)
-        if (infoRect.contains(x.toInt(), y.toInt())) return DropTargetType.APP_INFO
-
-        val uninstallRect = getRelativeBounds(targetUninstall)
-        if (uninstallRect.contains(x.toInt(), y.toInt())) return DropTargetType.UNINSTALL
-
         return null
     }
 
@@ -772,13 +743,24 @@ class DragController(
             regX: Float,
             regY: Float,
             countX: Int,
-            countY: Int
+            countY: Int,
+            usableW: Float = cellW * countX,
+            usableH: Float = cellH * countY
         ): IntArray {
             val visualLeft = localX - regX
             val visualTop = localY - regY
 
-            val rawCellX = Math.round((visualLeft - pLeft) / maxOf(1f, cellW)).toInt()
-            val rawCellY = Math.round((visualTop - pTop) / maxOf(1f, cellH)).toInt()
+            val centerX = visualLeft + (spanX * cellW) / 2f
+            val centerY = visualTop + (spanY * cellH) / 2f
+
+            val safeUsableW = maxOf(1f, usableW)
+            val safeUsableH = maxOf(1f, usableH)
+
+            val relX = (centerX - pLeft).coerceIn(0f, safeUsableW)
+            val relY = (centerY - pTop).coerceIn(0f, safeUsableH)
+
+            val rawCellX = ((relX / safeUsableW) * countX).toInt()
+            val rawCellY = ((relY / safeUsableH) * countY).toInt()
 
             val maxCellX = maxOf(0, countX - spanX)
             val maxCellY = maxOf(0, countY - spanY)

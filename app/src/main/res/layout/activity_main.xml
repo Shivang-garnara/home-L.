@@ -362,9 +362,6 @@
 
     </LinearLayout>
 
-    <!-- TOP DROP TARGET BAR FOR DRAG AND DROP -->
-    <include layout="@layout/layout_drop_target_bar" />
-
     <!-- FOLDER POPUP OVERLAY WINDOW -->
     <include layout="@layout/layout_folder_window" />
 

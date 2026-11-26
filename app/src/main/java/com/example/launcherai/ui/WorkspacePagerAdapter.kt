@@ -136,16 +136,15 @@ class WorkspacePagerAdapter(
                     val shape = prefs.getString("key_icon_shape", "Round") ?: "Round"
                     val sizePercent = prefs.getInt("key_icon_size_percent", 125)
 
-                    val cellWidthPx = if (cellLayout.width > 0) {
-                        (cellLayout.width - cellLayout.paddingLeft - cellLayout.paddingRight) / maxOf(1, gridConfig.cols)
-                    } else {
-                        cellLayout.context.resources.displayMetrics.widthPixels / maxOf(1, gridConfig.cols)
-                    }
-                    val cellHeightPx = if (cellLayout.height > 0) {
-                        (cellLayout.height - cellLayout.paddingTop - cellLayout.paddingBottom) / maxOf(1, gridConfig.rows)
-                    } else {
-                        cellLayout.context.resources.displayMetrics.heightPixels / maxOf(1, gridConfig.rows)
-                    }
+                    val metrics = cellLayout.context.resources.displayMetrics
+                    val totalW = if (cellLayout.width > 0) cellLayout.width else metrics.widthPixels
+                    val totalH = if (cellLayout.height > 0) cellLayout.height else metrics.heightPixels
+
+                    val usableW = maxOf(0, totalW - cellLayout.paddingLeft - cellLayout.paddingRight)
+                    val usableH = maxOf(0, totalH - cellLayout.paddingTop - cellLayout.paddingBottom)
+
+                    val cellWidthPx = maxOf(1, usableW / maxOf(1, gridConfig.cols))
+                    val cellHeightPx = maxOf(1, usableH / maxOf(1, gridConfig.rows))
                     val sizePx = com.example.launcherai.icons.DeviceIconMetrics.getWorkspaceIconSizePx(
                         cellLayout.context,
                         cellWidthPx,
