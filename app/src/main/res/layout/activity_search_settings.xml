@@ -427,35 +427,6 @@
 
             <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#D1CAC7" />
 
-            <!-- API Integrations (Clickable Dialog) -->
-            <LinearLayout
-                android:id="@+id/rowApiIntegrations"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingTop="12dp"
-                android:paddingBottom="12dp"
-                android:background="?attr/selectableItemBackground">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="API Integrations"
-                    android:textColor="@color/nova_text_brown_primary"
-                    android:textSize="16sp" />
-
-                <TextView
-                    android:id="@+id/tvApiIntegrationsSubtitle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="Connect other apps and services to get more searchable links"
-                    android:textColor="@color/nova_text_brown_secondary"
-                    android:textSize="13sp" />
-            </LinearLayout>
-
-            <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#D1CAC7" />
-
             <!-- Web Suggestions (Clickable Dialog) -->
             <LinearLayout
                 android:id="@+id/rowWebSuggestions"
@@ -718,7 +689,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Nova Now search bar"
+                    android:text="Settings search bar"
                     android:textColor="@color/nova_text_brown_primary"
                     android:textSize="16sp" />
 

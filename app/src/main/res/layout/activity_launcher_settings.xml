@@ -40,6 +40,7 @@
             android:paddingEnd="16dp">
 
             <ImageView
+                android:id="@+id/ivSettingsSearchIcon"
                 android:layout_width="20dp"
                 android:layout_height="20dp"
                 android:contentDescription="@null"
@@ -680,54 +681,6 @@
                         </LinearLayout>
                     </LinearLayout>
 
-                    <!-- Row 10: Integrations -->
-                    <LinearLayout
-                        android:id="@+id/rowIntegrations"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:background="?attr/selectableItemBackground"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:gravity="center_vertical"
-                        android:minHeight="72dp"
-                        android:orientation="horizontal"
-                        android:paddingStart="16dp"
-                        android:paddingTop="12dp"
-                        android:paddingEnd="16dp"
-                        android:paddingBottom="12dp">
-
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:contentDescription="@null"
-                            android:src="@drawable/ic_settings_integrations"
-                            app:tint="@color/nova_icon_tint_brown" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="16dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Integrations"
-                                android:textColor="@color/nova_text_brown_primary"
-                                android:textSize="16sp"
-                                android:textStyle="normal" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp"
-                                android:text="Connect other Apps to LauncherAI, for example to enhance shortcut search content"
-                                android:textColor="@color/nova_text_brown_secondary"
-                                android:textSize="13sp" />
-                        </LinearLayout>
-                    </LinearLayout>
-
                     <!-- Row 11: Notification badges -->
                     <LinearLayout
                         android:id="@+id/rowNotificationBadges"
@@ -771,54 +724,6 @@
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="2dp"
                                 android:text="Choose from dynamic badges, notification dots, or numeric dots"
-                                android:textColor="@color/nova_text_brown_secondary"
-                                android:textSize="13sp" />
-                        </LinearLayout>
-                    </LinearLayout>
-
-                    <!-- Row 12: Backup & restore -->
-                    <LinearLayout
-                        android:id="@+id/rowBackupRestore"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:background="?attr/selectableItemBackground"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:gravity="center_vertical"
-                        android:minHeight="64dp"
-                        android:orientation="horizontal"
-                        android:paddingStart="20dp"
-                        android:paddingTop="12dp"
-                        android:paddingEnd="20dp"
-                        android:paddingBottom="12dp">
-
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:contentDescription="@null"
-                            android:src="@drawable/ic_settings_backup"
-                            app:tint="@color/nova_icon_tint_brown" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="20dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Backup &amp; restore"
-                                android:textColor="@color/nova_text_brown_primary"
-                                android:textSize="16sp"
-                                android:textStyle="normal" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp"
-                                android:text="Backup or restore your launcher settings and desktop layout"
                                 android:textColor="@color/nova_text_brown_secondary"
                                 android:textSize="13sp" />
                         </LinearLayout>

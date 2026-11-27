@@ -106,10 +106,6 @@ class SetupActivity : AppCompatActivity() {
             }
         }
 
-        binding.btnRestoreBackup.setOnClickListener {
-            Toast.makeText(this, "Restore backup feature not available yet", Toast.LENGTH_SHORT).show()
-        }
-
         binding.btnSkipSetup.setOnClickListener {
             completeSetupAndGoHome()
         }

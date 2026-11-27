@@ -76,17 +76,24 @@ class AppWidgetResizeFrame(
         handleTop = findViewById(R.id.handleTop)
         handleBottom = findViewById(R.id.handleBottom)
 
-        // Compute minSpan from provider info
+        // Compute minSpan from provider info matching Nova's LauncherAppWidgetProviderInfo.p()
         val density = context.resources.displayMetrics.density
-        val minWidthDp = (if (providerInfo.minResizeWidth > 0) providerInfo.minResizeWidth else providerInfo.minWidth) / density
-        val minHeightDp = (if (providerInfo.minResizeHeight > 0) providerInfo.minResizeHeight else providerInfo.minHeight) / density
-        minSpanX = Math.ceil((minWidthDp + 30) / 70.0).toInt().coerceIn(1, maxSpanX)
-        minSpanY = Math.ceil((minHeightDp + 30) / 70.0).toInt().coerceIn(1, maxSpanY)
+        val (computedMinX, computedMinY) = WidgetDiscoveryHelper.calculateMinResizeSpans(
+            context = context,
+            provider = providerInfo,
+            defaultSpanX = currentSpanX,
+            defaultSpanY = currentSpanY,
+            gridCols = maxSpanX,
+            gridRows = maxSpanY,
+            density = density
+        )
+        minSpanX = computedMinX
+        minSpanY = computedMinY
 
         // Resize mode handles visibility
         val resizeMode = providerInfo.resizeMode
-        val allowH = (resizeMode and AppWidgetProviderInfo.RESIZE_HORIZONTAL) != 0 || resizeMode == 0
-        val allowV = (resizeMode and AppWidgetProviderInfo.RESIZE_VERTICAL) != 0 || resizeMode == 0
+        val allowH = ((resizeMode and AppWidgetProviderInfo.RESIZE_HORIZONTAL) != 0 || resizeMode == 0) && minSpanX < maxSpanX
+        val allowV = ((resizeMode and AppWidgetProviderInfo.RESIZE_VERTICAL) != 0 || resizeMode == 0) && minSpanY < maxSpanY
 
         handleLeft.visibility = if (allowH) View.VISIBLE else View.GONE
         handleRight.visibility = if (allowH) View.VISIBLE else View.GONE
@@ -225,7 +232,10 @@ class AppWidgetResizeFrame(
                                 currentSpanX,
                                 currentSpanY
                             )
-                            hostView.updateSizeOptions(currentSpanX, currentSpanY, cellW, cellH)
+                            hostView.updateSizeOptionsForPixels(
+                                cellLayout.getSpanWidthPx(currentCellX, currentSpanX),
+                                cellLayout.getSpanHeightPx(currentCellY, currentSpanY)
+                            )
                             updateSpanBadge()
                             updateFramePosition()
                         }

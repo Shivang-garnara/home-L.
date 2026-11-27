@@ -2,9 +2,13 @@ package com.example.launcherai.widgets
 
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.graphics.Outline
+import android.graphics.Rect
+import android.os.Build
 import android.os.Bundle
+import android.util.SizeF
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -15,6 +19,7 @@ import android.widget.FrameLayout
 import android.widget.TextView
 import com.example.launcherai.R
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * Enhanced Nova-style AppWidgetHostView for LauncherAI.
@@ -39,6 +44,8 @@ class LauncherAppWidgetHostView(context: Context) : AppWidgetHostView(context) {
     private var hasStartedDragAfterLongPress = false
     var onLongPressDragListener: ((rawX: Float, rawY: Float) -> Unit)? = null
     private var customCornerRadius: Float = 16f * context.resources.displayMetrics.density
+    private val defaultWidgetPadding = Rect()
+    private var isSettingAppWidget = false
 
     private val checkLongPressRunnable = Runnable {
         if (!isLongPressDispatched && isAttachedToWindow) {
@@ -60,9 +67,6 @@ class LauncherAppWidgetHostView(context: Context) : AppWidgetHostView(context) {
     }
 
     init {
-        // Zero out system-enforced margins for full-bleed modern widget look
-        setPadding(0, 0, 0, 0)
-
         // Clip to outline with rounded corners
         outlineProvider = object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
@@ -72,27 +76,133 @@ class LauncherAppWidgetHostView(context: Context) : AppWidgetHostView(context) {
         clipToOutline = true
     }
 
+    override fun setAppWidget(appWidgetId: Int, info: AppWidgetProviderInfo?) {
+        isSettingAppWidget = true
+        super.setAppWidget(appWidgetId, info)
+        isSettingAppWidget = false
+        applyStoredPaddingPreference()
+    }
+
+    override fun setPadding(left: Int, top: Int, right: Int, bottom: Int) {
+        if (isSettingAppWidget) {
+            defaultWidgetPadding.set(left, top, right, bottom)
+        }
+        super.setPadding(left, top, right, bottom)
+    }
+
+    fun hasDefaultPadding(): Boolean {
+        return defaultWidgetPadding.left != 0 ||
+            defaultWidgetPadding.top != 0 ||
+            defaultWidgetPadding.right != 0 ||
+            defaultWidgetPadding.bottom != 0
+    }
+
+    fun isWidgetPaddingEnabled(): Boolean {
+        if (appWidgetId <= 0) return false
+        val prefs = context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+        return prefs.getBoolean("widget_padding_$appWidgetId", false)
+    }
+
+    fun applyStoredPaddingPreference() {
+        val enabled = isWidgetPaddingEnabled()
+        if (enabled) {
+            super.setPadding(
+                defaultWidgetPadding.left,
+                defaultWidgetPadding.top,
+                defaultWidgetPadding.right,
+                defaultWidgetPadding.bottom
+            )
+        } else {
+            super.setPadding(0, 0, 0, 0)
+        }
+    }
+
+    fun toggleWidgetPadding(): Boolean {
+        val newState = !isWidgetPaddingEnabled()
+        if (appWidgetId > 0) {
+            context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean("widget_padding_$appWidgetId", newState)
+                .apply()
+        }
+        applyStoredPaddingPreference()
+        if (width > 0 && height > 0) {
+            updateSizeOptionsForPixels(width, height)
+        }
+        requestLayout()
+        return newState
+    }
+
     /**
-     * Updates widget size options for responsive layouts (clocks, weather, lists).
+     * Updates widget size options for responsive layouts (clocks, weather, lists)
+     * from a cell span and cell dimensions in pixels.
      */
     fun updateSizeOptions(spanX: Int, spanY: Int, cellWidthPx: Int, cellHeightPx: Int) {
+        updateSizeOptionsForPixels(cellWidthPx * spanX, cellHeightPx * spanY)
+    }
+
+    /**
+     * Updates widget size options using the exact laid-out pixel width and height,
+     * subtracting hostView padding and deduplicating against existing AppWidgetOptions
+     * (matching Nova Launcher's hb.b.f / bb.k.updateAppWidgetSize).
+     */
+    fun updateSizeOptionsForPixels(widthPx: Int, heightPx: Int) {
         val density = resources.displayMetrics.density
-        if (density <= 0f) return
+        if (density <= 0f || widthPx <= 0 || heightPx <= 0) return
 
-        val widthDp = ((cellWidthPx * spanX) / density).toInt()
-        val heightDp = ((cellHeightPx * spanY) / density).toInt()
+        val contentWidthPx = maxOf(0, widthPx - paddingLeft - paddingRight)
+        val contentHeightPx = maxOf(0, heightPx - paddingTop - paddingBottom)
 
-        val options = Bundle().apply {
-            putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, widthDp)
-            putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, heightDp)
-            putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, widthDp)
-            putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, heightDp)
-        }
+        val widthDpF = contentWidthPx / density
+        val heightDpF = contentHeightPx / density
+        val widthDp = widthDpF.roundToInt().coerceAtLeast(1)
+        val heightDp = heightDpF.roundToInt().coerceAtLeast(1)
 
         try {
-            updateAppWidgetSize(options, widthDp, heightDp, widthDp, heightDp)
-            if (appWidgetId > 0) {
-                AppWidgetManager.getInstance(context).updateAppWidgetOptions(appWidgetId, options)
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val existingOptions = if (appWidgetId > 0) {
+                appWidgetManager.getAppWidgetOptions(appWidgetId)
+            } else {
+                null
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val sizes = arrayListOf(SizeF(widthDpF, heightDpF))
+                @Suppress("DEPRECATION")
+                val existingSizes = existingOptions?.getParcelableArrayList<SizeF>(AppWidgetManager.OPTION_APPWIDGET_SIZES)
+                if (existingOptions != null &&
+                    existingSizes == sizes &&
+                    existingOptions.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH) == widthDp &&
+                    existingOptions.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT) == heightDp &&
+                    existingOptions.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH) == widthDp &&
+                    existingOptions.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT) == heightDp
+                ) {
+                    return
+                }
+                val options = Bundle().apply {
+                    putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, widthDp)
+                    putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, heightDp)
+                    putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, widthDp)
+                    putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, heightDp)
+                }
+                updateAppWidgetSize(options, sizes)
+            } else {
+                if (existingOptions != null &&
+                    existingOptions.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH) == widthDp &&
+                    existingOptions.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT) == heightDp &&
+                    existingOptions.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH) == widthDp &&
+                    existingOptions.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT) == heightDp
+                ) {
+                    return
+                }
+                val options = Bundle().apply {
+                    putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, widthDp)
+                    putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, heightDp)
+                    putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, widthDp)
+                    putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, heightDp)
+                }
+                @Suppress("DEPRECATION")
+                updateAppWidgetSize(options, widthDp, heightDp, widthDp, heightDp)
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -101,6 +211,7 @@ class LauncherAppWidgetHostView(context: Context) : AppWidgetHostView(context) {
 
     fun setWidgetCornerRadiusDp(radiusDp: Float) {
         customCornerRadius = radiusDp * resources.displayMetrics.density
+        clipToOutline = customCornerRadius > 0f
         invalidateOutline()
     }
 

@@ -181,13 +181,7 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
             else -> "On"
         }
         binding.tvWidgetCornerRadiusValue.text = "${widgetCornerRadius}dp"
-        binding.tvTransitionEffectValue.text = when (transitionEffect) {
-            "CUBE" -> "Cube"
-            "CARD_STACK" -> "Card stack"
-            "ACCORDION" -> "Accordion"
-            "FLIP" -> "Flip"
-            else -> "Simple"
-        }
+        binding.tvTransitionEffectValue.text = WorkspacePageTransformer.Effect.fromString(transitionEffect).displayName
         binding.swInfiniteScroll.isChecked = infiniteScroll
 
         binding.tvPageIndicatorValue.text = when (pageIndicatorStyle) {
@@ -620,24 +614,15 @@ class HomeScreenSettingsActivity : AppCompatActivity() {
     }
 
     private fun showTransitionEffectDialog() {
-        val options = arrayOf("Simple", "Cube", "Card stack", "Accordion", "Flip")
-        val currentIndex = when (transitionEffect) {
-            "CUBE" -> 1
-            "CARD_STACK" -> 2
-            "ACCORDION" -> 3
-            "FLIP" -> 4
-            else -> 0
-        }
+        val effects = WorkspacePageTransformer.Effect.entries.toTypedArray()
+        val options = effects.map { it.displayName }.toTypedArray()
+        val currentEffect = WorkspacePageTransformer.Effect.fromString(transitionEffect)
+        val currentIndex = effects.indexOf(currentEffect).coerceAtLeast(0)
+
         AlertDialog.Builder(this)
             .setTitle("Transition effect")
             .setSingleChoiceItems(options, currentIndex) { dialog, which ->
-                transitionEffect = when (which) {
-                    1 -> "CUBE"
-                    2 -> "CARD_STACK"
-                    3 -> "ACCORDION"
-                    4 -> "FLIP"
-                    else -> "SIMPLE"
-                }
+                transitionEffect = effects[which].name
                 val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
                 prefs.edit().putString("key_page_transition_effect", transitionEffect).apply()
                 updateScrollSectionUI()

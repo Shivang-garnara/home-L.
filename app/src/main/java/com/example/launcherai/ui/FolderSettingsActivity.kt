@@ -664,26 +664,23 @@ class FolderSettingsActivity : AppCompatActivity() {
     }
 
     private fun showCustomHexDialog() {
-        val input = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_TEXT
-            setText(String.format("%06X", 0xFFFFFF and currentTabColor()))
-            hint = "Hex e.g. 202534"
-            setPadding(48, 32, 48, 24)
+        val tabTitle = when (activeColorTab) {
+            TAB_TEXT -> "Text color"
+            TAB_ACCENT -> "Accent color"
+            else -> "Folder background color"
         }
-        AlertDialog.Builder(this)
-            .setTitle("Custom color")
-            .setView(input)
-            .setPositiveButton("OK") { _, _ ->
-                val raw = input.text.toString().trim().removePrefix("#")
-                try {
-                    val parsed = Integer.parseInt(raw, 16) or 0xFF000000.toInt()
-                    applyColorForActiveTab(parsed)
-                } catch (_: Exception) {
-                    Toast.makeText(this, "Invalid hex color", Toast.LENGTH_SHORT).show()
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        val defaultCol = when (activeColorTab) {
+            TAB_TEXT -> 0xFFFFFFFF.toInt()
+            TAB_ACCENT -> 0xFFD54526.toInt()
+            else -> 0xFF202534.toInt()
+        }
+        NovaColorPickerBottomSheet.newInstance(
+            title = tabTitle,
+            initialColor = currentTabColor(),
+            defaultColor = defaultCol
+        ) { chosen ->
+            applyColorForActiveTab(chosen)
+        }.show(supportFragmentManager, NovaColorPickerBottomSheet.TAG)
     }
 
     private fun refreshOpenedFolderPreview() {

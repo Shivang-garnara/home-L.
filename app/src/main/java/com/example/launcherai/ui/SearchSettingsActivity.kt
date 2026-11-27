@@ -17,7 +17,7 @@ import com.example.launcherai.databinding.ActivitySearchSettingsBinding
  * Dedicated Search Settings Activity matching Nova Launcher 9.0.1 Search.
  * Supports all one-line toggles (Limit 1 row, Microresults, Folders, Shortcuts, Contacts,
  * Contact Card View, Recent Shortcuts, Private Keyboard) and clickable dialogs for
- * Mode, API Integrations, Web Suggestions, Search Providers, Nova AI in Search, and Search Bars.
+ * Mode, Web Suggestions, Search Providers, Nova AI in Search, and Search Bars.
  */
 class SearchSettingsActivity : AppCompatActivity() {
 
@@ -38,7 +38,6 @@ class SearchSettingsActivity : AppCompatActivity() {
         const val KEY_WEB_SUGGESTIONS = "key_web_suggestions"
         const val KEY_SEARCH_PROVIDERS = "key_search_providers"
         const val KEY_NOVA_AI_IN_SEARCH = "key_nova_ai_in_search"
-        const val KEY_API_INTEGRATIONS = "key_api_integrations"
 
         const val KEY_RECENT_SEARCH_SHORTCUTS = "key_recent_search_shortcuts"
         const val KEY_PRIVATE_KEYBOARD = "key_private_keyboard"
@@ -61,8 +60,6 @@ class SearchSettingsActivity : AppCompatActivity() {
             "YouTube", "DuckDuckGo", "YouTube Music", "Spotify"
         )
         val DEFAULT_PROVIDERS = setOf("Google", "Play Store", "Wikipedia", "Google Maps", "YouTube")
-
-        val ALL_INTEGRATIONS = arrayOf("Calendar", "Spotify", "Deezer", "Twitch", "Slack", "Discord")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -140,23 +137,6 @@ class SearchSettingsActivity : AppCompatActivity() {
         binding.swContactCardView.isChecked = prefs.getBoolean(KEY_CONTACT_CARD_VIEW, true)
         binding.swContactCardView.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean(KEY_CONTACT_CARD_VIEW, isChecked).apply()
-        }
-
-        binding.rowApiIntegrations.setOnClickListener {
-            val saved = prefs.getStringSet(KEY_API_INTEGRATIONS, setOf("Calendar")) ?: setOf("Calendar")
-            val checked = BooleanArray(ALL_INTEGRATIONS.size) { saved.contains(ALL_INTEGRATIONS[it]) }
-            AlertDialog.Builder(this)
-                .setTitle("API Integrations")
-                .setMultiChoiceItems(ALL_INTEGRATIONS, checked) { _, which, isChecked ->
-                    checked[which] = isChecked
-                }
-                .setPositiveButton("Save") { _, _ ->
-                    val newSet = ALL_INTEGRATIONS.filterIndexed { i, _ -> checked[i] }.toSet()
-                    prefs.edit().putStringSet(KEY_API_INTEGRATIONS, newSet).apply()
-                    refreshUi()
-                }
-                .setNegativeButton("Cancel", null)
-                .show()
         }
 
         binding.rowWebSuggestions.setOnClickListener {
@@ -358,7 +338,7 @@ class SearchSettingsActivity : AppCompatActivity() {
         )
 
         AlertDialog.Builder(this)
-            .setTitle("Nova Now search bar")
+            .setTitle("Settings search bar")
             .setItems(items) { _, which ->
                 when (which) {
                     0 -> {
@@ -393,9 +373,6 @@ class SearchSettingsActivity : AppCompatActivity() {
         val providerText = if (orderedProviders.isEmpty()) "None" else orderedProviders.joinToString(", ")
         binding.tvSearchProvidersSubtitle.text = providerText
         binding.tvPreviewProviders.text = "Search with: $providerText"
-
-        val integrations = prefs.getStringSet(KEY_API_INTEGRATIONS, setOf("Calendar")) ?: setOf("Calendar")
-        binding.tvApiIntegrationsSubtitle.text = if (integrations.isEmpty()) "None connected" else "Connected: ${integrations.joinToString(", ")}"
 
         val placementMap = mapOf(
             "NONE" to "None", "WIDGET" to "Widget",

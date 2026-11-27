@@ -118,6 +118,13 @@
             android:label="Dock"
             android:theme="@style/Theme.NovaLight" />
 
+        <!-- Dock Background Settings Activity -->
+        <activity
+            android:name=".ui.DockBackgroundSettingsActivity"
+            android:exported="false"
+            android:label="Dock background"
+            android:theme="@style/Theme.NovaLight" />
+
         <!-- Folders Settings Activity -->
         <activity
             android:name=".ui.FolderSettingsActivity"

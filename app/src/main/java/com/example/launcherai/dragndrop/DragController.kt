@@ -752,14 +752,15 @@ class DragController(
             val visualLeft = localX - regX
             val visualTop = localY - regY
 
-            val centerX = visualLeft + (spanX * cellW) / 2f
-            val centerY = visualTop + (spanY * cellH) / 2f
+            // Snap the widget's top-left cell (not its multi-span center) to the nearest grid cell
+            val topLeftCellCenterX = visualLeft + cellW / 2f
+            val topLeftCellCenterY = visualTop + cellH / 2f
 
             val safeUsableW = maxOf(1f, usableW)
             val safeUsableH = maxOf(1f, usableH)
 
-            val relX = (centerX - pLeft).coerceIn(0f, safeUsableW)
-            val relY = (centerY - pTop).coerceIn(0f, safeUsableH)
+            val relX = (topLeftCellCenterX - pLeft).coerceIn(0f, safeUsableW)
+            val relY = (topLeftCellCenterY - pTop).coerceIn(0f, safeUsableH)
 
             val rawCellX = ((relX / safeUsableW) * countX).toInt()
             val rawCellY = ((relY / safeUsableH) * countY).toInt()

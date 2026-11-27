@@ -306,6 +306,63 @@
                             android:textStyle="bold" />
                     </LinearLayout>
 
+                    <!-- Minimum Contrast slider (shown for Text & Accent tabs, matching Nova %dΔ) -->
+                    <LinearLayout
+                        android:id="@+id/rowMinimumContrast"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:visibility="gone">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Minimum contrast"
+                                android:textColor="@color/nova_text_brown_primary"
+                                android:textSize="14sp" />
+
+                            <TextView
+                                android:id="@+id/tvMinimumContrastValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="35Δ"
+                                android:textColor="#6D3B68"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <FrameLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="34dp"
+                            android:layout_marginTop="4dp">
+
+                            <View
+                                android:id="@+id/trackMinimumContrast"
+                                android:layout_width="match_parent"
+                                android:layout_height="12dp"
+                                android:layout_gravity="center_vertical"
+                                android:layout_marginStart="12dp"
+                                android:layout_marginEnd="12dp" />
+
+                            <SeekBar
+                                android:id="@+id/sbMinimumContrast"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:max="30"
+                                android:progressDrawable="@android:color/transparent"
+                                android:splitTrack="false" />
+                        </FrameLayout>
+                    </LinearLayout>
+
                     <!-- 3-Tab Switcher: Surface | Text | Accent -->
                     <LinearLayout
                         android:layout_width="match_parent"

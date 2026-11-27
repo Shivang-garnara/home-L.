@@ -1,13 +1,16 @@
 package com.example.launcherai.widgets
 
+import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Rect
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Process
 import android.os.UserManager
+import kotlin.math.ceil
 
 /**
  * Data model representing an application group containing one or more widgets.
@@ -106,8 +109,87 @@ object WidgetDiscoveryHelper {
         }
         if (sizeDp <= 0) return 1
         // Nova / Android standard formula: ceil((sizeDp + 30) / 70.0)
-        val span = Math.ceil((sizeDp + 30) / 70.0).toInt()
+        val span = ceil((sizeDp + 30) / 70.0).toInt()
         return span.coerceIn(1, maxOf(1, maxSpan))
+    }
+
+    /**
+     * Computes initial widget spans matching Nova Launcher's LauncherAppWidgetProviderInfo.p():
+     * - Uses 80dp per cell + AppWidgetHostView.getDefaultPaddingForWidget
+     * - Validates Android 12+ targetCellWidth/targetCellHeight against minResizeSpanX/minResizeSpanY
+     */
+    fun calculateWidgetSpans(
+        provider: AppWidgetProviderInfo,
+        gridCols: Int,
+        gridRows: Int,
+        density: Float,
+        defaultPadding: Rect = Rect()
+    ): Pair<Int, Int> {
+        val safeDensity = if (density <= 0f) 1.0f else density
+        val cellSizePx = 80f * safeDensity
+
+        var spanX = maxOf(1, ceil((provider.minWidth + defaultPadding.left + defaultPadding.right) / cellSizePx.toDouble()).toInt())
+        var spanY = maxOf(1, ceil((provider.minHeight + defaultPadding.top + defaultPadding.bottom) / cellSizePx.toDouble()).toInt())
+
+        val minResizeSpanX = maxOf(1, ceil((provider.minResizeWidth + defaultPadding.left + defaultPadding.right) / cellSizePx.toDouble()).toInt())
+        val minResizeSpanY = maxOf(1, ceil((provider.minResizeHeight + defaultPadding.top + defaultPadding.bottom) / cellSizePx.toDouble()).toInt())
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val maxTargetX = maxOf(gridCols, minResizeSpanX)
+            val maxTargetY = maxOf(gridRows, minResizeSpanY)
+            if (provider.targetCellWidth in minResizeSpanX..maxTargetX &&
+                provider.targetCellHeight in minResizeSpanY..maxTargetY
+            ) {
+                spanX = provider.targetCellWidth
+                spanY = provider.targetCellHeight
+            }
+        }
+
+        return Pair(
+            spanX.coerceIn(1, maxOf(1, gridCols)),
+            spanY.coerceIn(1, maxOf(1, gridRows))
+        )
+    }
+
+    /**
+     * Computes minimum resizable spans matching Nova Launcher's LauncherAppWidgetProviderInfo.p():
+     * minSpanX = min(defaultSpanX, minResizeSpanX), clamped to [1, gridCols].
+     */
+    fun calculateMinResizeSpans(
+        context: Context?,
+        provider: AppWidgetProviderInfo,
+        defaultSpanX: Int,
+        defaultSpanY: Int,
+        gridCols: Int,
+        gridRows: Int,
+        density: Float
+    ): Pair<Int, Int> {
+        val safeDensity = if (density <= 0f) 1.0f else density
+        val cellSizePx = 80f * safeDensity
+        val defaultPadding = if (context != null && provider.provider != null) {
+            try {
+                AppWidgetHostView.getDefaultPaddingForWidget(context, provider.provider, null)
+            } catch (_: Exception) {
+                Rect()
+            }
+        } else {
+            Rect()
+        }
+
+        val minResizeSpanX = if (provider.minResizeWidth > 0) {
+            maxOf(1, ceil((provider.minResizeWidth + defaultPadding.left + defaultPadding.right) / cellSizePx.toDouble()).toInt())
+        } else {
+            1
+        }
+        val minResizeSpanY = if (provider.minResizeHeight > 0) {
+            maxOf(1, ceil((provider.minResizeHeight + defaultPadding.top + defaultPadding.bottom) / cellSizePx.toDouble()).toInt())
+        } else {
+            1
+        }
+
+        val minSpanX = minOf(defaultSpanX, minResizeSpanX).coerceIn(1, maxOf(1, gridCols))
+        val minSpanY = minOf(defaultSpanY, minResizeSpanY).coerceIn(1, maxOf(1, gridRows))
+        return Pair(minSpanX, minSpanY)
     }
 
     /**
@@ -145,7 +227,8 @@ object WidgetDiscoveryHelper {
         classNameExtractor: (AppWidgetProviderInfo) -> String = { it.provider?.className ?: "" },
         gridCols: Int = 4,
         gridRows: Int = 5,
-        density: Float = 1.0f
+        density: Float = 1.0f,
+        defaultPaddingProvider: (AppWidgetProviderInfo) -> Rect = { Rect() }
     ): List<AppWidgetGroup> {
         if (providers.isEmpty()) return emptyList()
 
@@ -178,11 +261,14 @@ object WidgetDiscoveryHelper {
                 val minWDp = (provider.minWidth / safeDensity).toInt()
                 val minHDp = (provider.minHeight / safeDensity).toInt()
 
-                val targetCellW = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) provider.targetCellWidth else 0
-                val targetCellH = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) provider.targetCellHeight else 0
-
-                val spanX = calculateCellSpan(minWDp, targetCellW, gridCols)
-                val spanY = calculateCellSpan(minHDp, targetCellH, gridRows)
+                val defaultPadding = defaultPaddingProvider(provider)
+                val (spanX, spanY) = calculateWidgetSpans(
+                    provider = provider,
+                    gridCols = gridCols,
+                    gridRows = gridRows,
+                    density = safeDensity,
+                    defaultPadding = defaultPadding
+                )
 
                 val preview = previewProvider(provider)
                 val description = descriptionProvider(provider)
@@ -297,7 +383,18 @@ object WidgetDiscoveryHelper {
             },
             gridCols = gridCols,
             gridRows = gridRows,
-            density = density
+            density = density,
+            defaultPaddingProvider = { provider ->
+                if (provider.provider != null) {
+                    try {
+                        AppWidgetHostView.getDefaultPaddingForWidget(context, provider.provider, null)
+                    } catch (_: Exception) {
+                        Rect()
+                    }
+                } else {
+                    Rect()
+                }
+            }
         ).filter { it.appName.isNotBlank() && it.widgets.isNotEmpty() }
     }
 }

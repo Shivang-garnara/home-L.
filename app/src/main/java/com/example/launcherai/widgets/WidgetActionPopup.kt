@@ -1,50 +1,107 @@
 package com.example.launcherai.widgets
 
-import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
-import android.os.Bundle
 import android.provider.Settings
+import android.view.Gravity
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.PopupWindow
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import com.example.launcherai.R
+import com.example.launcherai.ui.PopupMenuSettingsActivity
 import com.example.launcherai.ui.WorkspaceWidgetResolvedItem
-import com.google.android.material.bottomsheet.BottomSheetDialog
 
 /**
- * Nova-style Widget context action popup shown on long-pressing an active AppWidget.
- * Provides immediate shortcuts to:
- *  - Resize Widget (opens AppWidgetResizeFrame)
- *  - Configure Widget (re-opens widget configuration intent)
- *  - Move Widget (initiates drag-and-drop)
- *  - App Info (opens system App Details)
+ * Nova-style floating Widget context popup anchored to the long-pressed AppWidget
+ * (matching PopupContainerWithArrow & i10.d/c widget shortcuts).
+ * Provides:
+ *  - Resize (opens AppWidgetResizeFrame)
+ *  - Padding (toggles system default padding vs full-bleed 0 padding)
+ *  - Widget settings (re-opens widget configuration intent when configurable)
+ *  - Move (initiates drag-and-drop)
+ *  - App info (opens system App Details)
  *  - Remove (removes from workspace and deallocates AppWidget ID)
  */
 class WidgetActionPopup(
-    context: Context,
+    private val context: Context,
+    private val anchorView: LauncherAppWidgetHostView,
     private val widgetItem: WorkspaceWidgetResolvedItem,
     private val onResize: () -> Unit,
+    private val onTogglePadding: (() -> Unit)? = null,
     private val onConfigure: (() -> Unit)?,
     private val onMove: () -> Unit,
     private val onRemove: () -> Unit
-) : BottomSheetDialog(context, R.style.Theme_LauncherAI) {
+) {
+    private val rootView: View = LayoutInflater.from(context).inflate(R.layout.dialog_widget_actions, null)
+    private val popupWindow: PopupWindow
+    var onDismissListener: (() -> Unit)? = null
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.dialog_widget_actions)
+    val isShowing: Boolean
+        get() = popupWindow.isShowing
 
-        val ivIcon = findViewById<ImageView>(R.id.ivWidgetActionIcon)
-        val tvTitle = findViewById<TextView>(R.id.tvWidgetActionTitle)
-        val tvSubtitle = findViewById<TextView>(R.id.tvWidgetActionSubtitle)
-        val tvSpanBadge = findViewById<TextView>(R.id.tvWidgetActionSpanBadge)
+    init {
+        popupWindow = PopupWindow(
+            rootView,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            true
+        ).apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            isOutsideTouchable = true
+            isFocusable = true
+            elevation = 20f * context.resources.displayMetrics.density
+            setOnDismissListener { onDismissListener?.invoke() }
+        }
 
-        val actionResize = findViewById<View>(R.id.actionResizeWidget)
-        val actionConfigure = findViewById<View>(R.id.actionConfigureWidget)
-        val actionMove = findViewById<View>(R.id.actionMoveWidget)
-        val actionAppInfo = findViewById<View>(R.id.actionAppInfo)
-        val actionRemove = findViewById<View>(R.id.actionRemoveWidget)
+        applyPopupStyling()
+        bindViews()
+    }
+
+    private fun applyPopupStyling() {
+        val prefs = context.getSharedPreferences(PopupMenuSettingsActivity.PREFS_NAME, Context.MODE_PRIVATE)
+        val cornerRadiusDp = prefs.getInt(
+            PopupMenuSettingsActivity.KEY_POPUP_CORNER_RADIUS,
+            PopupMenuSettingsActivity.DEFAULT_CORNER_RADIUS_DP
+        )
+        val density = context.resources.displayMetrics.density
+        val radiusPx = cornerRadiusDp * density
+        val hasCardBg = prefs.getBoolean(PopupMenuSettingsActivity.KEY_POPUP_CARD_BG, true)
+
+        val bgDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radiusPx
+            if (hasCardBg) {
+                setColor(ContextCompat.getColor(context, R.color.card_bg))
+                setStroke((1 * density).toInt(), ContextCompat.getColor(context, R.color.card_stroke))
+            } else {
+                setColor(Color.parseColor("#E612151E"))
+                setStroke(0, Color.TRANSPARENT)
+            }
+        }
+        rootView.findViewById<View>(R.id.widgetPopupContainer)?.background = bgDrawable
+    }
+
+    private fun bindViews() {
+        val ivIcon = rootView.findViewById<ImageView>(R.id.ivWidgetActionIcon)
+        val tvTitle = rootView.findViewById<TextView>(R.id.tvWidgetActionTitle)
+        val tvSubtitle = rootView.findViewById<TextView>(R.id.tvWidgetActionSubtitle)
+        val tvSpanBadge = rootView.findViewById<TextView>(R.id.tvWidgetActionSpanBadge)
+
+        val actionResize = rootView.findViewById<View>(R.id.actionResizeWidget)
+        val actionPadding = rootView.findViewById<View>(R.id.actionTogglePadding)
+        val tvPaddingStatus = rootView.findViewById<TextView>(R.id.tvPaddingStatus)
+        val actionConfigure = rootView.findViewById<View>(R.id.actionConfigureWidget)
+        val actionMove = rootView.findViewById<View>(R.id.actionMoveWidget)
+        val actionAppInfo = rootView.findViewById<View>(R.id.actionAppInfo)
+        val actionRemove = rootView.findViewById<View>(R.id.actionRemoveWidget)
 
         val pm = context.packageManager
         val providerInfo = widgetItem.providerInfo
@@ -80,6 +137,18 @@ class WidgetActionPopup(
             onResize()
         }
 
+        if (anchorView.hasDefaultPadding() || anchorView.isWidgetPaddingEnabled()) {
+            actionPadding?.visibility = View.VISIBLE
+            tvPaddingStatus?.text = if (anchorView.isWidgetPaddingEnabled()) "On" else "Off"
+            actionPadding?.setOnClickListener {
+                anchorView.toggleWidgetPadding()
+                onTogglePadding?.invoke()
+                dismiss()
+            }
+        } else {
+            actionPadding?.visibility = View.GONE
+        }
+
         if (providerInfo?.configure != null && onConfigure != null) {
             actionConfigure?.visibility = View.VISIBLE
             actionConfigure?.setOnClickListener {
@@ -111,6 +180,42 @@ class WidgetActionPopup(
         actionRemove?.setOnClickListener {
             dismiss()
             onRemove()
+        }
+    }
+
+    fun show() {
+        rootView.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        val popupWidth = rootView.measuredWidth
+        val popupHeight = rootView.measuredHeight
+
+        val anchorLoc = IntArray(2)
+        anchorView.getLocationInWindow(anchorLoc)
+        val anchorX = anchorLoc[0]
+        val anchorY = anchorLoc[1]
+
+        val dm = context.resources.displayMetrics
+        val marginPx = (12 * dm.density).toInt()
+        val gapPx = (8 * dm.density).toInt()
+
+        val desiredX = anchorX + (anchorView.width - popupWidth) / 2
+        val xPos = desiredX.coerceIn(marginPx, maxOf(marginPx, dm.widthPixels - popupWidth - marginPx))
+
+        val showAbove = anchorY - popupHeight - gapPx >= marginPx
+        val yPos = if (showAbove) {
+            anchorY - popupHeight - gapPx
+        } else {
+            (anchorY + anchorView.height + gapPx).coerceAtMost(maxOf(marginPx, dm.heightPixels - popupHeight - marginPx))
+        }
+
+        popupWindow.showAtLocation(anchorView, Gravity.NO_GRAVITY, xPos, yPos)
+    }
+
+    fun dismiss() {
+        if (popupWindow.isShowing) {
+            popupWindow.dismiss()
         }
     }
 }

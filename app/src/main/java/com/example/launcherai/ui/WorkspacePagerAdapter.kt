@@ -433,26 +433,17 @@ class WorkspacePagerAdapter(
                             }
                         hostView.tag = entity
 
-                        val cellW = cellLayout.getCellWidth()
-                        val cellH = cellLayout.getCellHeight()
-                        if (cellW > 0 && cellH > 0) {
-                            hostView.updateSizeOptions(entity.spanX, entity.spanY, cellW, cellH)
+                        if (cellLayout.width > 0 && cellLayout.height > 0) {
+                            hostView.updateSizeOptionsForPixels(
+                                cellLayout.getSpanWidthPx(entity.cellX, entity.spanX),
+                                cellLayout.getSpanHeightPx(entity.cellY, entity.spanY)
+                            )
                         }
 
                         // Widget Corner Radius Clipping (Nova Launcher style)
                         val widgetPrefs = cellLayout.context.getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
                         val cornerRadiusDp = widgetPrefs.getInt("key_widget_corner_radius", 16)
-                        val radiusPx = cornerRadiusDp * cellLayout.context.resources.displayMetrics.density
-                        if (radiusPx > 0f) {
-                            hostView.outlineProvider = object : android.view.ViewOutlineProvider() {
-                                override fun getOutline(view: View, outline: android.graphics.Outline) {
-                                    outline.setRoundRect(0, 0, view.width, view.height, radiusPx)
-                                }
-                            }
-                            hostView.clipToOutline = true
-                        } else {
-                            hostView.clipToOutline = false
-                        }
+                        hostView.setWidgetCornerRadiusDp(cornerRadiusDp.toFloat())
 
                         var lastTouchX = 0f
                         var lastTouchY = 0f

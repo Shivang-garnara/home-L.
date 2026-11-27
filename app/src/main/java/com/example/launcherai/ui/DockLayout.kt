@@ -87,14 +87,13 @@ class DockLayout @JvmOverloads constructor(
             prefs.getInt("key_dock_icon_size_percent", 100)
         }
         val showLabels = prefs.getBoolean("key_dock_show_labels", false)
-        val bgStyle = prefs.getString("key_dock_bg_style", "Transparent") ?: "Transparent"
-        when (bgStyle) {
-            "Glass" -> setBackgroundResource(R.drawable.bg_dock_glass)
-            "Platform" -> setBackgroundResource(R.drawable.bg_dock_platform)
-            else -> background = null
-        }
-
         val density = context.resources.displayMetrics.density
+        val bgConfig = DockBackgroundConfig.load(context)
+        if (bgConfig.enabled) {
+            background = DockBackgroundDrawable(bgConfig, density)
+        } else {
+            background = null
+        }
         val dockHeightPx = if (height > 0) height else (72 * density).toInt()
         val scaledDockSize = com.example.launcherai.icons.DeviceIconMetrics.getDockIconSizePx(
             context,

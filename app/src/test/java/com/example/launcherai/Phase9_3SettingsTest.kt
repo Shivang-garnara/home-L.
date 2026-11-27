@@ -18,9 +18,7 @@ class Phase9_3SettingsTest {
         Pair("rowLookFeel", "look & feel icon preferences, popup menu, and notification bar options"),
         Pair("rowGesturesInputs", "gestures & inputs define secondary home button action, along with swipe, tap, and pinch gestures on home screen"),
         Pair("rowFeedPage", "feed page control and customize the feed pages at the edge of your home screen"),
-        Pair("rowIntegrations", "integrations connect other apps to launcherai, for example to enhance shortcut search content"),
-        Pair("rowNotificationBadges", "notification badges choose from dynamic badges, notification dots, or numeric dots"),
-        Pair("rowBackupRestore", "backup & restore backup or restore your launcher settings and desktop layout")
+        Pair("rowNotificationBadges", "notification badges choose from dynamic badges, notification dots, or numeric dots")
     )
 
     private fun filterRows(query: String): List<String> {
@@ -32,7 +30,7 @@ class Phase9_3SettingsTest {
     @Test
     fun testSettingsSearchFilter_EmptyQuery_ReturnsAllRows() {
         val result = filterRows("")
-        assertEquals(12, result.size)
+        assertEquals(10, result.size)
     }
 
     @Test
@@ -45,9 +43,6 @@ class Phase9_3SettingsTest {
 
         val cardsResults = filterRows("cards")
         assertTrue(cardsResults.contains("rowCards"))
-
-        val backupResults = filterRows("backup")
-        assertTrue(backupResults.contains("rowBackupRestore"))
     }
 
     @Test
@@ -69,15 +64,11 @@ class Phase9_3SettingsTest {
     fun testSubtitlesLauncherAIBranding_NoNovaReferencesInSubtitles() {
         val searchKeywords = settingsRows.find { it.first == "rowSearch" }?.second ?: ""
         val cardsKeywords = settingsRows.find { it.first == "rowCards" }?.second ?: ""
-        val integrationsKeywords = settingsRows.find { it.first == "rowIntegrations" }?.second ?: ""
 
         assertTrue(searchKeywords.contains("launcherai"))
         assertFalse(searchKeywords.contains("nova's"))
 
         assertTrue(cardsKeywords.contains("launcherai"))
         assertFalse(cardsKeywords.contains("nova search"))
-
-        assertTrue(integrationsKeywords.contains("launcherai"))
-        assertFalse(integrationsKeywords.contains("to nova"))
     }
 }

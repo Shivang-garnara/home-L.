@@ -271,4 +271,36 @@ class WidgetDiscoveryTest {
         assertEquals("Widget C", packedRows[1].firstWidget.label)
         assertTrue(packedRows[1].secondWidget == null)
     }
+
+    @Test
+    fun testNovaParityWidgetSpanAndMinResizeCalculations() {
+        val provider = createMockProviderInfo("com.example.clock", "ClockWidget", minWidth = 512, minHeight = 256).apply {
+            minResizeWidth = 256
+            minResizeHeight = 0
+        }
+        val density = 3.0f // 80dp = 240px
+
+        // 512 / 240 = 2.13 -> ceil = 3; 256 / 240 = 1.07 -> ceil = 2
+        val (spanX, spanY) = WidgetDiscoveryHelper.calculateWidgetSpans(
+            provider = provider,
+            gridCols = 4,
+            gridRows = 5,
+            density = density
+        )
+        assertEquals(3, spanX)
+        assertEquals(2, spanY)
+
+        // minResizeWidth = 256 -> 256 / 240 -> ceil = 2; minResizeHeight = 0 -> 1
+        val (minSpanX, minSpanY) = WidgetDiscoveryHelper.calculateMinResizeSpans(
+            context = null,
+            provider = provider,
+            defaultSpanX = spanX,
+            defaultSpanY = spanY,
+            gridCols = 4,
+            gridRows = 5,
+            density = density
+        )
+        assertEquals(2, minSpanX)
+        assertEquals(1, minSpanY)
+    }
 }

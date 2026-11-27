@@ -53,12 +53,14 @@ class LauncherSettingsActivity : AppCompatActivity() {
         setupRowListeners()
         setupBackHandler()
         updateSummaryTexts()
+        applySettingsSearchBarStyle()
     }
 
     override fun onResume() {
         super.onResume()
         checkDefaultLauncherStatus()
         updateSummaryTexts()
+        applySettingsSearchBarStyle()
         if (intent.getBooleanExtra("scroll_down", false)) {
             binding.scrollViewSettingsMain.post {
                 binding.scrollViewSettingsMain.scrollTo(0, 750)
@@ -78,9 +80,7 @@ class LauncherSettingsActivity : AppCompatActivity() {
             Pair(binding.rowLookFeel, "Look & feel Icon preferences, popup menu, and notification bar options"),
             Pair(binding.rowGesturesInputs, "Gestures & inputs Home button long press menu swipe up down left right double tap pinch in out rotate two finger screen lock"),
             Pair(binding.rowFeedPage, "Feed page Control and customize the feed pages at the edge of your home screen"),
-            Pair(binding.rowIntegrations, "Integrations Connect other Apps to LauncherAI, for example to enhance shortcut search content"),
-            Pair(binding.rowNotificationBadges, "Notification badges Choose from dynamic badges, notification dots, or numeric dots"),
-            Pair(binding.rowBackupRestore, "Backup & restore Backup or restore your launcher settings and desktop layout")
+            Pair(binding.rowNotificationBadges, "Notification badges Choose from dynamic badges, notification dots, or numeric dots")
         )
 
         rows.forEach { (view, keywords) ->
@@ -94,6 +94,27 @@ class LauncherSettingsActivity : AppCompatActivity() {
         binding.btnBackFromUnavailable.setOnClickListener {
             binding.layoutFeatureUnavailable.visibility = View.GONE
         }
+    }
+
+    private fun applySettingsSearchBarStyle() {
+        val prefs = getSharedPreferences(SearchSettingsActivity.PREFS_NAME, Context.MODE_PRIVATE)
+        val cfg = SearchBarConfig.load(prefs, SearchBarConfig.MODE_NOVA_NOW)
+        binding.containerSearchPill.visibility = if (cfg.enabled) View.VISIBLE else View.GONE
+        if (!cfg.enabled) return
+
+        val density = resources.displayMetrics.density
+        val barHeightPx = (48 * density).toInt()
+        binding.containerSearchPill.background = SearchBarConfig.buildBarBackground(cfg, density, barHeightPx)
+        binding.containerSearchPill.elevation = if (cfg.hasShadow) 6f * density else 0f
+
+        val textCol = cfg.effectiveTextColor()
+        val accentCol = cfg.effectiveAccentColor()
+        binding.etSettingsSearch.setTextColor(textCol)
+        binding.etSettingsSearch.setHintTextColor(
+            androidx.core.graphics.ColorUtils.setAlphaComponent(textCol, 160)
+        )
+        binding.ivSettingsSearchIcon.setColorFilter(accentCol)
+        binding.btnClearSearch.setColorFilter(accentCol)
     }
 
     private fun checkDefaultLauncherStatus() {
@@ -257,19 +278,9 @@ class LauncherSettingsActivity : AppCompatActivity() {
             showUnavailableScreen("Feed page", R.drawable.ic_settings_feed)
         }
 
-        // Row 10: Integrations
-        binding.rowIntegrations.setOnClickListener {
-            showUnavailableScreen("Integrations", R.drawable.ic_settings_integrations)
-        }
-
         // Row 11: Notification badges
         binding.rowNotificationBadges.setOnClickListener {
             showUnavailableScreen("Notification badges", R.drawable.ic_settings_badges)
-        }
-
-        // Row 12: Backup & restore
-        binding.rowBackupRestore.setOnClickListener {
-            showBackupRestoreDialog()
         }
     }
 
@@ -536,18 +547,6 @@ class LauncherSettingsActivity : AppCompatActivity() {
                         })
                     }
                 }
-            }
-            .setNegativeButton("Close", null)
-            .show()
-    }
-
-    private fun showBackupRestoreDialog() {
-        val options = arrayOf("Backup Workspace Layout & Settings", "Restore Layout & Settings")
-
-        AlertDialog.Builder(this)
-            .setTitle("Backup & Restore")
-            .setItems(options) { _, _ ->
-                Toast.makeText(this, "Backup action completed", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Close", null)
             .show()

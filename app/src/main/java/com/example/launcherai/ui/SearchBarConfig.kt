@@ -3,6 +3,7 @@ package com.example.launcherai.ui
 import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import androidx.core.graphics.ColorUtils
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -31,8 +32,18 @@ data class SearchBarConfig(
     val weatherCustomTab: Boolean,
     val weatherLocation: String,
     val assistantIcon: String,
-    val dateFormat: String
+    val dateFormat: String,
+    val textMinContrast: Int = 35,
+    val accentMinContrast: Int = 35
 ) {
+    fun effectiveTextColor(): Int {
+        return resolveContrastColor(textColor, surfaceColor, textMinContrast)
+    }
+
+    fun effectiveAccentColor(): Int {
+        return resolveContrastColor(accentColor, surfaceColor, accentMinContrast)
+    }
+
     companion object {
         const val MODE_DESKTOP = "desktop"
         const val MODE_DRAWER = "drawer"
@@ -175,6 +186,8 @@ data class SearchBarConfig(
             val weatherLocation = prefs.getString(key(mode, "weather_location"), "Auto") ?: "Auto"
             val assistantIcon = prefs.getString(key(mode, "assistant_icon"), "Assistant") ?: "Assistant"
             val dateFormat = prefs.getString(key(mode, "date_format"), "January 31") ?: "January 31"
+            val textMinContrast = prefs.getInt(key(mode, "text_min_contrast"), 35).coerceIn(20, 50)
+            val accentMinContrast = prefs.getInt(key(mode, "accent_min_contrast"), 35).coerceIn(20, 50)
 
             return SearchBarConfig(
                 mode = mode,
@@ -196,7 +209,9 @@ data class SearchBarConfig(
                 weatherCustomTab = weatherCustomTab,
                 weatherLocation = weatherLocation,
                 assistantIcon = assistantIcon,
-                dateFormat = dateFormat
+                dateFormat = dateFormat,
+                textMinContrast = textMinContrast,
+                accentMinContrast = accentMinContrast
             )
         }
 
@@ -242,7 +257,30 @@ data class SearchBarConfig(
             ed.putString(key(m, "weather_location"), config.weatherLocation)
             ed.putString(key(m, "assistant_icon"), config.assistantIcon)
             ed.putString(key(m, "date_format"), config.dateFormat)
+            ed.putInt(key(m, "text_min_contrast"), config.textMinContrast.coerceIn(20, 50))
+            ed.putInt(key(m, "accent_min_contrast"), config.accentMinContrast.coerceIn(20, 50))
             ed.apply()
+        }
+
+        fun resolveContrastColor(foregroundColor: Int, backgroundColor: Int, minDeltaPercent: Int): Int {
+            val fg = foregroundColor or 0xFF000000.toInt()
+            val bg = backgroundColor or 0xFF000000.toInt()
+            val minDelta = (minDeltaPercent.coerceIn(20, 50)) / 100f
+            val fgHsl = FloatArray(3)
+            val bgHsl = FloatArray(3)
+            ColorUtils.colorToHSL(fg, fgHsl)
+            ColorUtils.colorToHSL(bg, bgHsl)
+
+            val diff = kotlin.math.abs(fgHsl[2] - bgHsl[2])
+            if (diff >= minDelta) {
+                return fg
+            }
+            fgHsl[2] = if (bgHsl[2] <= 0.5f) {
+                (bgHsl[2] + minDelta).coerceIn(0f, 1f)
+            } else {
+                (bgHsl[2] - minDelta).coerceIn(0f, 1f)
+            }
+            return ColorUtils.HSLToColor(fgHsl) or 0xFF000000.toInt()
         }
 
         fun formatDate(formatChoice: String): String {
@@ -273,11 +311,12 @@ data class SearchBarConfig(
                 if (config.isWireframe) {
                     setColor(Color.TRANSPARENT)
                     val borderAlpha = alpha.coerceAtLeast(180)
+                    val accent = config.effectiveAccentColor()
                     val strokeColor = Color.argb(
                         borderAlpha,
-                        Color.red(config.accentColor),
-                        Color.green(config.accentColor),
-                        Color.blue(config.accentColor)
+                        Color.red(accent),
+                        Color.green(accent),
+                        Color.blue(accent)
                     )
                     setStroke((1.5f * density).toInt().coerceAtLeast(2), strokeColor)
                 } else {

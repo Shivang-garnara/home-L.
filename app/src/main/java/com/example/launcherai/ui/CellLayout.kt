@@ -262,6 +262,22 @@ class CellLayout @JvmOverloads constructor(
         return if (usableHeight > 0) usableHeight / maxOf(1, countY) else (resources.displayMetrics.heightPixels - paddingTop - paddingBottom) / maxOf(1, countY)
     }
 
+    fun getSpanWidthPx(cellX: Int, spanX: Int): Int {
+        val usableWidth = maxOf(0, width - paddingLeft - paddingRight)
+        if (usableWidth <= 0) return getCellWidth() * spanX
+        val leftPx = (usableWidth * cellX) / maxOf(1, countX)
+        val rightPx = (usableWidth * (cellX + spanX)) / maxOf(1, countX)
+        return maxOf(0, rightPx - leftPx)
+    }
+
+    fun getSpanHeightPx(cellY: Int, spanY: Int): Int {
+        val usableHeight = maxOf(0, height - paddingTop - paddingBottom)
+        if (usableHeight <= 0) return getCellHeight() * spanY
+        val topPx = (usableHeight * cellY) / maxOf(1, countY)
+        val bottomPx = (usableHeight * (cellY + spanY)) / maxOf(1, countY)
+        return maxOf(0, bottomPx - topPx)
+    }
+
     fun isRegionAvailableForChild(
         targetCellX: Int,
         targetCellY: Int,
@@ -435,6 +451,9 @@ class CellLayout @JvmOverloads constructor(
                 val childHeight = maxOf(0, (bottomPx - topPx) - lp.topMargin - lp.bottomMargin)
 
                 child.layout(childLeft, childTop, childLeft + childWidth, childTop + childHeight)
+                if (child is com.example.launcherai.widgets.LauncherAppWidgetHostView && childWidth > 0 && childHeight > 0) {
+                    child.updateSizeOptionsForPixels(childWidth, childHeight)
+                }
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.example.launcherai.ui
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.SeekBar
@@ -31,8 +32,8 @@ class DockSettingsActivity : AppCompatActivity() {
     private var dockIconSizePercent: Int = 100
     private var dockShowLabels: Boolean = false
     private var dockIconsCount: Int = 5
-    private var dockBgStyle: String = "Transparent"
-    private var drawBehindNavbar: Boolean = true
+    private var dockBgConfig: DockBackgroundConfig = DockBackgroundConfig()
+    private var drawBehindNavbar: Boolean = false
     private var searchBarPlacement: String = "DOCK_BELOW"
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,6 +54,15 @@ class DockSettingsActivity : AppCompatActivity() {
         updatePreview()
     }
 
+    override fun onResume() {
+        super.onResume()
+        dockBgConfig = DockBackgroundConfig.load(this)
+        drawBehindNavbar = dockBgConfig.drawBehindNavbar
+        binding.tvDockBackgroundValue.text = dockBgConfig.summaryText()
+        binding.swDrawBehindNavbar.isChecked = drawBehindNavbar
+        updatePreview()
+    }
+
     private fun loadPreferences() {
         val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
         dockEnabled = prefs.getBoolean("key_dock_enabled", true)
@@ -60,8 +70,8 @@ class DockSettingsActivity : AppCompatActivity() {
         desktopIconSizePercent = prefs.getInt("key_icon_size_percent", 100)
         dockIconSizePercent = prefs.getInt("key_dock_icon_size_percent", 100)
         dockShowLabels = prefs.getBoolean("key_dock_show_labels", false)
-        dockBgStyle = prefs.getString("key_dock_bg_style", "Transparent") ?: "Transparent"
-        drawBehindNavbar = prefs.getBoolean("key_dock_draw_behind_navbar", true)
+        dockBgConfig = DockBackgroundConfig.load(this)
+        drawBehindNavbar = dockBgConfig.drawBehindNavbar
         searchBarPlacement = prefs.getString("key_search_bar_placement_home", "DOCK_BELOW") ?: "DOCK_BELOW"
 
         val repository = (application as LauncherApplication).repository
@@ -80,7 +90,7 @@ class DockSettingsActivity : AppCompatActivity() {
 
         binding.swDockLabels.isChecked = dockShowLabels
         binding.tvDockIconsCountValue.text = "$dockIconsCount"
-        binding.tvDockBackgroundValue.text = dockBgStyle
+        binding.tvDockBackgroundValue.text = dockBgConfig.summaryText()
         binding.swDrawBehindNavbar.isChecked = drawBehindNavbar
 
         binding.tvSearchBarPlacementValue.text = when (searchBarPlacement) {
@@ -162,16 +172,17 @@ class DockSettingsActivity : AppCompatActivity() {
             showDockIconsDialog()
         }
 
-        // Dock Background Dialog
+        // Dock Background Screen (Nova SettingsDockBackground parity)
         binding.rowDockBackground.setOnClickListener {
-            showDockBackgroundDialog()
+            startActivity(Intent(this, DockBackgroundSettingsActivity::class.java))
         }
 
         // Draw Behind Nav Bar Toggle
         binding.swDrawBehindNavbar.setOnCheckedChangeListener { _, isChecked ->
             drawBehindNavbar = isChecked
-            val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-            prefs.edit().putBoolean("key_dock_draw_behind_navbar", isChecked).apply()
+            dockBgConfig = dockBgConfig.copy(drawBehindNavbar = isChecked)
+            dockBgConfig.save(this)
+            updatePreview()
         }
         binding.rowDrawBehindNavbar.setOnClickListener {
             binding.swDrawBehindNavbar.toggle()
@@ -217,24 +228,6 @@ class DockSettingsActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showDockBackgroundDialog() {
-        val options = arrayOf("Transparent", "Glass", "Platform")
-        val currentIndex = options.indexOf(dockBgStyle).coerceAtLeast(0)
-
-        AlertDialog.Builder(this)
-            .setTitle("Dock Background")
-            .setSingleChoiceItems(options, currentIndex) { dialog, which ->
-                dockBgStyle = options[which]
-                binding.tvDockBackgroundValue.text = dockBgStyle
-                val prefs = getSharedPreferences("workspace_prefs", Context.MODE_PRIVATE)
-                prefs.edit().putString("key_dock_bg_style", dockBgStyle).apply()
-                updatePreview()
-                dialog.dismiss()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
     private fun showSearchBarPlacementDialog() {
         val options = arrayOf("Below icons (Default)", "Above icons", "None")
         val keys = arrayOf("DOCK_BELOW", "DOCK_ABOVE", "NONE")
@@ -261,11 +254,11 @@ class DockSettingsActivity : AppCompatActivity() {
         // Opacity when dock is disabled
         binding.cardDockPreviewContainer.alpha = if (dockEnabled) 1.0f else 0.4f
 
-        // Dock background shape & style
-        when (dockBgStyle) {
-            "Glass" -> binding.dockPreviewBar.setBackgroundResource(R.drawable.bg_dock_glass)
-            "Platform" -> binding.dockPreviewBar.setBackgroundResource(R.drawable.bg_dock_platform)
-            else -> binding.dockPreviewBar.background = null
+        // Dock background shape & style (Nova DockBackgroundDrawable)
+        if (dockBgConfig.enabled) {
+            binding.dockPreviewBar.background = DockBackgroundDrawable(dockBgConfig, resources.displayMetrics.density)
+        } else {
+            binding.dockPreviewBar.background = null
         }
 
         // Icon scaling

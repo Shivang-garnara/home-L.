@@ -215,6 +215,7 @@ class MainActivity : AppCompatActivity() {
         }
 
     private var activeResizeFrame: AppWidgetResizeFrame? = null
+    private var activeWidgetPopup: WidgetActionPopup? = null
     private var activeTestDialog: android.app.Dialog? = null
     private var longPressMenuHandled = false
     private var itemEditSwipeCallback: ((NamedAction) -> Unit)? = null
@@ -1511,7 +1512,8 @@ class MainActivity : AppCompatActivity() {
                                 val cellLayout =
                                     (view.parent as? CellLayout) ?: workspace.getActiveCellLayout()
                                 if (hostView != null && cellLayout != null) {
-                                    showWidgetResizeFrame(hostView, widgetResolved, cellLayout)
+                                    dismissActiveResizeFrame()
+                                    showWidgetActionsDialog(hostView, widgetResolved, cellLayout, touchX, touchY)
                                     true
                                 } else {
                                     val item = WorkspaceResolvedItem(
@@ -1528,6 +1530,7 @@ class MainActivity : AppCompatActivity() {
                             onWidgetDragRequested = { view, widgetResolved, rawX, rawY ->
                                 val hostView = view as? LauncherAppWidgetHostView
                                 if (hostView != null) {
+                                    activeWidgetPopup?.dismiss()
                                     dismissActiveResizeFrame()
                                     pendingAutoResizeWidgetId = widgetResolved.entity.appWidgetId
                                     val item = WorkspaceResolvedItem(
@@ -1825,19 +1828,25 @@ class MainActivity : AppCompatActivity() {
         touchX: Float,
         touchY: Float
     ) {
-        if (activeTestDialog?.isShowing == true && activeTestDialog !is WidgetActionPopup) {
+        if (activeTestDialog?.isShowing == true) {
             try {
                 activeTestDialog?.dismiss()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
-        val dialog = WidgetActionPopup(
-            context = this, widgetItem = widgetResolved, onResize = {
+        activeWidgetPopup?.dismiss()
+        val popup = WidgetActionPopup(
+            context = this,
+            anchorView = hostView,
+            widgetItem = widgetResolved,
+            onResize = {
                 showWidgetResizeFrame(hostView, widgetResolved, cellLayout)
-            }, onConfigure = if (widgetResolved.providerInfo?.configure != null) {
+            },
+            onConfigure = if (widgetResolved.providerInfo?.configure != null) {
                 { reconfigureAppWidget(widgetResolved) }
-            } else null, onMove = {
+            } else null,
+            onMove = {
                 val item = WorkspaceResolvedItem(
                     entity = widgetResolved.entity, appInfo = AppInfo(
                         label = widgetResolved.entity.title ?: "Widget",
@@ -1846,14 +1855,18 @@ class MainActivity : AppCompatActivity() {
                     )
                 )
                 dragController.startDrag(hostView, item, touchX, touchY)
-            }, onRemove = {
+            },
+            onRemove = {
                 viewModel.deleteAppWidget(widgetResolved, appWidgetHost)
                 cellLayout.removeView(hostView)
                 Toast.makeText(this, "Removed widget from home screen", Toast.LENGTH_SHORT).show()
-            })
-        dialog.setOnDismissListener { if (activeTestDialog == dialog) activeTestDialog = null }
-        activeTestDialog = dialog
-        dialog.show()
+            }
+        )
+        popup.onDismissListener = {
+            if (activeWidgetPopup == popup) activeWidgetPopup = null
+        }
+        activeWidgetPopup = popup
+        popup.show()
     }
 
     private fun showWidgetResizeFrame(

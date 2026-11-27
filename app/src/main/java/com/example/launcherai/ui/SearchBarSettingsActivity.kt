@@ -70,7 +70,7 @@ class SearchBarSettingsActivity : AppCompatActivity() {
 
         binding.tvBarTitle.text = when (mode) {
             SearchBarConfig.MODE_DRAWER -> "Drawer search bar"
-            SearchBarConfig.MODE_NOVA_NOW -> "Nova Now search bar"
+            SearchBarConfig.MODE_NOVA_NOW -> "Settings search bar"
             else -> "Desktop search bar"
         }
 
@@ -174,6 +174,25 @@ class SearchBarSettingsActivity : AppCompatActivity() {
         binding.tabColorText.setOnClickListener { switchColorTab(TAB_TEXT) }
         binding.tabColorAccent.setOnClickListener { switchColorTab(TAB_ACCENT) }
 
+        binding.sbMinimumContrast.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val delta = (20 + progress).coerceIn(20, 50)
+                binding.tvMinimumContrastValue.text = "${delta}Δ"
+                if (fromUser) {
+                    config = when (activeColorTab) {
+                        TAB_TEXT -> config.copy(textMinContrast = delta)
+                        TAB_ACCENT -> config.copy(accentMinContrast = delta)
+                        else -> config
+                    }
+                    saveConfig()
+                    refreshColorBadges()
+                }
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
         binding.rowCustomColor.setOnClickListener {
             showCustomColorDialog()
         }
@@ -190,7 +209,33 @@ class SearchBarSettingsActivity : AppCompatActivity() {
             tv.setTextColor(if (selected) activeColor else inactiveColor)
             tv.setBackgroundColor(if (selected) Color.parseColor("#D9CEEC") else Color.TRANSPARENT)
         }
+        val showContrast = (tab == TAB_TEXT || tab == TAB_ACCENT)
+        binding.rowMinimumContrast.visibility = if (showContrast) View.VISIBLE else View.GONE
+        if (showContrast) {
+            refreshMinimumContrastSlider()
+        }
         rebuildPaletteGrids()
+    }
+
+    private fun refreshMinimumContrastSlider() {
+        val delta = if (activeColorTab == TAB_TEXT) config.textMinContrast else config.accentMinContrast
+        binding.sbMinimumContrast.progress = (delta - 20).coerceIn(0, 30)
+        binding.tvMinimumContrastValue.text = "${delta}Δ"
+
+        val bgHsl = FloatArray(3)
+        androidx.core.graphics.ColorUtils.colorToHSL(config.surfaceColor or 0xFF000000.toInt(), bgHsl)
+        val l = bgHsl[2]
+        val startL = (if (l <= 0.5f) l + 0.20f else l - 0.20f).coerceIn(0f, 1f)
+        val endL = (if (l <= 0.5f) l + 0.50f else l - 0.50f).coerceIn(0f, 1f)
+        val startColor = androidx.core.graphics.ColorUtils.HSLToColor(floatArrayOf(0f, 0f, startL))
+        val endColor = androidx.core.graphics.ColorUtils.HSLToColor(floatArrayOf(0f, 0f, endL))
+        val density = resources.displayMetrics.density
+        binding.trackMinimumContrast.background = GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT,
+            intArrayOf(startColor, endColor)
+        ).apply {
+            cornerRadius = 6f * density
+        }
     }
 
     private fun currentTabColor(): Int = when (activeColorTab) {
@@ -247,23 +292,17 @@ class SearchBarSettingsActivity : AppCompatActivity() {
     }
 
     private fun showCustomColorDialog() {
-        val input = EditText(this).apply {
-            setText(String.format("#%06X", 0xFFFFFF and currentTabColor()))
-            hint = "#RRGGBB"
+        val tabTitle = when (activeColorTab) {
+            TAB_TEXT -> "Text color"
+            TAB_ACCENT -> "Accent color"
+            else -> "Surface color"
         }
-        AlertDialog.Builder(this)
-            .setTitle("Custom color")
-            .setView(input)
-            .setPositiveButton("OK") { _, _ ->
-                try {
-                    val parsed = Color.parseColor(input.text.toString().trim())
-                    applyColorForActiveTab(parsed)
-                } catch (_: Exception) {
-                    Toast.makeText(this, "Invalid hex color (use #RRGGBB)", Toast.LENGTH_SHORT).show()
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        NovaColorPickerBottomSheet.newInstance(
+            title = tabTitle,
+            initialColor = currentTabColor()
+        ) { chosen ->
+            applyColorForActiveTab(chosen)
+        }.show(supportFragmentManager, NovaColorPickerBottomSheet.TAG)
     }
 
     // =========================================================================
@@ -594,10 +633,10 @@ class SearchBarSettingsActivity : AppCompatActivity() {
             setColor(config.surfaceColor)
             setStroke((1.5f * resources.displayMetrics.density).toInt(), Color.parseColor("#6D3B68"))
         }
-        binding.tvBadgeTt.setTextColor(config.textColor)
+        binding.tvBadgeTt.setTextColor(config.effectiveTextColor())
         binding.viewBadgeAccentDot.background = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
-            setColor(config.accentColor)
+            setColor(config.effectiveAccentColor())
         }
         binding.tvCustomColorHex.text = String.format("#%06X", 0xFFFFFF and currentTabColor())
     }
@@ -622,13 +661,13 @@ class SearchBarSettingsActivity : AppCompatActivity() {
         }
         binding.ivPreviewLeftLogo.setImageResource(logoRes)
         if (config.isMonochrome || config.logoStyle == SearchBarConfig.LOGO_MAGNIFIER) {
-            binding.ivPreviewLeftLogo.setColorFilter(config.accentColor)
+            binding.ivPreviewLeftLogo.setColorFilter(config.effectiveAccentColor())
         } else {
             binding.ivPreviewLeftLogo.clearColorFilter()
         }
 
         binding.tvPreviewHint.text = if (mode == SearchBarConfig.MODE_NOVA_NOW) "Search apps" else ""
-        binding.tvPreviewHint.setTextColor(config.textColor)
+        binding.tvPreviewHint.setTextColor(config.effectiveTextColor())
 
         binding.containerPreviewActions.removeAllViews()
         if (mode != SearchBarConfig.MODE_NOVA_NOW) {
