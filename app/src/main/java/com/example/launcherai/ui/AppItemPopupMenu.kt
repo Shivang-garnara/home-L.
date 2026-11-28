@@ -66,10 +66,14 @@ class AppItemPopupMenu(
         val radiusPx = cornerRadiusDp * density
         val hasCardBg = prefs.getBoolean(PopupMenuSettingsActivity.KEY_POPUP_CARD_BG, true)
 
+        val popupStyle = SurfaceStyleConfig.loadSurfaceStyle(context, SurfaceStyleConfig.SurfaceId.POPUP_MENU)
         val bgDrawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radiusPx
-            if (hasCardBg) {
+            if (popupStyle.hasCustomSurface) {
+                setColor(popupStyle.surfaceColor)
+                setStroke((1 * density).toInt(), androidx.core.graphics.ColorUtils.setAlphaComponent(popupStyle.effectiveAccentColor(), 80))
+            } else if (hasCardBg) {
                 setColor(ContextCompat.getColor(context, R.color.card_bg))
                 setStroke((1 * density).toInt(), ContextCompat.getColor(context, R.color.card_stroke))
             } else {
@@ -78,6 +82,13 @@ class AppItemPopupMenu(
             }
         }
         binding.popupContainer.background = bgDrawable
+        if (popupStyle.hasCustomText || popupStyle.hasCustomAccent || popupStyle.hasCustomSurface) {
+            applyPopupColorsRecursive(
+                binding.popupContainer,
+                popupStyle.effectiveTextColor(),
+                popupStyle.effectiveAccentColor()
+            )
+        }
 
         // 2. Action matrix resolution (Home vs Drawer)
         val activeActions = if (isDrawer) {
@@ -230,6 +241,16 @@ class AppItemPopupMenu(
     fun dismiss() {
         if (popupWindow.isShowing) {
             popupWindow.dismiss()
+        }
+    }
+
+    private fun applyPopupColorsRecursive(group: ViewGroup, textColor: Int, accentColor: Int) {
+        for (i in 0 until group.childCount) {
+            when (val child = group.getChildAt(i)) {
+                is android.widget.ImageView -> child.setColorFilter(accentColor)
+                is android.widget.TextView -> child.setTextColor(textColor)
+                is ViewGroup -> applyPopupColorsRecursive(child, textColor, accentColor)
+            }
         }
     }
 }

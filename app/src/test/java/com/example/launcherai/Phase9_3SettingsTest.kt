@@ -14,7 +14,6 @@ class Phase9_3SettingsTest {
         Pair("rowAppDrawer", "app drawer set layout, style, opening gesture, and more"),
         Pair("rowFolders", "folders set window styles, background colors, and icon layout"),
         Pair("rowSearch", "search launcherai search window and bar configuration"),
-        Pair("rowCards", "cards build cards to show in launcherai search or set conditions for them to appear in your app drawer or feed"),
         Pair("rowLookFeel", "look & feel icon preferences, popup menu, and notification bar options"),
         Pair("rowGesturesInputs", "gestures & inputs define secondary home button action, along with swipe, tap, and pinch gestures on home screen"),
         Pair("rowFeedPage", "feed page control and customize the feed pages at the edge of your home screen"),
@@ -30,7 +29,7 @@ class Phase9_3SettingsTest {
     @Test
     fun testSettingsSearchFilter_EmptyQuery_ReturnsAllRows() {
         val result = filterRows("")
-        assertEquals(10, result.size)
+        assertEquals(9, result.size)
     }
 
     @Test
@@ -41,8 +40,8 @@ class Phase9_3SettingsTest {
         val gridResults = filterRows("grid")
         assertTrue(gridResults.contains("rowHomeScreen"))
 
-        val cardsResults = filterRows("cards")
-        assertTrue(cardsResults.contains("rowCards"))
+        val folderResults = filterRows("folders")
+        assertTrue(folderResults.contains("rowFolders"))
     }
 
     @Test
@@ -63,12 +62,8 @@ class Phase9_3SettingsTest {
     @Test
     fun testSubtitlesLauncherAIBranding_NoNovaReferencesInSubtitles() {
         val searchKeywords = settingsRows.find { it.first == "rowSearch" }?.second ?: ""
-        val cardsKeywords = settingsRows.find { it.first == "rowCards" }?.second ?: ""
 
         assertTrue(searchKeywords.contains("launcherai"))
         assertFalse(searchKeywords.contains("nova's"))
-
-        assertTrue(cardsKeywords.contains("launcherai"))
-        assertFalse(cardsKeywords.contains("nova search"))
     }
 }

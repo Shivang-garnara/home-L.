@@ -1,0 +1,430 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/nova_light_surface"
+    android:fitsSystemWindows="true">
+
+    <!-- Top App Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="8dp">
+
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_arrow_back"
+            app:tint="@color/nova_text_brown_primary"
+            android:contentDescription="Back" />
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="Launcher Settings"
+            android:textColor="@color/nova_text_brown_primary"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/btnResetSurface"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:gravity="center"
+            android:paddingHorizontal="12dp"
+            android:layout_marginEnd="8dp"
+            android:text="Reset"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="@color/nova_accent_orange"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+    </LinearLayout>
+
+    <!-- Scrollable Editor Body -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_nova_search_pill_settings"
+            android:padding="16dp">
+
+            <!-- Color picker header (collapsible) -->
+            <LinearLayout
+                android:id="@+id/rowColorPickerHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingVertical="4dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Color picker"
+                    android:textColor="@color/nova_text_brown_primary"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <ImageView
+                    android:id="@+id/ivColorPickerChevron"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_arrow_drop_down"
+                    android:rotation="180"
+                    app:tint="@color/nova_text_brown_primary" />
+            </LinearLayout>
+
+            <!-- Collapsible Body -->
+            <LinearLayout
+                android:id="@+id/layoutColorPickerBody"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="12dp">
+
+                <!-- Text notice (visible only on Text tab) -->
+                <LinearLayout
+                    android:id="@+id/layoutTextNotice"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    android:layout_marginBottom="14dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Text color"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="These colors may change to maintain visibility across different background colors"
+                        android:textColor="@color/nova_text_brown_secondary"
+                        android:textSize="13sp"
+                        android:textStyle="italic" />
+                </LinearLayout>
+
+                <!-- Minimum Contrast Slider (visible on Text & Accent tabs) -->
+                <LinearLayout
+                    android:id="@+id/layoutContrastSection"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    android:layout_marginBottom="16dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Minimum contrast"
+                            android:textColor="@color/nova_text_brown_primary"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvContrastValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="40Δ"
+                            android:textColor="@color/nova_text_brown_primary"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="10dp">
+
+                        <TextView
+                            android:id="@+id/btnContrastMinus"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:gravity="center"
+                            android:text="−"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="@android:color/white"
+                            android:background="@drawable/bg_contrast_step_btn" />
+
+                        <SeekBar
+                            android:id="@+id/seekMinContrast"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginHorizontal="6dp"
+                            android:max="79"
+                            android:progress="20" />
+
+                        <TextView
+                            android:id="@+id/btnContrastPlus"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:gravity="center"
+                            android:text="+"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="@android:color/white"
+                            android:background="@drawable/bg_contrast_step_btn" />
+                    </LinearLayout>
+
+                    <!-- 5 rounded-square swatches for Text tab (99Δ..59Δ) -->
+                    <LinearLayout
+                        android:id="@+id/layoutContrastSwatches"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:layout_marginTop="16dp" />
+                </LinearLayout>
+
+                <!-- Palette + Fixed Colors Grids (visible on Surface & Accent tabs; hidden on Text tab) -->
+                <LinearLayout
+                    android:id="@+id/layoutPaletteAndFixed"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <!-- Palette Section Header -->
+                    <LinearLayout
+                        android:id="@+id/rowPaletteHeader"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="10dp">
+
+                        <ImageView
+                            android:id="@+id/ivPaletteIcon"
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:layout_marginEnd="10dp"
+                            android:src="@drawable/ic_palette_quadrant" />
+
+                        <TextView
+                            android:id="@+id/tvActivePaletteLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="System palette"
+                            android:textColor="@color/nova_text_brown_primary"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Surface Palette 6x6 Grid -->
+                    <GridLayout
+                        android:id="@+id/gridActivePalette"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:columnCount="6"
+                        android:useDefaultMargins="false" />
+
+                    <!-- Accent Palette Horizontal Row (8 teardrop swatches with Δ labels) -->
+                    <HorizontalScrollView
+                        android:id="@+id/scrollAccentPalette"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:scrollbars="none"
+                        android:visibility="gone">
+
+                        <LinearLayout
+                            android:id="@+id/rowAccentPalette"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal" />
+                    </HorizontalScrollView>
+
+                    <!-- Fixed Colors Header -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="10dp"
+                        android:text="Fixed colors"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <!-- 6x6 Fixed Colors Grid -->
+                    <GridLayout
+                        android:id="@+id/gridFixedColors"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:columnCount="6"
+                        android:useDefaultMargins="false" />
+                </LinearLayout>
+
+                <!-- Custom Color Row -->
+                <LinearLayout
+                    android:id="@+id/rowCustomColor"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginTop="14dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="?attr/selectableItemBackground"
+                    android:paddingHorizontal="4dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Custom color"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <View
+                        android:id="@+id/viewCustomColorSwatch"
+                        android:layout_width="42dp"
+                        android:layout_height="42dp" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Bottom 3-Tab Bar: Surface | Text | Accent -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:orientation="horizontal"
+        android:background="@color/nova_light_surface"
+        android:elevation="8dp"
+        android:gravity="center">
+
+        <LinearLayout
+            android:id="@+id/tabSurface"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="?attr/selectableItemBackground">
+
+            <FrameLayout
+                android:id="@+id/indicatorSurface"
+                android:layout_width="64dp"
+                android:layout_height="32dp"
+                android:background="@drawable/bg_nova_bottom_nav_pill">
+                <ImageView
+                    android:id="@+id/iconSurface"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_style_surface"
+                    app:tint="@color/nova_accent_orange" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/labelSurface"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Surface"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="@color/nova_accent_orange" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/tabText"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="?attr/selectableItemBackground">
+
+            <FrameLayout
+                android:id="@+id/indicatorText"
+                android:layout_width="64dp"
+                android:layout_height="32dp">
+                <ImageView
+                    android:id="@+id/iconText"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_style_text"
+                    app:tint="@color/nova_text_brown_secondary" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/labelText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Text"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="@color/nova_text_brown_secondary" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/tabAccent"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="?attr/selectableItemBackground">
+
+            <FrameLayout
+                android:id="@+id/indicatorAccent"
+                android:layout_width="64dp"
+                android:layout_height="32dp">
+                <ImageView
+                    android:id="@+id/iconAccent"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_palette_tab"
+                    app:tint="@color/nova_text_brown_secondary" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/labelAccent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Accent"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="@color/nova_text_brown_secondary" />
+        </LinearLayout>
+
+    </LinearLayout>
+</LinearLayout>

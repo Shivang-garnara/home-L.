@@ -44,6 +44,8 @@ class NovaAiChatActivity : AppCompatActivity() {
         btnSend = findViewById(R.id.btnSend)
         layoutChips = findViewById(R.id.layoutChips)
 
+        applyAiSurfaceStyle()
+
         chatAdapter = ChatAdapter(
             messages = mutableListOf(),
             onConfirmAction = { chatMsg ->
@@ -123,6 +125,26 @@ class NovaAiChatActivity : AppCompatActivity() {
         val query = intent.getStringExtra("query")
         if (!query.isNullOrBlank()) {
             submitUserQuery(query)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        applyAiSurfaceStyle()
+    }
+
+    private fun applyAiSurfaceStyle() {
+        val style = com.example.launcherai.ui.SurfaceStyleConfig.loadSurfaceStyle(
+            this,
+            com.example.launcherai.ui.SurfaceStyleConfig.SurfaceId.LAUNCHER_AI
+        )
+        if (style.hasCustomSurface || style.hasCustomText || style.hasCustomAccent) {
+            findViewById<android.view.View>(android.R.id.content)?.setBackgroundColor(style.surfaceColor)
+            etMessage.setTextColor(style.effectiveTextColor())
+            etMessage.setHintTextColor(
+                androidx.core.graphics.ColorUtils.setAlphaComponent(style.effectiveTextColor(), 150)
+            )
+            btnSend.setColorFilter(style.effectiveAccentColor())
         }
     }
 

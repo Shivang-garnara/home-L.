@@ -53,14 +53,18 @@ class LauncherSettingsActivity : AppCompatActivity() {
         setupRowListeners()
         setupBackHandler()
         updateSummaryTexts()
+        applyLauncherSettingsStyle()
         applySettingsSearchBarStyle()
+        setupStyleTab()
     }
 
     override fun onResume() {
         super.onResume()
         checkDefaultLauncherStatus()
         updateSummaryTexts()
+        applyLauncherSettingsStyle()
         applySettingsSearchBarStyle()
+        refreshStyleTabUi()
         if (intent.getBooleanExtra("scroll_down", false)) {
             binding.scrollViewSettingsMain.post {
                 binding.scrollViewSettingsMain.scrollTo(0, 750)
@@ -71,12 +75,10 @@ class LauncherSettingsActivity : AppCompatActivity() {
     private fun initViews() {
         // Register all 12 rows for search index
         val rows = listOf(
-            Pair(binding.rowAiAssistant, "AI assistant Chat and privacy"),
             Pair(binding.rowHomeScreen, "Home screen Set grid, icon layout, dock settings, and more"),
             Pair(binding.rowAppDrawer, "App drawer Set layout, style, opening gesture, and more"),
             Pair(binding.rowFolders, "Folders Set window styles, background colors, and icon layout"),
             Pair(binding.rowSearch, "Search LauncherAI search window and bar configuration"),
-            Pair(binding.rowCards, "Cards Build cards to show in LauncherAI Search or set conditions for them to appear in your app drawer or feed"),
             Pair(binding.rowLookFeel, "Look & feel Icon preferences, popup menu, and notification bar options"),
             Pair(binding.rowGesturesInputs, "Gestures & inputs Home button long press menu swipe up down left right double tap pinch in out rotate two finger screen lock"),
             Pair(binding.rowFeedPage, "Feed page Control and customize the feed pages at the edge of your home screen"),
@@ -115,6 +117,241 @@ class LauncherSettingsActivity : AppCompatActivity() {
         )
         binding.ivSettingsSearchIcon.setColorFilter(accentCol)
         binding.btnClearSearch.setColorFilter(accentCol)
+    }
+
+    private fun setupStyleTab() {
+        binding.btnStylePalette.setOnClickListener { anchor ->
+            val popup = android.widget.PopupMenu(this, anchor)
+            val types = SurfaceStyleConfig.PaletteType.entries
+            types.forEachIndexed { idx, type ->
+                popup.menu.add(0, idx, idx, type.label)
+            }
+            popup.setOnMenuItemClickListener { item ->
+                val chosen = types[item.itemId]
+                SurfaceStyleConfig.setPaletteType(this, chosen)
+                if (chosen == SurfaceStyleConfig.PaletteType.CUSTOM) {
+                    NovaColorPickerBottomSheet.newInstance(
+                        title = "Custom palette",
+                        initialColor = SurfaceStyleConfig.getCustomSeedColor(this),
+                        defaultColor = SurfaceStyleConfig.getCustomSeedColor(this)
+                    ) { seedColor ->
+                        SurfaceStyleConfig.setCustomSeedColor(this, seedColor)
+                        applyLauncherSettingsStyle()
+                        refreshStyleTabUi()
+                        applySettingsSearchBarStyle()
+                    }.show(supportFragmentManager, NovaColorPickerBottomSheet.TAG)
+                } else {
+                    applyLauncherSettingsStyle()
+                    refreshStyleTabUi()
+                    applySettingsSearchBarStyle()
+                }
+                true
+            }
+            popup.show()
+        }
+
+        binding.btnStyleMode.setOnClickListener { anchor ->
+            val popup = android.widget.PopupMenu(this, anchor)
+            val modes = SurfaceStyleConfig.NightMode.entries
+            modes.forEachIndexed { idx, mode ->
+                popup.menu.add(0, idx, idx, mode.label)
+            }
+            popup.setOnMenuItemClickListener { item ->
+                val chosen = modes[item.itemId]
+                SurfaceStyleConfig.setNightMode(this, chosen)
+                LauncherThemeManager.applyThemeMode(chosen.key)
+                if (chosen == SurfaceStyleConfig.NightMode.SCHEDULE) {
+                    showSchedulePickerDialog()
+                } else {
+                    applyLauncherSettingsStyle()
+                    refreshStyleTabUi()
+                    applySettingsSearchBarStyle()
+                }
+                true
+            }
+            popup.show()
+        }
+
+        refreshStyleTabUi()
+    }
+
+    private fun showSchedulePickerDialog() {
+        val times = SurfaceStyleConfig.getScheduleTimes(this)
+        android.app.TimePickerDialog(this, { _, startH, startM ->
+            android.app.TimePickerDialog(this, { _, endH, endM ->
+                SurfaceStyleConfig.setScheduleTimes(this, startH, startM, endH, endM)
+                refreshStyleTabUi()
+                applySettingsSearchBarStyle()
+                Toast.makeText(
+                    this,
+                    String.format("Dark schedule: %02d:%02d - %02d:%02d", startH, startM, endH, endM),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }, times[2], times[3], true).apply {
+                setTitle("Light mode starts at")
+            }.show()
+        }, times[0], times[1], true).apply {
+            setTitle("Dark mode starts at")
+        }.show()
+    }
+
+    private fun applyLauncherSettingsStyle() {
+        val style = SurfaceStyleConfig.loadSurfaceStyle(this, SurfaceStyleConfig.SurfaceId.LAUNCHER_SETTINGS)
+        val surface = style.surfaceColor
+        val textPrimary = style.effectiveTextColor()
+        val textSecondary = androidx.core.graphics.ColorUtils.setAlphaComponent(textPrimary, 178)
+        val accent = style.effectiveAccentColor()
+        val isLight = androidx.core.graphics.ColorUtils.calculateLuminance(surface) > 0.5
+
+        SystemBarHelper.applySystemBars(this, isLightTheme = isLight, transparentBars = false)
+        window.statusBarColor = surface
+        val navBg = androidx.core.graphics.ColorUtils.blendARGB(surface, accent, 0.06f)
+        window.navigationBarColor = navBg
+
+        binding.root.setBackgroundColor(surface)
+        binding.headerContainer.setBackgroundColor(surface)
+        binding.tvSettingsTitle.setTextColor(accent)
+        binding.bottomNavBar.setBackgroundColor(navBg)
+
+        // Apply colors to all Settings rows
+        for ((rowView, _) in settingsRows) {
+            if (rowView is android.view.ViewGroup) {
+                applyRowStyleRecursive(rowView, textPrimary, textSecondary, accent)
+            }
+        }
+
+        // Apply colors to Style tab header rows & pills
+        val density = resources.displayMetrics.density
+        val pillBg = android.graphics.drawable.GradientDrawable().apply {
+            cornerRadius = 24f * density
+            setColor(android.graphics.Color.TRANSPARENT)
+            setStroke((1.5f * density).toInt(), androidx.core.graphics.ColorUtils.setAlphaComponent(accent, 160))
+        }
+        binding.btnStylePalette.background = pillBg
+        binding.btnStyleMode.background = android.graphics.drawable.GradientDrawable().apply {
+            cornerRadius = 24f * density
+            setColor(android.graphics.Color.TRANSPARENT)
+            setStroke((1.5f * density).toInt(), androidx.core.graphics.ColorUtils.setAlphaComponent(accent, 160))
+        }
+        binding.tvStylePaletteValue.setTextColor(textPrimary)
+        binding.tvStyleModeValue.setTextColor(textPrimary)
+
+        val styleLinear = binding.layoutStyleTabContent.getChildAt(0) as? android.view.ViewGroup
+        if (styleLinear != null && styleLinear.childCount >= 2) {
+            for (i in 0..1) {
+                val row = styleLinear.getChildAt(i) as? android.view.ViewGroup
+                val label = row?.getChildAt(0) as? android.widget.TextView
+                label?.setTextColor(textPrimary)
+            }
+        }
+
+        updateBottomNavColors()
+    }
+
+    private fun applyRowStyleRecursive(
+        group: android.view.ViewGroup,
+        textPrimary: Int,
+        textSecondary: Int,
+        accent: Int
+    ) {
+        for (i in 0 until group.childCount) {
+            when (val child = group.getChildAt(i)) {
+                is android.widget.ImageView -> child.setColorFilter(accent)
+                is android.widget.TextView -> {
+                    val isTitle = child.textSize >= 15f * resources.displayMetrics.scaledDensity
+                    child.setTextColor(if (isTitle) textPrimary else textSecondary)
+                }
+                is android.view.ViewGroup -> applyRowStyleRecursive(child, textPrimary, textSecondary, accent)
+            }
+        }
+    }
+
+    private fun updateBottomNavColors() {
+        val style = SurfaceStyleConfig.loadSurfaceStyle(this, SurfaceStyleConfig.SurfaceId.LAUNCHER_SETTINGS)
+        val textPrimary = style.effectiveTextColor()
+        val textSecondary = androidx.core.graphics.ColorUtils.setAlphaComponent(textPrimary, 160)
+        val accent = style.effectiveAccentColor()
+        val pillTint = androidx.core.graphics.ColorUtils.setAlphaComponent(accent, 40)
+        val pillDrawable = android.graphics.drawable.GradientDrawable().apply {
+            cornerRadius = 20f * resources.displayMetrics.density
+            setColor(pillTint)
+        }
+
+        val isStyleVisible = binding.layoutStyleTabContent.visibility == View.VISIBLE
+        if (isStyleVisible) {
+            binding.indicatorStyleTab.background = pillDrawable
+            binding.indicatorSettingsTab.background = null
+            binding.ivTabStyleIcon.setColorFilter(accent)
+            binding.tvTabStyleLabel.setTextColor(accent)
+            binding.ivTabSettingsIcon.setColorFilter(textSecondary)
+            binding.tvTabSettingsLabel.setTextColor(textSecondary)
+        } else {
+            binding.indicatorSettingsTab.background = pillDrawable
+            binding.indicatorStyleTab.background = null
+            binding.ivTabSettingsIcon.setColorFilter(accent)
+            binding.tvTabSettingsLabel.setTextColor(accent)
+            binding.ivTabStyleIcon.setColorFilter(textSecondary)
+            binding.tvTabStyleLabel.setTextColor(textSecondary)
+        }
+    }
+
+    private fun refreshStyleTabUi() {
+        val styleLauncher = SurfaceStyleConfig.loadSurfaceStyle(this, SurfaceStyleConfig.SurfaceId.LAUNCHER_SETTINGS)
+        val labelTextColor = styleLauncher.effectiveTextColor()
+        binding.tvStylePaletteValue.text = SurfaceStyleConfig.getPaletteType(this).label
+        binding.tvStyleModeValue.text = SurfaceStyleConfig.getNightMode(this).label
+
+        val container = binding.containerSurfaceStyles
+        container.removeAllViews()
+        val density = resources.displayMetrics.density
+        val rowHeight = (56 * density).toInt()
+        val badgeSize = (40 * density).toInt()
+
+        for (surfaceId in SurfaceStyleConfig.SurfaceId.entries) {
+            val style = SurfaceStyleConfig.loadSurfaceStyle(this, surfaceId)
+            val row = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    rowHeight
+                )
+                val outValue = android.util.TypedValue()
+                theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
+                setBackgroundResource(outValue.resourceId)
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    startActivity(SurfaceStyleActivity.createIntent(this@LauncherSettingsActivity, surfaceId))
+                }
+            }
+
+            val tvLabel = android.widget.TextView(this).apply {
+                text = surfaceId.title
+                textSize = 17f
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setTextColor(labelTextColor)
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    0,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                    1f
+                )
+            }
+
+            val badge = View(this).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams(badgeSize, badgeSize)
+                background = SurfacePreviewBadgeDrawable(
+                    surfaceColor = style.surfaceColor,
+                    textColor = style.effectiveTextColor(),
+                    accentColor = style.effectiveAccentColor(),
+                    showText = surfaceId.showTextBadge
+                )
+            }
+
+            row.addView(tvLabel)
+            row.addView(badge)
+            container.addView(row)
+        }
     }
 
     private fun checkDefaultLauncherStatus() {
@@ -176,30 +413,14 @@ class LauncherSettingsActivity : AppCompatActivity() {
         binding.layoutStyleTabContent.visibility = View.GONE
         binding.layoutFeatureUnavailable.visibility = View.GONE
         binding.scrollViewSettingsMain.visibility = View.VISIBLE
-
-        binding.indicatorSettingsTab.setBackgroundResource(R.drawable.bg_nova_bottom_nav_pill)
-        binding.indicatorStyleTab.background = null
-
-        binding.ivTabSettingsIcon.setColorFilter(ContextCompat.getColor(this, R.color.nova_text_brown_primary))
-        binding.tvTabSettingsLabel.setTextColor(ContextCompat.getColor(this, R.color.nova_text_brown_primary))
-
-        binding.ivTabStyleIcon.setColorFilter(ContextCompat.getColor(this, R.color.nova_text_brown_secondary))
-        binding.tvTabStyleLabel.setTextColor(ContextCompat.getColor(this, R.color.nova_text_brown_secondary))
+        updateBottomNavColors()
     }
 
     private fun switchToStyleTab() {
         binding.scrollViewSettingsMain.visibility = View.GONE
         binding.layoutFeatureUnavailable.visibility = View.GONE
         binding.layoutStyleTabContent.visibility = View.VISIBLE
-
-        binding.indicatorStyleTab.setBackgroundResource(R.drawable.bg_nova_bottom_nav_pill)
-        binding.indicatorSettingsTab.background = null
-
-        binding.ivTabStyleIcon.setColorFilter(ContextCompat.getColor(this, R.color.nova_text_brown_primary))
-        binding.tvTabStyleLabel.setTextColor(ContextCompat.getColor(this, R.color.nova_text_brown_primary))
-
-        binding.ivTabSettingsIcon.setColorFilter(ContextCompat.getColor(this, R.color.nova_text_brown_secondary))
-        binding.tvTabSettingsLabel.setTextColor(ContextCompat.getColor(this, R.color.nova_text_brown_secondary))
+        updateBottomNavColors()
     }
 
     private fun setupSearchFiltering() {
@@ -258,12 +479,7 @@ class LauncherSettingsActivity : AppCompatActivity() {
             startActivity(Intent(this, SearchSettingsActivity::class.java))
         }
 
-        // Row 6: Cards
-        binding.rowCards.setOnClickListener {
-            showUnavailableScreen("Cards", R.drawable.ic_settings_cards)
-        }
-
-        // Row 7: Look & feel
+        // Row 6: Look & feel
         binding.rowLookFeel.setOnClickListener {
             startActivity(Intent(this, LookFeelSettingsActivity::class.java))
         }

@@ -33,6 +33,17 @@ class LauncherApplication : Application() {
 
         registerPackageMonitorReceiver()
         registerLauncherAppsCallback()
+        registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+            override fun onActivityCreated(a: android.app.Activity, b: android.os.Bundle?) {}
+            override fun onActivityStarted(a: android.app.Activity) {}
+            override fun onActivityResumed(a: android.app.Activity) {
+                com.example.launcherai.ui.LauncherSettingsThemeApplier.applyIfSettingsActivity(a)
+            }
+            override fun onActivityPaused(a: android.app.Activity) {}
+            override fun onActivityStopped(a: android.app.Activity) {}
+            override fun onActivitySaveInstanceState(a: android.app.Activity, b: android.os.Bundle) {}
+            override fun onActivityDestroyed(a: android.app.Activity) {}
+        })
     }
 
     private fun registerPackageMonitorReceiver() {

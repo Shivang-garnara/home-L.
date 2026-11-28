@@ -75,10 +75,17 @@ class WidgetActionPopup(
         val radiusPx = cornerRadiusDp * density
         val hasCardBg = prefs.getBoolean(PopupMenuSettingsActivity.KEY_POPUP_CARD_BG, true)
 
+        val popupStyle = com.example.launcherai.ui.SurfaceStyleConfig.loadSurfaceStyle(
+            context,
+            com.example.launcherai.ui.SurfaceStyleConfig.SurfaceId.POPUP_MENU
+        )
         val bgDrawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radiusPx
-            if (hasCardBg) {
+            if (popupStyle.hasCustomSurface) {
+                setColor(popupStyle.surfaceColor)
+                setStroke((1 * density).toInt(), androidx.core.graphics.ColorUtils.setAlphaComponent(popupStyle.effectiveAccentColor(), 80))
+            } else if (hasCardBg) {
                 setColor(ContextCompat.getColor(context, R.color.card_bg))
                 setStroke((1 * density).toInt(), ContextCompat.getColor(context, R.color.card_stroke))
             } else {
@@ -86,7 +93,25 @@ class WidgetActionPopup(
                 setStroke(0, Color.TRANSPARENT)
             }
         }
-        rootView.findViewById<View>(R.id.widgetPopupContainer)?.background = bgDrawable
+        val container = rootView.findViewById<ViewGroup>(R.id.widgetPopupContainer)
+        container?.background = bgDrawable
+        if (container != null && (popupStyle.hasCustomText || popupStyle.hasCustomAccent || popupStyle.hasCustomSurface)) {
+            applyPopupColorsRecursive(
+                container,
+                popupStyle.effectiveTextColor(),
+                popupStyle.effectiveAccentColor()
+            )
+        }
+    }
+
+    private fun applyPopupColorsRecursive(group: ViewGroup, textColor: Int, accentColor: Int) {
+        for (i in 0 until group.childCount) {
+            when (val child = group.getChildAt(i)) {
+                is ImageView -> child.setColorFilter(accentColor)
+                is TextView -> child.setTextColor(textColor)
+                is ViewGroup -> applyPopupColorsRecursive(child, textColor, accentColor)
+            }
+        }
     }
 
     private fun bindViews() {

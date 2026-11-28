@@ -89,6 +89,12 @@
             android:exported="true"
             android:label="Nova Launcher Settings" />
 
+        <!-- Surface Style Editor Activity -->
+        <activity
+            android:name=".ui.SurfaceStyleActivity"
+            android:exported="false"
+            android:label="Surface Style" />
+
         <!-- Home Screen Settings Activity -->
         <activity
             android:name=".ui.HomeScreenSettingsActivity"

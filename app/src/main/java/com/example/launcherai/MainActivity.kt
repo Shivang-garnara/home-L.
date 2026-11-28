@@ -1199,10 +1199,19 @@ class MainActivity : AppCompatActivity() {
         val infiniteScroll = prefs.getBoolean("key_infinite_scroll", false)
         workspace.isInfiniteScrollEnabled = infiniteScroll
 
-        // 3. Page indicator style & color
+        // 3. Page indicator style & color + Home screen Surface Style
+        val homeStyle = com.example.launcherai.ui.SurfaceStyleConfig.loadSurfaceStyle(
+            this,
+            com.example.launcherai.ui.SurfaceStyleConfig.SurfaceId.HOME_SCREEN
+        )
+        workspace.setBackgroundColor(Color.TRANSPARENT)
         val indicatorStyleName = prefs.getString("key_page_indicator_style", "DOTS") ?: "DOTS"
         val indicatorStyle = PageIndicatorView.Style.fromString(indicatorStyleName)
-        val indicatorColor = prefs.getInt("key_page_indicator_color", Color.WHITE)
+        val indicatorColor = if (homeStyle.hasCustomAccent) {
+            homeStyle.effectiveAccentColor()
+        } else {
+            prefs.getInt("key_page_indicator_color", Color.WHITE)
+        }
         workspace.setPageIndicatorStyle(indicatorStyle)
         workspace.setPageIndicatorColor(indicatorColor)
 
@@ -1289,13 +1298,21 @@ class MainActivity : AppCompatActivity() {
         val transNavBar = prefs.getBoolean("key_transparent_navigation_bar", true)
         val darkStatusMode = prefs.getString("key_dark_status_icons", "AUTO") ?: "AUTO"
 
+        val homeStyleForBars = com.example.launcherai.ui.SurfaceStyleConfig.loadSurfaceStyle(
+            this,
+            com.example.launcherai.ui.SurfaceStyleConfig.SurfaceId.HOME_SCREEN
+        )
         val isLightTheme = when (darkStatusMode.uppercase()) {
             "DARK" -> true
             "LIGHT" -> false
             else -> {
-                val nightMode =
-                    (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
-                !nightMode
+                if (homeStyleForBars.hasCustomSurface) {
+                    ColorUtils.calculateLuminance(homeStyleForBars.surfaceColor) > 0.5
+                } else {
+                    val nightMode =
+                        (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+                    !nightMode
+                }
             }
         }
 
@@ -2806,6 +2823,43 @@ class MainActivity : AppCompatActivity() {
         val fastScrollColor = prefs.getInt("key_drawer_fastscroll_color", 0xFFD54526.toInt())
         fastScroller.setAccentColor(fastScrollColor)
 
+        // Apply App drawer Surface Style to fixed chips (LauncherAI Settings, + Folder) & headers
+        val drawerSurfaceStyle = com.example.launcherai.ui.SurfaceStyleConfig.loadSurfaceStyle(
+            this,
+            com.example.launcherai.ui.SurfaceStyleConfig.SurfaceId.APP_DRAWER
+        )
+        val drawerTextCol = drawerSurfaceStyle.effectiveTextColor()
+        val drawerAccentCol = drawerSurfaceStyle.effectiveAccentColor()
+        val chipInactiveFill = ColorUtils.blendARGB(
+            drawerBgColor,
+            drawerTextCol,
+            0.12f
+        )
+        val density = resources.displayMetrics.density
+        listOf(R.id.chipLauncherSettings, R.id.chipNewDrawerFolder).forEach { chipId ->
+            val chip = findViewById<LinearLayout>(chipId) ?: return@forEach
+            chip.background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = 16f * density
+                setColor(chipInactiveFill)
+            }
+            for (i in 0 until chip.childCount) {
+                when (val child = chip.getChildAt(i)) {
+                    is ImageView -> child.setColorFilter(drawerAccentCol)
+                    is TextView -> child.setTextColor(drawerTextCol)
+                }
+            }
+        }
+        findViewById<android.view.ViewGroup>(R.id.layoutFrequentAppsHeader)?.let { header ->
+            for (i in 0 until header.childCount) {
+                (header.getChildAt(i) as? TextView)?.setTextColor(
+                    ColorUtils.setAlphaComponent(drawerTextCol, 190)
+                )
+            }
+        }
+        if (::tvFrequentAppsEmpty.isInitialized) {
+            tvFrequentAppsEmpty.setTextColor(ColorUtils.setAlphaComponent(drawerTextCol, 160))
+        }
+
         val isHidden = drawerPlacement.equals("None", ignoreCase = true) || drawerPlacement.equals(
             "Hidden", ignoreCase = true
         )
@@ -2923,6 +2977,15 @@ class MainActivity : AppCompatActivity() {
             selectedCategory = "All"
         }
 
+        val drawerSurfaceStyle = com.example.launcherai.ui.SurfaceStyleConfig.loadSurfaceStyle(
+            this,
+            com.example.launcherai.ui.SurfaceStyleConfig.SurfaceId.APP_DRAWER
+        )
+        val chipTextCol = drawerSurfaceStyle.effectiveTextColor()
+        val chipAccentCol = drawerSurfaceStyle.effectiveAccentColor()
+        val chipInactiveFill = ColorUtils.blendARGB(drawerSurfaceStyle.surfaceColor, chipTextCol, 0.12f)
+        val chipActiveTextCol = if (ColorUtils.calculateLuminance(chipAccentCol) > 0.5) Color.BLACK else Color.WHITE
+
         categories.forEach { category ->
             val isSelected = (category == selectedCategory)
             val chipView = TextView(this).apply {
@@ -2935,12 +2998,11 @@ class MainActivity : AppCompatActivity() {
                     (14 * density).toInt(),
                     (6 * density).toInt()
                 )
-                setBackgroundResource(if (isSelected) R.drawable.bg_nova_chip_active else R.drawable.bg_nova_chip_inactive)
-                setTextColor(
-                    if (isSelected) Color.WHITE else ContextCompat.getColor(
-                        this@MainActivity, R.color.nova_text_brown_primary
-                    )
-                )
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    cornerRadius = 16f * density
+                    setColor(if (isSelected) chipAccentCol else chipInactiveFill)
+                }
+                setTextColor(if (isSelected) chipActiveTextCol else chipTextCol)
                 isClickable = true
                 isFocusable = true
                 val lp = LinearLayout.LayoutParams(

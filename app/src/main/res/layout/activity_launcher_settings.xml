@@ -249,6 +249,7 @@
                         android:id="@+id/rowAiAssistant"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:visibility="gone"
                         android:background="?attr/selectableItemBackground"
                         android:clickable="true"
                         android:focusable="true"
@@ -488,55 +489,7 @@
                         </LinearLayout>
                     </LinearLayout>
 
-                    <!-- Row 6: Cards -->
-                    <LinearLayout
-                        android:id="@+id/rowCards"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:background="?attr/selectableItemBackground"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:gravity="center_vertical"
-                        android:minHeight="72dp"
-                        android:orientation="horizontal"
-                        android:paddingStart="16dp"
-                        android:paddingTop="12dp"
-                        android:paddingEnd="16dp"
-                        android:paddingBottom="12dp">
-
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:contentDescription="@null"
-                            android:src="@drawable/ic_settings_cards"
-                            app:tint="@color/nova_icon_tint_brown" />
-
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginStart="16dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Cards"
-                                android:textColor="@color/nova_text_brown_primary"
-                                android:textSize="16sp"
-                                android:textStyle="normal" />
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp"
-                                android:text="Build cards to show in LauncherAI Search or set conditions for them to appear in your app drawer or feed"
-                                android:textColor="@color/nova_text_brown_secondary"
-                                android:textSize="13sp" />
-                        </LinearLayout>
-                    </LinearLayout>
-
-                    <!-- Row 7: Look & feel -->
+                    <!-- Row 6: Look & feel -->
                     <LinearLayout
                         android:id="@+id/rowLookFeel"
                         android:layout_width="match_parent"
@@ -746,57 +699,132 @@
             </LinearLayout>
         </ScrollView>
 
-        <!-- Style Tab Content Container (Hidden by Default) -->
-        <LinearLayout
+        <!-- Style Tab Content Container (Nova Style parity: Palette + Mode + Surface list) -->
+        <ScrollView
             android:id="@+id/layoutStyleTabContent"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:padding="24dp"
+            android:clipToPadding="false"
+            android:paddingBottom="24dp"
             android:visibility="gone">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Style &amp; Appearance"
-                android:textColor="@color/nova_text_brown_title"
-                android:textSize="22sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Customize your launcher colors, dark mode, accent themes, and icon styles."
-                android:textColor="@color/nova_text_brown_secondary"
-                android:textSize="14sp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:background="@drawable/bg_nova_search_pill_settings"
                 android:orientation="vertical"
-                android:padding="20dp">
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:paddingTop="12dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Theme Mode"
-                    android:textColor="@color/nova_text_brown_primary"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
+                <!-- Palette Row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Palette"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:id="@+id/btnStylePalette"
+                        android:layout_width="wrap_content"
+                        android:layout_height="44dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="8dp"
+                        android:background="@drawable/bg_nova_style_pill"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <TextView
+                            android:id="@+id/tvStylePaletteValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="System"
+                            android:textColor="@color/nova_text_brown_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:layout_marginEnd="12dp" />
+
+                        <ImageView
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:src="@drawable/ic_palette_quadrant" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Mode Row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Mode"
+                        android:textColor="@color/nova_text_brown_primary"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:id="@+id/btnStyleMode"
+                        android:layout_width="wrap_content"
+                        android:layout_height="42dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="12dp"
+                        android:background="@drawable/bg_nova_style_pill"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <TextView
+                            android:id="@+id/tvStyleModeValue"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Follow system"
+                            android:textColor="@color/nova_text_brown_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:layout_marginEnd="6dp" />
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:src="@drawable/ic_arrow_drop_down"
+                            app:tint="@color/nova_text_brown_primary" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Divider -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="14dp"
+                    android:layout_marginBottom="8dp"
+                    android:background="#1A000000" />
+
+                <!-- Per-Surface Style Rows (Populated dynamically) -->
+                <LinearLayout
+                    android:id="@+id/containerSurfaceStyles"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="System Default (Light / Dark)"
-                    android:textColor="@color/nova_text_brown_secondary"
-                    android:textSize="13sp" />
+                    android:orientation="vertical" />
+
             </LinearLayout>
-
-        </LinearLayout>
+        </ScrollView>
 
         <!-- Feature Unavailable Sub-View Overlay (Hidden by Default) -->
         <LinearLayout
